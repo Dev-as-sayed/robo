@@ -1,0 +1,18 @@
+{
+  "name": "robo-shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/zod": "^3.23.8",
+    "typescript": "^5.5.2"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "lib": ["ES2022", "Node"],
+    "plugins": [
+      {
+        "name": "typescript-eslint-parser"
+      }
+    ],
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*", "modules/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
