@@ -19,7 +19,8 @@
     "./quizzes": "./src/quizzes/index.ts",
     "./contacts": "./src/contacts/index.ts",
     "./analytics": "./src/analytics/index.ts",
-    "./chat": "./src/chat/index.ts"
+    "./chat": "./src/chat/index.ts",
+    "./action-logs": "./src/action-logs/index.ts"
   },
   "scripts": {
     "build": "tsc --build",

@@ -66,6 +66,38 @@ export async function createExam(userId: string, data: {
   });
 }
 
+export async function getExams(
+  userId: string,
+  filters: { from?: Date; to?: Date; status?: "draft" | "active" | "completed" } = {}
+) {
+  return prisma.exam.findMany({
+    where: {
+      userId,
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.from || filters.to
+        ? {
+            date: {
+              ...(filters.from ? { gte: filters.from } : {}),
+              ...(filters.to ? { lte: filters.to } : {}),
+            },
+          }
+        : {}),
+    },
+    orderBy: { date: "asc" },
+    select: {
+      id: true,
+      userId: true,
+      subject: true,
+      date: true,
+      topics: true,
+      weight: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+}
+
 export async function getExam(userId: string, examId: string) {
   return await prisma.exam.findFirst({
     where: { id: examId, userId },

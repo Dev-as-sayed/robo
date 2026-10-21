@@ -80,6 +80,14 @@ const DOMAIN_ERRORS: Record<string, { statusCode: number; message: string }> = {
     statusCode: 502,
     message: "The AI provider returned an empty response",
   },
+  AI_MEMORY_UNAVAILABLE: {
+    statusCode: 503,
+    message: "AI conversation memory is unavailable",
+  },
+  RAG_NOT_CONFIGURED: {
+    statusCode: 503,
+    message: "Document search is not configured; add Qdrant and embedding settings",
+  },
   TODO_NOT_FOUND: { statusCode: 404, message: "Todo not found" },
   REMINDER_NOT_FOUND: { statusCode: 404, message: "Reminder not found" },
   SCHEDULE_NOT_FOUND: { statusCode: 404, message: "Schedule entry not found" },

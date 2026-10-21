@@ -3,6 +3,7 @@ export * from "./auth";
 export * from "./users";
 export * from "./devices";
 export * from "./chat";
+export * from "./action-logs";
 export * from "./schedule";
 export * from "./todos";
 export * from "./reminders";

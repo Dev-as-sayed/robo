@@ -14,6 +14,7 @@ import userRoutes from "./modules/users/routes";
 import adminRoutes from "./modules/admin/routes";
 import deviceRoutes from "./modules/devices/routes";
 import chatRoutes from "./modules/chat/routes";
+import actionRoutes from "./modules/actions/routes";
 import scheduleRoutes from "./modules/schedule/routes";
 import todoRoutes from "./modules/todos/routes";
 import reminderRoutes from "./modules/reminders/routes";
@@ -111,6 +112,7 @@ export function createApp(): express.Express {
   app.use("/api/v1/admin", adminRoutes);
   app.use("/api/v1/devices", deviceRoutes);
   app.use("/api/v1/chat", chatRoutes);
+  app.use("/api/v1/actions", actionRoutes);
   app.use("/api/v1/schedule", scheduleRoutes);
   app.use("/api/v1/todos", todoRoutes);
   app.use("/api/v1/reminders", reminderRoutes);

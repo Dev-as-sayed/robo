@@ -158,6 +158,10 @@ export const chatMessageQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
+export const actionLogQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
 export const createTodoSchema = z.object({
   title: z.string().min(1).max(200),
   due: z.coerce.date().optional(),
@@ -268,6 +272,7 @@ export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
 export type ChatConversationParamInput = z.infer<typeof chatConversationParamSchema>;
 export type ChatConversationQueryInput = z.infer<typeof chatConversationQuerySchema>;
 export type ChatMessageQueryInput = z.infer<typeof chatMessageQuerySchema>;
+export type ActionLogQueryInput = z.infer<typeof actionLogQuerySchema>;
 export type QuietHoursInput = z.infer<typeof quietHoursSchema>;
 export type CreateTodoInput = z.infer<typeof createTodoSchema>;
 export type UpdateTodoInput = z.infer<typeof updateTodoSchema>;

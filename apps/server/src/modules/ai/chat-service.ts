@@ -8,6 +8,8 @@ import {
 import { getMe } from "@robo/shared/users";
 import { env } from "../../config/env";
 import logger from "../../lib/logger";
+import { runAgent } from "./agent";
+import { getChatModels, type ChatRunnable } from "./llm-router";
 import {
   buildConversationTitle,
   buildHistoryMessages,
@@ -15,7 +17,6 @@ import {
   extractAssistantText,
   toVoiceText,
 } from "./prompt";
-import { getChatModel, type ChatRunnable } from "./llm-router";
 
 export interface SendChatMessageInput {
   content: string;
@@ -33,7 +34,12 @@ export async function sendChatMessage(
   input: SendChatMessageInput,
   dependencies: SendChatMessageDependencies = {}
 ) {
-  const model = dependencies.model ?? getChatModel("voice_chat");
+  const useAgent = !dependencies.model;
+
+  if (useAgent && getChatModels("agent_tools").length === 0) {
+    throw new Error("AI_NOT_CONFIGURED");
+  }
+
   const user = await getMe(userId);
   const conversation = await getOrCreateConversation(userId, {
     conversationId: input.conversationId,
@@ -44,39 +50,77 @@ export async function sendChatMessage(
   const history = await getRecentMessages(conversation.id, env.AI_HISTORY_MESSAGES);
   const userMessage = await appendMessage(conversation.id, "USER", input.content);
 
-  const messages = [
-    new SystemMessage(
-      buildSystemPrompt(
-        { name: user.name, locale: user.locale, timezone: user.timezone },
-        dependencies.now
-      )
-    ),
-    ...buildHistoryMessages(history),
-    new HumanMessage(input.content),
-  ];
-
   const startedAt = Date.now();
-  let response;
+  let content: string;
+  let toolCallCount = 0;
 
   try {
-    response = await model.invoke(messages);
-  } catch (error) {
-    logger.warn(
-      {
-        err: error,
+    if (dependencies.model) {
+      const model = dependencies.model;
+      const messages = [
+        new SystemMessage(
+          buildSystemPrompt(
+            { name: user.name, locale: user.locale, timezone: user.timezone },
+            dependencies.now
+          )
+        ),
+        ...buildHistoryMessages(history),
+        new HumanMessage(input.content),
+      ];
+
+      const response = await model.invoke(messages);
+      content = extractAssistantText(response);
+      if (!content) {
+        throw new Error("AI_EMPTY_RESPONSE");
+      }
+
+      const metadata = response.response_metadata as
+        | Record<string, unknown>
+        | undefined;
+
+      logger.info(
+        {
+          userId,
+          conversationId: conversation.id,
+          task: "voice_chat",
+          latencyMs: Date.now() - startedAt,
+          model: typeof metadata?.model_name === "string" ? metadata.model_name : undefined,
+          usage: response.usage_metadata,
+        },
+        "AI chat response generated"
+      );
+    } else {
+      const result = await runAgent({
         userId,
         conversationId: conversation.id,
-        task: "voice_chat",
-      },
-      "AI chat request failed"
-    );
-    throw new Error("AI_PROVIDER_UNAVAILABLE");
-  }
+        content: input.content,
+        history,
+        user: {
+          name: user.name,
+          locale: user.locale,
+          timezone: user.timezone,
+        },
+        now: dependencies.now,
+      });
 
-  const content = extractAssistantText(response);
+      content = result.content;
+      toolCallCount = result.toolCallCount;
+    }
+  } catch (error) {
+    if (!(error instanceof Error && error.message.startsWith("AI_"))) {
+      logger.warn(
+        {
+          err: error,
+          userId,
+          conversationId: conversation.id,
+          task: useAgent ? "agent_tools" : "voice_chat",
+        },
+        "AI chat request failed"
+      );
+      throw new Error("AI_PROVIDER_UNAVAILABLE");
+    }
 
-  if (!content) {
-    throw new Error("AI_EMPTY_RESPONSE");
+    throw error;
   }
 
   const voiceText = toVoiceText(content);
@@ -87,20 +131,10 @@ export async function sendChatMessage(
     voiceText
   );
 
-  const metadata =
-    response.response_metadata as Record<string, unknown> | undefined;
-
-  logger.info(
-    {
-      userId,
-      conversationId: conversation.id,
-      task: "voice_chat",
-      latencyMs: Date.now() - startedAt,
-      model: typeof metadata?.model_name === "string" ? metadata.model_name : undefined,
-      usage: response.usage_metadata,
-    },
-    "AI chat response generated"
-  );
-
-  return { conversation, userMessage, assistantMessage };
+  return {
+    conversation,
+    userMessage,
+    assistantMessage,
+    toolCallCount,
+  };
 }

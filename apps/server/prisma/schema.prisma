@@ -39,6 +39,12 @@ enum MessageRole {
   TOOL
 }
 
+enum ActionLogStatus {
+  SUCCESS
+  ERROR
+  CONFIRMATION_REQUIRED
+}
+
 model User {
   id                 String              @id @default(uuid())
   email              String              @unique
@@ -75,6 +81,7 @@ model User {
   quizAttempts       QuizAttempt[]
   contacts           Contact[]
   studySessions      StudySession[]
+  actionLogs         ActionLog[]
 
   @@index([role])
   @@index([status])
@@ -354,4 +361,21 @@ model StudySession {
 
   @@unique([id, userId])
   @@index([userId, startedAt])
+}
+
+model ActionLog {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId String?
+  toolName       String
+  input          Json
+  output         Json?
+  status         ActionLogStatus @default(SUCCESS)
+  error          String?
+  durationMs     Int
+  createdAt      DateTime        @default(now())
+
+  @@index([userId, createdAt])
+  @@index([conversationId, createdAt])
 }

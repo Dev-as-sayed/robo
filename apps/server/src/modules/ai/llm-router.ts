@@ -151,3 +151,10 @@ export function getChatModel(task: ChatTask): ChatRunnable {
 export function clearChatModelCache(): void {
   modelCache.clear();
 }
+
+export function getChatModels(task: ChatTask): BaseChatModel[] {
+  const specs = parseModelChain(TASK_CHAINS[task]);
+  return specs
+    .map(createModel)
+    .filter((model): model is BaseChatModel => model !== null);
+}

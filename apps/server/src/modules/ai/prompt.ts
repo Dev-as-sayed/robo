@@ -101,3 +101,22 @@ export function buildConversationTitle(content: string): string {
   const normalized = content.replace(/\s+/g, " ").trim();
   return normalized.length > 80 ? `${normalized.slice(0, 77).trimEnd()}...` : normalized;
 }
+
+export function buildAgentSystemPrompt(
+  user: ChatUserProfile,
+  now = new Date()
+): string {
+  return [
+    buildSystemPrompt(user, now),
+    "",
+    "You are running as a tool-using agent. Personal data and actions must come from tools, never from memory or guesses.",
+    "Use the available tools to read or change the student's todos, reminders, schedule, exams, analytics, contacts, documents, and quizzes.",
+    "If a required tool argument is missing, ask one short clarifying question instead of inventing a value.",
+    "Before creating or changing something, make sure the student's intent and the important details are clear.",
+    "Deleting a todo or cancelling a reminder requires explicit confirmation. On the first call, omit confirm and ask the student to confirm. Only call again with confirm=true after the student clearly says yes.",
+    "Never claim that an action succeeded unless the tool result confirms it. If a tool fails, explain the problem simply and suggest what to do next.",
+    "For questions about the student's own data, call the relevant read tool first. Do not answer from the conversation alone.",
+    "Keep answers short and natural for both text and speech. Do not mention tool names, JSON, or internal identifiers unless the student asks.",
+    `The student's local time zone is ${user.timezone}. Convert relative dates such as "tomorrow" or "next Monday" into ISO 8601 dates in that zone.`,
+  ].join("\n");
+}
