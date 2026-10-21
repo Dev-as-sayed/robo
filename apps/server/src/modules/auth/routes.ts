@@ -1,58 +1,90 @@
-import { Router, Request, Response, NextFunction } from "express";
-import { registerSchema, loginSchema } from "../../shared/schemas";
-import { register, login } from "../../shared/auth";
-import { authenticate } from "../middleware/auth";
+import { Router } from "express";
+import {
+  googleSignInSchema,
+  loginSchema,
+  logoutSchema,
+  refreshTokenSchema,
+  registerSchema,
+} from "@robo/shared/schemas";
+import {
+  googleLogin,
+  login,
+  logout,
+  refreshSession,
+  register,
+} from "@robo/shared/auth";
+import { asyncHandler } from "../../http/async-handler";
+import { sendSuccess } from "../../http/response";
+import { authenticate } from "../../middleware/authenticate";
+import { validate } from "../../middleware/validate";
 
 const router = Router();
 
-router.post("/register", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const body = registerSchema.parse(req.body);
-    const user = await register(body);
-    res.status(201).json({
+router.post(
+  "/register",
+  validate({ body: registerSchema }),
+  asyncHandler(async (req, res) => {
+    const result = await register(req.body);
+    sendSuccess(res, {
+      status: 201,
       code: "USER_CREATED",
-      data: { user },
+      message: "User registered successfully",
+      data: result,
     });
-  } catch (error) {
-    next(error);
-  }
-});
+  })
+);
 
-router.post("/login", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const body = loginSchema.parse(req.body);
-    const result = await login(body);
-    res.json({
+router.post(
+  "/login",
+  validate({ body: loginSchema }),
+  asyncHandler(async (req, res) => {
+    const result = await login(req.body);
+    sendSuccess(res, {
       code: "LOGIN_SUCCESS",
-      data: { token: result.token, user: result.user },
+      message: "Logged in successfully",
+      data: result,
     });
-  } catch (error) {
-    next(error);
-  }
-});
+  })
+);
 
-router.post("/refresh", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { token } = req.body;
-    const result = await refreshToken(token);
-    res.json({
+router.post(
+  "/google",
+  validate({ body: googleSignInSchema }),
+  asyncHandler(async (req, res) => {
+    const result = await googleLogin(req.body);
+    sendSuccess(res, {
+      code: "LOGIN_SUCCESS",
+      message: "Logged in with Google successfully",
+      data: result,
+    });
+  })
+);
+
+router.post(
+  "/refresh",
+  validate({ body: refreshTokenSchema }),
+  asyncHandler(async (req, res) => {
+    const result = await refreshSession(req.body.refreshToken);
+    sendSuccess(res, {
       code: "TOKEN_REFRESHED",
-      data: { token: result.token, user: result.user },
+      message: "Token refreshed successfully",
+      data: result,
     });
-  } catch (error) {
-    next(error);
-  }
-});
+  })
+);
 
-router.post("/logout", authenticate, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    await revokeToken(req.user.id);
-    res.json({
+router.post(
+  "/logout",
+  authenticate,
+  validate({ body: logoutSchema }),
+  asyncHandler(async (req, res) => {
+    const result = await logout(req.user!.id, req.body);
+    sendSuccess(res, {
       code: "LOGOUT_SUCCESS",
+      message: "Logged out successfully",
+      data: result,
     });
-  } catch (error) {
-    next(error);
-  }
-});
+  })
+);
 
 export default router;

@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Test and coverage artifacts
+coverage/
+test-results/
+playwright-report/
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Runtime files
+*.pid

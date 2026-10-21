@@ -1,0 +1,78 @@
+import "dotenv/config";
+import { z } from "zod";
+
+const DEVELOPMENT_JWT_SECRET = "development-only-jwt-secret-change-me-please";
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  CORS_ORIGIN: z.string().min(1).default("http://localhost:3000"),
+  LOG_LEVEL: z
+    .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
+    .default("info"),
+  JWT_SECRET: z.string().min(32).optional(),
+  JWT_ACCESS_EXPIRES_IN: z.string().regex(/^\d+[smhd]$/).default("15m"),
+  JWT_REFRESH_EXPIRES_IN: z.string().regex(/^\d+[smhd]$/).default("30d"),
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  PAIRING_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+  PAIRING_CODE_TTL_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
+  AI_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(30),
+  AI_HISTORY_MESSAGES: z.coerce.number().int().min(1).max(100).default(20),
+  AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(64).max(8192).default(512),
+  AI_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.4),
+  GEMINI_API_KEY: z.string().trim().optional(),
+  GROQ_API_KEY: z.string().trim().optional(),
+  OPENROUTER_API_KEY: z.string().trim().optional(),
+  OPENROUTER_BASE_URL: z.string().url().default("https://openrouter.ai/api/v1"),
+  OLLAMA_BASE_URL: z.string().url().optional(),
+  LLM_VOICE_CHAT_CHAIN: z
+    .string()
+    .min(1)
+    .default(
+      "groq:llama-3.3-70b-versatile,gemini:gemini-2.5-flash,openrouter:meta-llama/llama-3.3-70b-instruct:free,ollama:llama3.2"
+    ),
+  LLM_AGENT_TOOLS_CHAIN: z
+    .string()
+    .min(1)
+    .default(
+      "gemini:gemini-2.5-flash,groq:llama-3.3-70b-versatile,openrouter:meta-llama/llama-3.3-70b-instruct:free,ollama:llama3.2"
+    ),
+  LLM_STRUCTURED_CHAIN: z
+    .string()
+    .min(1)
+    .default(
+      "gemini:gemini-2.5-flash,groq:llama-3.3-70b-versatile,openrouter:meta-llama/llama-3.3-70b-instruct:free,ollama:llama3.2"
+    ),
+  LLM_VISION_CHAIN: z.string().min(1).default("gemini:gemini-2.5-flash"),
+  LLM_PRIVATE_DOCS_CHAIN: z.string().min(1).default("ollama:llama3.2"),
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  BODY_LIMIT: z.string().min(1).default("10mb"),
+});
+
+const parsed = envSchema.safeParse(process.env);
+
+if (!parsed.success) {
+  const details = parsed.error.issues
+    .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+    .join("; ");
+  throw new Error(`Invalid environment configuration: ${details}`);
+}
+
+if (parsed.data.NODE_ENV === "production" && !parsed.data.JWT_SECRET) {
+  throw new Error("JWT_SECRET is required in production");
+}
+
+const jwtSecret = parsed.data.JWT_SECRET ?? DEVELOPMENT_JWT_SECRET;
+
+process.env.JWT_SECRET = jwtSecret;
+process.env.JWT_ACCESS_EXPIRES_IN = parsed.data.JWT_ACCESS_EXPIRES_IN;
+process.env.JWT_REFRESH_EXPIRES_IN = parsed.data.JWT_REFRESH_EXPIRES_IN;
+process.env.PAIRING_CODE_TTL_MINUTES = String(parsed.data.PAIRING_CODE_TTL_MINUTES);
+
+export const env = {
+  ...parsed.data,
+  JWT_SECRET: jwtSecret,
+} as const;

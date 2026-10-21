@@ -1,23 +1,24 @@
 import pino from "pino";
-import pinoHttp from "pino-http";
+import { env } from "../config/env";
 
-const transport = pino.multistream([
-  { level: "info", target: "pino/file", options: { dest: "/var/log/robo/app.log" } },
-  { level: "warn", target: "pino/file", options: { dest: "/var/log/robo/warn.log" } },
-  { level: "error", target: "pino/file", options: { dest: "/var/log/robo/error.log" } },
-]);
-
-const logger = pino(
-  {
-    level: process.env.LOG_LEVEL || "info",
-    transport,
-    serializers: pino.stdSerializers,
+const logger = pino({
+  level: env.LOG_LEVEL,
+  base: {
+    service: "robo-server",
+    environment: env.NODE_ENV,
   },
-  pinoHttp({
-    logger,
-    translateMessage: true,
-  })
-);
+  timestamp: pino.stdTimeFunctions.isoTime,
+  redact: {
+    paths: [
+      "req.headers.authorization",
+      "req.headers.cookie",
+      "res.headers['set-cookie']",
+      "*.password",
+      "*.token",
+      "*.passwordHash",
+    ],
+    censor: "[REDACTED]",
+  },
+});
 
-export { logger };
-export type { pino.Logger } from "pino";
+export default logger;

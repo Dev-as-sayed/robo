@@ -1,0 +1,357 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  REGIONAL_BRAND_OWNER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum DeviceStatus {
+  PENDING
+  ONLINE
+  OFFLINE
+  REVOKED
+}
+
+enum ConversationChannel {
+  APP
+  DEVICE
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}
+
+model User {
+  id                 String              @id @default(uuid())
+  email              String              @unique
+  name               String?
+  passwordHash       String?
+  googleId           String?             @unique
+  role               UserRole            @default(USER)
+  status             UserStatus          @default(ACTIVE)
+  region             String?
+  brand              String?
+  suspendedAt        DateTime?
+  suspensionReason   String?
+  timezone           String              @default("UTC")
+  locale             String              @default("en")
+  quietHours         Json?
+  wakePhrase         String              @default("hey robo")
+  nudgeSettings      Json?
+  cloudAiForDocs     Boolean             @default(false)
+  guardianConsent    Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  refreshTokens      RefreshToken[]
+  devices            Device[]
+  pairingCodes       DevicePairingCode[]
+  conversations      Conversation[]
+  todos              Todo[]
+  reminders          Reminder[]
+  scheduleEntries    ScheduleEntry[]
+  scheduleExceptions ScheduleException[]
+  exams              Exam[]
+  studyPlans         StudyPlan[]
+  documents          Document[]
+  quizzes            Quiz[]
+  quizAttempts       QuizAttempt[]
+  contacts           Contact[]
+  studySessions      StudySession[]
+
+  @@index([role])
+  @@index([status])
+  @@index([region, brand])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Device {
+  id              String       @id @default(uuid())
+  deviceId        String       @unique
+  name            String?
+  tokenHash       String?      @unique
+  firmwareVersion String?
+  locale          String?
+  status          DeviceStatus @default(PENDING)
+  lastSeenAt      DateTime?
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model DevicePairingCode {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
+  @@index([expiresAt])
+}
+
+model Conversation {
+  id        String              @id @default(uuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   ConversationChannel @default(APP)
+  title     String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  messages  Message[]
+
+  @@index([userId, updatedAt])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String
+  voiceText      String?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model Todo {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  notes       String?
+  dueAt       DateTime?
+  completedAt DateTime?
+  subject     String?
+  priority    String    @default("medium")
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([id, userId])
+  @@index([userId, status])
+  @@index([userId, dueAt])
+}
+
+model Reminder {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text         String
+  at           DateTime?
+  rrule        String?
+  channels     String[]  @default(["device", "phone", "push"])
+  linkedEntity String?
+  status       String    @default("active")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([id, userId])
+  @@index([userId, status])
+}
+
+model ScheduleEntry {
+  id          String              @id @default(uuid())
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  startAt     DateTime
+  endAt       DateTime?
+  allDay      Boolean             @default(false)
+  subject     String?
+  room        String?
+  teacher     String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  exceptions  ScheduleException[]
+
+  @@unique([id, userId])
+  @@index([userId, startAt])
+}
+
+model ScheduleException {
+  id         String        @id @default(uuid())
+  scheduleId String
+  schedule   ScheduleEntry @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date       DateTime
+  reason     String?
+  createdAt  DateTime      @default(now())
+
+  @@unique([id, userId])
+  @@index([scheduleId])
+}
+
+model Exam {
+  id        String     @id @default(uuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  date      DateTime
+  topics    String[]   @default([])
+  weight    Float?
+  status    String     @default("draft")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  studyPlan StudyPlan?
+
+  @@unique([id, userId])
+  @@index([userId, date])
+}
+
+model StudyPlan {
+  id         String      @id @default(uuid())
+  examId     String      @unique
+  exam       Exam        @relation(fields: [examId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalDays  Int
+  dailyTasks DailyTask[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([id, userId])
+  @@index([userId])
+}
+
+model DailyTask {
+  id        String    @id @default(uuid())
+  planId    String
+  plan      StudyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  day       Int
+  title     String
+  completed Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  @@index([planId])
+}
+
+model Document {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename     String
+  originalName String
+  size         Int
+  mimeType     String
+  s3Key        String?
+  s3Url        String?
+  status       String   @default("uploaded")
+  subject      String?
+  chunkCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([id, userId])
+  @@index([userId, status])
+}
+
+model Quiz {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  subject       String?
+  topic         String?
+  questionCount Int
+  questions     QuizQuestion[]
+  attempts      QuizAttempt[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([id, userId])
+  @@index([userId])
+}
+
+model QuizQuestion {
+  id            String   @id @default(uuid())
+  quizId        String
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  question      String
+  options       String[]
+  correctAnswer String
+  explanation   String?
+
+  @@index([quizId])
+}
+
+model QuizAttempt {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId     String
+  quiz       Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  score      Int?
+  answeredAt DateTime?
+  results    Json
+  createdAt  DateTime  @default(now())
+
+  @@unique([id, userId])
+  @@index([userId, answeredAt])
+}
+
+model Contact {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String?
+  email     String?
+  group     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, userId])
+  @@index([userId])
+}
+
+model StudySession {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt DateTime
+  endedAt   DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([id, userId])
+  @@index([userId, startedAt])
+}

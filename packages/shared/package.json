@@ -1,18 +1,42 @@
 {
-  "name": "robo-shared",
+  "name": "@robo/shared",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "src/index.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schemas": "./src/schemas/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./users": "./src/users/index.ts",
+    "./devices": "./src/devices/index.ts",
+    "./schedule": "./src/schedule/index.ts",
+    "./todos": "./src/todos/index.ts",
+    "./reminders": "./src/reminders/index.ts",
+    "./exams": "./src/exams/index.ts",
+    "./documents": "./src/documents/index.ts",
+    "./quizzes": "./src/quizzes/index.ts",
+    "./contacts": "./src/contacts/index.ts",
+    "./analytics": "./src/analytics/index.ts",
+    "./chat": "./src/chat/index.ts"
+  },
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@prisma/client": "^5.19.0",
+    "argon2": "^0.31.1",
+    "google-auth-library": "^9.14.1",
+    "jsonwebtoken": "^9.0.2",
+    "prisma": "^5.19.0",
+    "uuid": "^11.1.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/zod": "^3.23.8",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.14.9",
     "typescript": "^5.5.2"
   }
 }

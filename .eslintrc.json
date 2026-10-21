@@ -1,0 +1,27 @@
+{
+  "root": true,
+  "env": {
+    "node": true,
+    "es2022": true
+  },
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "rules": {
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-unused-vars": "warn",
+    "semi": ["error", "always"],
+    "quotes": ["error", "single"],
+    "computed-property-spacing": ["error", "always"],
+    "keyword-spacing": "error",
+    "no-trailing-spaces": "warn",
+    "lines-around-comment": ["error", {
+      "beforeBlockComment": true,
+      "afterBlockComment": false
+    }],
+    "@typescript-eslint/explicit-function-return-type": "warn",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/strict-boolean-expressions": "off"
+  },
+  "ignorePatterns": ["node_modules", "dist", ".git/**"]
+}
