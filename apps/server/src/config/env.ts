@@ -3,6 +3,20 @@ import { z } from "zod";
 
 const DEVELOPMENT_JWT_SECRET = "development-only-jwt-secret-change-me-please";
 
+function emptyToUndefined(value: unknown): unknown {
+  return typeof value === "string" && value.trim() === "" ? undefined : value;
+}
+
+const optionalEnvString = z.preprocess(
+  emptyToUndefined,
+  z.string().trim().min(1).optional()
+);
+
+const optionalEnvUrl = z.preprocess(
+  emptyToUndefined,
+  z.string().url().optional()
+);
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -13,7 +27,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32).optional(),
   JWT_ACCESS_EXPIRES_IN: z.string().regex(/^\d+[smhd]$/).default("15m"),
   JWT_REFRESH_EXPIRES_IN: z.string().regex(/^\d+[smhd]$/).default("30d"),
-  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_ID: optionalEnvString,
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
@@ -64,6 +78,17 @@ const envSchema = z.object({
   DEVICE_HEARTBEAT_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
   DEVICE_AUDIO_TURN_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
   DEVICE_AUDIO_MAX_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024),
+  STT_SERVICE_URL: optionalEnvUrl,
+  STT_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  STT_LANGUAGE: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().min(2).max(10).optional()
+  ),
+  GROQ_STT_MODEL: z.string().min(1).default("whisper-large-v3-turbo"),
+  TTS_SERVICE_URL: optionalEnvUrl,
+  TTS_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
+  TTS_VOICE: optionalEnvString,
+  TTS_SAMPLE_RATE: z.coerce.number().int().min(8_000).max(48_000).default(16_000),
 });
 
 const parsed = envSchema.safeParse(process.env);

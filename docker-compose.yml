@@ -60,6 +60,34 @@ services:
     ports:
       - "11434:11434"
 
+  # Speech-to-text - faster-whisper (PCM16)
+  stt:
+    build:
+      context: ./services/voice/stt
+    restart: unless-stopped
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      HF_HOME: /models
+    volumes:
+      - stt_models:/models
+    ports:
+      - "8001:8001"
+
+  # Text-to-speech - Piper (PCM16)
+  tts:
+    build:
+      context: ./services/voice/tts
+    restart: unless-stopped
+    environment:
+      TTS_VOICE: ${TTS_VOICE:-en_US-lessac-medium}
+      TTS_DATA_DIR: /models
+    volumes:
+      - tts_models:/models
+    ports:
+      - "8002:8002"
+
   # Langfuse - AI observability
   langfuse:
     image: langfuse/langfuse:latest
@@ -77,3 +105,5 @@ volumes:
   qdrant_data:
   minio_data:
   ollama_data:
+  stt_models:
+  tts_models:

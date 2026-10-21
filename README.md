@@ -9,6 +9,7 @@ backend that runs the voice pipeline and LangGraph agent.
 apps/server       Express API, Prisma, LangGraph agent, device WebSocket gateway
 apps/mobile       Expo app (scaffold)
 packages/shared   Zod schemas, JWT helpers, device/store services shared by the server
+services/voice    faster-whisper (STT) and Piper (TTS) HTTP services
 firmware          ESP-IDF firmware (to be added)
 docs              Protocol and AI design notes
 ```
@@ -38,6 +39,17 @@ At least one LLM provider key (`GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API
 running Ollama instance is required for chat. Document search also needs Ollama embeddings and
 Qdrant.
 
+For voice, start the local speech services and set the URLs in `.env`:
+
+```bash
+docker compose up -d stt tts
+# STT_SERVICE_URL=http://localhost:8001
+# TTS_SERVICE_URL=http://localhost:8002
+```
+
+The first start downloads the Whisper model and the Piper voice; see
+[`services/voice/README.md`](services/voice/README.md).
+
 ## Checks
 
 ```bash
@@ -53,3 +65,5 @@ pnpm --dir apps/server lint
 - [`todo.md`](todo.md) — delivery plan and progress
 - [`docs/ai-tools.md`](docs/ai-tools.md) — agent tools and AI setup
 - [`docs/device-gateway.md`](docs/device-gateway.md) — device WebSocket protocol and audio turns
+- [`docs/voice-pipeline.md`](docs/voice-pipeline.md) — STT/TTS contracts and voice turn behavior
+- [`services/voice/README.md`](services/voice/README.md) — local faster-whisper and Piper services

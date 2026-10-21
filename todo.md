@@ -14,7 +14,7 @@
 | Phase | Goal                                    | Est.       | Status        |
 | ----- | --------------------------------------- | ---------- | ------------- |
 | P0    | Decisions, setup, hardware ordered      | 10–15 d    | Partial (code setup in place; decisions/hardware pending) |
-| R1    | Voice foundation                        | 30–40 d    | In progress (R1.3 gateway started) |
+| R1    | Voice foundation                        | 30–40 d    | In progress (R1.3 gateway + voice pipeline; firmware/mobile pending) |
 | R2    | Productivity (MVP complete)             | 30–40 d    | ☐             |
 | R3    | Study Brain (documents, quizzes, plans) | 40–50 d    | ☐             |
 | R4    | Communication (calls, messages)         | 25–30 d    | ☐             |
@@ -100,12 +100,12 @@
 - [x] 🔴 `ws` server at `/ws/device`: `hello` authentication, presence, heartbeat 30 s [GW-01, GW-03, GW-04] — 3 d
 - [x] 🔴 Audio turn handling: `audio.start`, binary frames, `audio.end`, timeout — 2 d
 - [ ] 🔴 Silero VAD integration for end-of-speech detection [VP-01] — 2 d
-- [ ] 🔴 STT service: faster-whisper (Docker) with Groq Whisper fallback [VP-02] — 3 d
-- [ ] 🔴 TTS service: Piper (Docker), per-language voice selection, chunked output [VP-04, VP-08] — 3 d
-- [ ] 🔴 Sentence splitter: stream LLM tokens → sentences → TTS → device [FR-VOI-06] — 2 d
-- [ ] 🟡 Stage timing metrics (VAD, STT, first token, TTS start) [VP-06] — 1 d
-- [ ] 🔴 Delete raw audio after transcription [VP-07] — 0.5 d
-- [ ] 🔴 Fallback speech messages for errors/offline [FR-VOI-07] — 1 d
+- [ ] 🔴 STT service: faster-whisper (Docker) with Groq Whisper fallback [VP-02] — client + Groq fallback + Docker service written; image build pending (registry unreachable)
+- [ ] 🔴 TTS service: Piper (Docker), per-language voice selection, chunked output [VP-04, VP-08] — client + PCM chunking + Docker service written; image build and voice selection pending
+- [x] 🔴 Sentence splitter: stream LLM tokens → sentences → TTS → device [FR-VOI-06] — 2 d
+- [ ] 🟡 Stage timing metrics (VAD, STT, first token, TTS start) [VP-06] — STT/agent/TTS logged; VAD and first token pending
+- [x] 🔴 Delete raw audio after transcription [VP-07] — 0.5 d
+- [ ] 🔴 Fallback speech messages for errors/offline [FR-VOI-07] — STT/agent fallbacks done; offline fallback pending
 
 ### R1.4 AI basics
 

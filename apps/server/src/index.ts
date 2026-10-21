@@ -9,9 +9,11 @@ import { createApp } from "./app";
 import { env } from "./config/env";
 import logger from "./lib/logger";
 import { DeviceGateway } from "./modules/realtime/gateway";
+import { createVoiceTurnHandler } from "./modules/voice/pipeline";
 
 const app = createApp();
 const server = createServer(app);
+const voiceTurnHandler = createVoiceTurnHandler({ logger });
 
 const deviceGateway = new DeviceGateway(server, {
   authenticateDevice: (
@@ -20,6 +22,7 @@ const deviceGateway = new DeviceGateway(server, {
     metadata
   ): Promise<AuthenticatedDevice> =>
     authenticateDeviceToken(deviceId, token, metadata),
+  onAudioTurn: voiceTurnHandler,
   onDisconnect: (deviceId): Promise<void> => markDevicePresence(deviceId, "OFFLINE"),
   onHeartbeat: touchDeviceLastSeen,
   heartbeatIntervalMs: env.DEVICE_HEARTBEAT_INTERVAL_MS,

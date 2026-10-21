@@ -49,9 +49,10 @@ All control messages are JSON text frames. Audio chunks are binary frames.
 - Buffers are held only in memory for the turn. They are handed to the voice pipeline and dropped;
   raw audio is not written to the database or object storage.
 
-`onAudioTurn(turn, session)` is the integration point for VAD, STT, the agent and TTS. Until that
-pipeline is wired, the gateway replies with `VOICE_PIPELINE_NOT_READY` and returns the device to
-`idle`.
+`onAudioTurn(turn, session)` is wired to the voice pipeline (STT -> agent -> sentence TTS). See
+[`voice-pipeline.md`](voice-pipeline.md) for the service contracts and failure behavior. If a
+server embeds the gateway without an `onAudioTurn` handler, it replies with
+`VOICE_PIPELINE_NOT_READY` and returns the device to `idle`.
 
 ## Configuration
 
