@@ -11,6 +11,7 @@
     "./auth": "./src/auth/index.ts",
     "./users": "./src/users/index.ts",
     "./devices": "./src/devices/index.ts",
+    "./realtime": "./src/realtime/index.ts",
     "./schedule": "./src/schedule/index.ts",
     "./todos": "./src/todos/index.ts",
     "./reminders": "./src/reminders/index.ts",

@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt } from "node:crypto";
+import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 
@@ -266,4 +266,67 @@ export async function factoryResetDevice(userId: string, id: string) {
   });
 
   return toPublicDevice(device);
+}
+
+export interface AuthenticatedDevice {
+  userId: string;
+  device: Device;
+}
+
+export async function authenticateDeviceToken(
+  deviceId: string,
+  token: string,
+  metadata: { firmwareVersion?: string; locale?: string } = {}
+): Promise<AuthenticatedDevice> {
+  const existing = await prisma.device.findUnique({
+    where: { deviceId },
+  });
+
+  if (existing?.status === "REVOKED") {
+    throw new Error("DEVICE_REVOKED");
+  }
+
+  if (!existing || !existing.tokenHash) {
+    throw new Error("DEVICE_UNAUTHORIZED");
+  }
+
+  const expected = Buffer.from(existing.tokenHash, "hex");
+  const actual = Buffer.from(hashDeviceToken(token), "hex");
+
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+    throw new Error("DEVICE_UNAUTHORIZED");
+  }
+
+  const device = await prisma.device.update({
+    where: { id: existing.id },
+    data: {
+      status: "ONLINE",
+      lastSeenAt: new Date(),
+      ...(metadata.firmwareVersion ? { firmwareVersion: metadata.firmwareVersion } : {}),
+      ...(metadata.locale ? { locale: metadata.locale } : {}),
+    },
+    select: deviceSelect,
+  });
+
+  return { userId: existing.userId, device: toPublicDevice(device) };
+}
+
+export async function markDevicePresence(
+  deviceId: string,
+  status: "ONLINE" | "OFFLINE"
+): Promise<void> {
+  await prisma.device.updateMany({
+    where: { deviceId, status: { not: "REVOKED" } },
+    data: {
+      status,
+      ...(status === "ONLINE" ? { lastSeenAt: new Date() } : {}),
+    },
+  });
+}
+
+export async function touchDeviceLastSeen(deviceId: string): Promise<void> {
+  await prisma.device.updateMany({
+    where: { deviceId, status: "ONLINE" },
+    data: { lastSeenAt: new Date() },
+  });
 }

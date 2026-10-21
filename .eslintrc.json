@@ -9,10 +9,14 @@
   "plugins": ["@typescript-eslint"],
   "rules": {
     "no-console": ["warn", { "allow": ["warn", "error"] }],
-    "no-unused-vars": "warn",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": ["warn", {
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_"
+    }],
     "semi": ["error", "always"],
-    "quotes": ["error", "single"],
-    "computed-property-spacing": ["error", "always"],
+    "quotes": ["error", "double"],
+    "computed-property-spacing": ["error", "never"],
     "keyword-spacing": "error",
     "no-trailing-spaces": "warn",
     "lines-around-comment": ["error", {

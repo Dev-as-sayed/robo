@@ -59,6 +59,7 @@ const DOMAIN_ERRORS: Record<string, { statusCode: number; message: string }> = {
     message: "Region and brand are required for a regional brand owner",
   },
   DEVICE_NOT_FOUND: { statusCode: 404, message: "Device not found" },
+  DEVICE_UNAUTHORIZED: { statusCode: 401, message: "Device authentication failed" },
   DEVICE_ALREADY_PAIRED: { statusCode: 409, message: "Device is already paired with another account" },
   DEVICE_REVOKED: { statusCode: 409, message: "Device has been revoked" },
   INVALID_PAIRING_CODE: { statusCode: 400, message: "Invalid pairing code" },

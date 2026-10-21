@@ -14,6 +14,17 @@
     ]
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "pnpm --dir apps/server dev",
+    "lint": "pnpm --dir apps/server lint",
+    "typecheck": "pnpm --dir apps/server typecheck",
+    "test": "pnpm --dir apps/server test",
+    "build": "pnpm --dir apps/server build"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "8.72.0",
+    "@typescript-eslint/parser": "8.72.0",
+    "eslint": "8.57.1",
+    "prettier": "3.3.3",
+    "typescript": "5.5.4"
   }
 }

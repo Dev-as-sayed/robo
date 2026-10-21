@@ -13,8 +13,8 @@
 
 | Phase | Goal                                    | Est.       | Status        |
 | ----- | --------------------------------------- | ---------- | ------------- |
-| P0    | Decisions, setup, hardware ordered      | 10–15 d    | ☐ Not started |
-| R1    | Voice foundation                        | 30–40 d    | ☐             |
+| P0    | Decisions, setup, hardware ordered      | 10–15 d    | Partial (code setup in place; decisions/hardware pending) |
+| R1    | Voice foundation                        | 30–40 d    | In progress (R1.3 gateway started) |
 | R2    | Productivity (MVP complete)             | 30–40 d    | ☐             |
 | R3    | Study Brain (documents, quizzes, plans) | 40–50 d    | ☐             |
 | R4    | Communication (calls, messages)         | 25–30 d    | ☐             |
@@ -80,8 +80,8 @@
 
 ### R1.1 Shared package
 
-- [ ] 🔴 `packages/shared`: Zod schemas for auth, device, chat, WebSocket messages — 2 d
-- [ ] 🟡 Shared constants (error codes, message types) — 0.5 d
+- [x] 🔴 `packages/shared`: Zod schemas for auth, device, chat, WebSocket messages — 2 d
+- [x] 🟡 Shared constants (error codes, message types) — 0.5 d
 
 ### R1.2 Backend API
 
@@ -97,8 +97,8 @@
 
 ### R1.3 Device gateway and voice pipeline
 
-- [ ] 🔴 `ws` server at `/ws/device`: `hello` authentication, presence, heartbeat 30 s [GW-01, GW-03, GW-04] — 3 d
-- [ ] 🔴 Audio turn handling: `audio.start`, binary frames, `audio.end`, timeout — 2 d
+- [x] 🔴 `ws` server at `/ws/device`: `hello` authentication, presence, heartbeat 30 s [GW-01, GW-03, GW-04] — 3 d
+- [x] 🔴 Audio turn handling: `audio.start`, binary frames, `audio.end`, timeout — 2 d
 - [ ] 🔴 Silero VAD integration for end-of-speech detection [VP-01] — 2 d
 - [ ] 🔴 STT service: faster-whisper (Docker) with Groq Whisper fallback [VP-02] — 3 d
 - [ ] 🔴 TTS service: Piper (Docker), per-language voice selection, chunked output [VP-04, VP-08] — 3 d
@@ -400,7 +400,7 @@ Highest-risk items to start early: wake-word accuracy on the chosen hardware, en
 5. [ ] Voice spike: record and play back on ESP32-S3 (P0.5)
 6. [ ] Latency spike on a laptop: Whisper → LLM → Piper (P0.5)
 7. [ ] Expo development build with BLE scan (P0.5)
-8. [ ] Express skeleton + Prisma + auth (R1.2)
+8. [x] Express skeleton + Prisma + auth (R1.2)
 
 ---
 

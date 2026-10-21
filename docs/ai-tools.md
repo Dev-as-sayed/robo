@@ -42,7 +42,7 @@ Robo is a student assistant. The agent reads and changes the student's own data 
 | Tool | Blocker |
 | --- | --- |
 | `start_timer`, `create_alarm` | Needs timer/alarm models and BullMQ jobs |
-| `device_show`, `device_speak` | Needs the `ws` device gateway and realtime command channel |
+| `device_show`, `device_speak` | The `/ws/device` gateway now exists; needs server-initiated event routing and offline queueing (GW-06) |
 | `save_class_note`, `query_class_notes` | Needs class-note models and API |
 | `get_subject_topics` | Needs `Subject` and `Topic` models |
 | `record_quiz_result` | Can use the existing attempt endpoint once quiz answers are exposed |
@@ -94,5 +94,6 @@ Tracing is disabled unless both Langfuse keys are set.
 - Document ingestion, OCR, chunking, and indexing are not wired to Qdrant yet.
 - Token quotas and degraded mode are not implemented.
 - Long-term memory tools are not implemented.
-- Device tools wait for the realtime gateway.
+- Device audio turns reach the gateway, but VAD/STT/TTS are not wired into `onAudioTurn` yet.
+- Device tools still need server-initiated event routing; see `docs/device-gateway.md`.
 - The confirmation flag is a basic model-facing safeguard; a server-enforced pending-action flow is still needed for production.

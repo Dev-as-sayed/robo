@@ -1,10 +1,35 @@
+import { createServer } from "node:http";
+import {
+  authenticateDeviceToken,
+  markDevicePresence,
+  touchDeviceLastSeen,
+  type AuthenticatedDevice,
+} from "@robo/shared/devices";
 import { createApp } from "./app";
 import { env } from "./config/env";
 import logger from "./lib/logger";
+import { DeviceGateway } from "./modules/realtime/gateway";
 
 const app = createApp();
+const server = createServer(app);
 
-const server = app.listen(env.PORT, () => {
+const deviceGateway = new DeviceGateway(server, {
+  authenticateDevice: (
+    deviceId,
+    token,
+    metadata
+  ): Promise<AuthenticatedDevice> =>
+    authenticateDeviceToken(deviceId, token, metadata),
+  onDisconnect: (deviceId): Promise<void> => markDevicePresence(deviceId, "OFFLINE"),
+  onHeartbeat: touchDeviceLastSeen,
+  heartbeatIntervalMs: env.DEVICE_HEARTBEAT_INTERVAL_MS,
+  helloTimeoutMs: env.DEVICE_HELLO_TIMEOUT_MS,
+  audioTurnTimeoutMs: env.DEVICE_AUDIO_TURN_TIMEOUT_MS,
+  maxAudioBytes: env.DEVICE_AUDIO_MAX_BYTES,
+  logger,
+});
+
+server.listen(env.PORT, () => {
   logger.info({ port: env.PORT }, "server started");
 });
 
@@ -17,6 +42,10 @@ function shutdown(signal: string, exitCode = 0): void {
 
   shuttingDown = true;
   logger.info({ signal }, "shutting down");
+
+  void deviceGateway.close().catch((error: unknown) => {
+    logger.warn({ err: error }, "error while closing device gateway");
+  });
 
   server.close((error) => {
     if (error) {

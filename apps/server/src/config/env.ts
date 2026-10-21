@@ -60,6 +60,10 @@ const envSchema = z.object({
   LANGFUSE_HOST: z.string().url().default("https://cloud.langfuse.com"),
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   BODY_LIMIT: z.string().min(1).default("10mb"),
+  DEVICE_HELLO_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  DEVICE_HEARTBEAT_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
+  DEVICE_AUDIO_TURN_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
+  DEVICE_AUDIO_MAX_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024),
 });
 
 const parsed = envSchema.safeParse(process.env);

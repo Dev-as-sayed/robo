@@ -2,6 +2,7 @@ export * from "./schemas";
 export * from "./auth";
 export * from "./users";
 export * from "./devices";
+export * from "./realtime";
 export * from "./chat";
 export * from "./action-logs";
 export * from "./schedule";
