@@ -99,7 +99,7 @@
 
 - [x] 🔴 `ws` server at `/ws/device`: `hello` authentication, presence, heartbeat 30 s [GW-01, GW-03, GW-04] — 3 d
 - [x] 🔴 Audio turn handling: `audio.start`, binary frames, `audio.end`, timeout — 2 d
-- [ ] 🔴 Silero VAD integration for end-of-speech detection [VP-01] — 2 d
+- [x] 🔴 Silero VAD integration for end-of-speech detection [VP-01] — 2 d
 - [ ] 🔴 STT service: faster-whisper (Docker) with Groq Whisper fallback [VP-02] — client + Groq fallback + Docker service written; image build pending (registry unreachable)
 - [ ] 🔴 TTS service: Piper (Docker), per-language voice selection, chunked output [VP-04, VP-08] — client + PCM chunking + Docker service written; image build and voice selection pending
 - [x] 🔴 Sentence splitter: stream LLM tokens → sentences → TTS → device [FR-VOI-06] — 2 d

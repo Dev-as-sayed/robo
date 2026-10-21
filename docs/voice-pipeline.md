@@ -22,6 +22,9 @@ old turn as cancelled. The pipeline checks `session.isTurnActive(turnId)` before
 agent reply, and between TTS chunks, then stops without sending an error or resetting the new
 turn's state.
 
+PCM16 turns end automatically after 800 ms of silence detected by Silero VAD, or earlier if the
+device sends `audio.end`. Opus turns still require `audio.end` or the turn timeout.
+
 ## STT service contract
 
 The local service is selected with `STT_SERVICE_URL`:
@@ -112,7 +115,6 @@ transcription.
 
 ## Still missing
 
-- Silero VAD for end-of-speech detection when the device does not send `audio.end`.
 - Streaming LLM tokens through the sentence splitter (the agent currently returns a full reply).
 - Per-user TTS voice selection and the second launch language.
 

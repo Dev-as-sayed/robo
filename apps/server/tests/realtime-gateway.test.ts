@@ -290,6 +290,66 @@ describe("device WebSocket gateway", () => {
     await stopGateway(testGateway, client);
   });
 
+  it("finalizes a PCM16 turn when VAD detects the end of speech", async () => {
+    const turns: DeviceAudioTurn[] = [];
+    const vadTurn = { push: vi.fn(async () => true) };
+    const vad = { startTurn: vi.fn(() => vadTurn) };
+
+    const testGateway = await startGateway({
+      vad,
+      onAudioTurn: turn => {
+        turns.push(turn);
+      },
+    });
+    const client = await TestClient.connect(testGateway.url);
+    await client.hello();
+
+    client.send({
+      type: "audio.start",
+      codec: "pcm16",
+      sampleRate: 16_000,
+      turnId: "turn-1",
+    });
+    expect(await client.next()).toMatchObject({
+      type: "state",
+      state: "listening",
+      turnId: "turn-1",
+    });
+
+    const audio = Buffer.from([1, 2, 3, 4]);
+    client.sendAudio(audio);
+    expect(await client.next()).toMatchObject({
+      type: "state",
+      state: "thinking",
+      turnId: "turn-1",
+    });
+    expect(await client.next()).toMatchObject({
+      type: "state",
+      state: "idle",
+      turnId: "turn-1",
+    });
+
+    expect(vad.startTurn).toHaveBeenCalledWith(16_000);
+    expect(vadTurn.push).toHaveBeenCalledWith(audio);
+    expect(turns).toHaveLength(1);
+    expect(turns[0]?.audio.equals(audio)).toBe(true);
+
+    client.send({ type: "audio.end", turnId: "turn-1" });
+    client.send({
+      type: "audio.start",
+      codec: "pcm16",
+      sampleRate: 16_000,
+      turnId: "turn-2",
+    });
+    expect(await client.next()).toMatchObject({
+      type: "state",
+      state: "listening",
+      turnId: "turn-2",
+    });
+
+    await stopGateway(testGateway, client);
+  });
+
   it("rejects an invalid device token and closes the connection", async () => {
     const testGateway = await startGateway();
     const client = await TestClient.connect(testGateway.url);

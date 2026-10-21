@@ -9,11 +9,33 @@ import { createApp } from "./app";
 import { env } from "./config/env";
 import logger from "./lib/logger";
 import { DeviceGateway } from "./modules/realtime/gateway";
+import { SileroVad } from "./modules/realtime/vad";
 import { createVoiceTurnHandler } from "./modules/voice/pipeline";
 
 const app = createApp();
 const server = createServer(app);
 const voiceTurnHandler = createVoiceTurnHandler({ logger });
+
+const vad = env.DEVICE_VAD_ENABLED
+  ? await SileroVad.create({
+      modelPath: env.DEVICE_VAD_MODEL_PATH,
+      silenceMs: env.DEVICE_VAD_SILENCE_MS,
+      minSpeechMs: env.DEVICE_VAD_MIN_SPEECH_MS,
+    }).catch((error: unknown) => {
+      logger.warn({ err: error }, "silero vad unavailable; voice turns require audio.end");
+      return null;
+    })
+  : null;
+
+if (vad) {
+  logger.info(
+    {
+      silenceMs: env.DEVICE_VAD_SILENCE_MS,
+      minSpeechMs: env.DEVICE_VAD_MIN_SPEECH_MS,
+    },
+    "silero vad enabled"
+  );
+}
 
 const deviceGateway = new DeviceGateway(server, {
   authenticateDevice: (
@@ -29,6 +51,7 @@ const deviceGateway = new DeviceGateway(server, {
   helloTimeoutMs: env.DEVICE_HELLO_TIMEOUT_MS,
   audioTurnTimeoutMs: env.DEVICE_AUDIO_TURN_TIMEOUT_MS,
   maxAudioBytes: env.DEVICE_AUDIO_MAX_BYTES,
+  ...(vad ? { vad } : {}),
   logger,
 });
 

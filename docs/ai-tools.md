@@ -94,6 +94,6 @@ Tracing is disabled unless both Langfuse keys are set.
 - Document ingestion, OCR, chunking, and indexing are not wired to Qdrant yet.
 - Token quotas and degraded mode are not implemented.
 - Long-term memory tools are not implemented.
-- Device audio turns now run through STT -> agent -> sentence TTS; Silero VAD is still missing.
+- Device audio turns run through Silero VAD -> STT -> agent -> sentence TTS; streaming LLM tokens remain missing.
 - Device tools still need server-initiated event routing; see `docs/device-gateway.md`.
 - The confirmation flag is a basic model-facing safeguard; a server-enforced pending-action flow is still needed for production.

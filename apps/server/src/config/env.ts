@@ -17,6 +17,22 @@ const optionalEnvUrl = z.preprocess(
   z.string().url().optional()
 );
 
+const booleanEnv = z.preprocess(value => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  if (value.trim().toLowerCase() === "true") {
+    return true;
+  }
+
+  if (value.trim().toLowerCase() === "false") {
+    return false;
+  }
+
+  return value;
+}, z.boolean());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -78,6 +94,10 @@ const envSchema = z.object({
   DEVICE_HEARTBEAT_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
   DEVICE_AUDIO_TURN_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
   DEVICE_AUDIO_MAX_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024),
+  DEVICE_VAD_ENABLED: booleanEnv.default(true),
+  DEVICE_VAD_SILENCE_MS: z.coerce.number().int().min(200).max(3_000).default(800),
+  DEVICE_VAD_MIN_SPEECH_MS: z.coerce.number().int().min(0).max(2_000).default(250),
+  DEVICE_VAD_MODEL_PATH: optionalEnvString,
   STT_SERVICE_URL: optionalEnvUrl,
   STT_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
   STT_LANGUAGE: z.preprocess(

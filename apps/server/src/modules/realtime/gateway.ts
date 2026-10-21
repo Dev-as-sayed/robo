@@ -17,6 +17,7 @@ import {
   type DeviceState,
   type GatewayErrorCode,
 } from "@robo/shared/realtime";
+import type { VadDetector, VadTurn } from "./vad";
 
 export interface RealtimeLogger {
   info: (payload: unknown, message?: string) => void;
@@ -38,6 +39,7 @@ export interface DeviceGatewayOptions {
   helloTimeoutMs?: number;
   audioTurnTimeoutMs?: number;
   maxAudioBytes?: number;
+  vad?: VadDetector;
   logger?: RealtimeLogger;
 }
 
@@ -84,6 +86,11 @@ class DeviceConnection {
   private turn: AudioTurn | null = null;
   private processingTurnId: string | null = null;
   private readonly cancelledTurnIds = new Set<string>();
+  private readonly completedTurnIds = new Set<string>();
+  private readonly vad: VadDetector | null;
+  private activeVad: VadTurn | null = null;
+  private vadQueue: Promise<void> = Promise.resolve();
+  private ignoreAudioUntil = 0;
   private state: DeviceState = "idle";
   private alive = true;
   private lastSeenPersistedAt = 0;
@@ -97,6 +104,7 @@ class DeviceConnection {
       helloTimeoutMs: number;
       audioTurnTimeoutMs: number;
       maxAudioBytes: number;
+      vad?: VadDetector;
     }
   ) {
     this.socket = socket;
@@ -104,6 +112,7 @@ class DeviceConnection {
     this.helloTimeoutMs = options.helloTimeoutMs;
     this.audioTurnTimeoutMs = options.audioTurnTimeoutMs;
     this.maxAudioBytes = options.maxAudioBytes;
+    this.vad = options.vad ?? null;
 
     this.helloTimeout = setTimeout(() => {
       this.fail(
@@ -334,8 +343,13 @@ class DeviceConnection {
         { deviceId: this.deviceId, previousTurnId: this.turn.id, turnId },
         "new audio turn cancelled the previous turn"
       );
+      this.rememberCompletedTurn(this.turn.id);
       this.turn = null;
     }
+
+    this.completedTurnIds.delete(turnId);
+    this.activeVad = null;
+    this.ignoreAudioUntil = Date.now() + 2_000;
 
     const timeout = setTimeout(() => {
       if (!this.turn || this.turn.id !== turnId) {
@@ -343,6 +357,9 @@ class DeviceConnection {
       }
 
       this.turn = null;
+      this.activeVad = null;
+      this.rememberCompletedTurn(turnId);
+      this.ignoreAudioUntil = Date.now() + 2_000;
       this.sendError("AUDIO_TIMEOUT", "Audio turn timed out", turnId);
       this.setState("idle", turnId);
     }, this.audioTurnTimeoutMs);
@@ -358,6 +375,10 @@ class DeviceConnection {
       timeout,
     };
 
+    if (codec === "pcm16") {
+      this.activeVad = this.vad?.startTurn(sampleRate) ?? null;
+    }
+
     this.setState("listening", turnId);
   }
 
@@ -367,6 +388,10 @@ class DeviceConnection {
     }
 
     if (!this.turn) {
+      if (Date.now() < this.ignoreAudioUntil) {
+        return;
+      }
+
       this.sendError("AUDIO_TURN_NOT_STARTED", "Send audio.start before binary audio frames");
       return;
     }
@@ -382,13 +407,60 @@ class DeviceConnection {
       const turnId = this.turn.id;
       clearTimeout(this.turn.timeout);
       this.turn = null;
+      this.activeVad = null;
+      this.rememberCompletedTurn(turnId);
+      this.ignoreAudioUntil = Date.now() + 2_000;
       this.sendError("AUDIO_TOO_LARGE", "Audio turn exceeded the size limit", turnId);
       this.setState("idle", turnId);
+      return;
+    }
+
+    this.enqueueVad(chunk);
+  }
+
+  private enqueueVad(chunk: Buffer): void {
+    if (!this.turn || !this.activeVad) {
+      return;
+    }
+
+    const turnId = this.turn.id;
+    const vad = this.activeVad;
+
+    this.vadQueue = this.vadQueue
+      .then(async () => {
+        if (!this.turn || this.turn.id !== turnId) {
+          return;
+        }
+
+        const ended = await vad.push(chunk);
+        if (ended) {
+          await this.finalizeTurn(turnId);
+        }
+      })
+      .catch(error => {
+        this.gateway.log.warn(
+          { err: error, deviceId: this.deviceId, turnId },
+          "silero vad failed"
+        );
+      });
+  }
+
+  private rememberCompletedTurn(turnId: string): void {
+    this.completedTurnIds.add(turnId);
+    if (this.completedTurnIds.size > 8) {
+      const oldest = this.completedTurnIds.values().next().value;
+      if (oldest) {
+        this.completedTurnIds.delete(oldest);
+      }
     }
   }
 
   private async handleAudioEnd(turnId: string): Promise<void> {
     if (!this.turn) {
+      if (this.completedTurnIds.has(turnId)) {
+        return;
+      }
+
       this.sendError("AUDIO_TURN_NOT_STARTED", "No active audio turn", turnId);
       return;
     }
@@ -402,9 +474,20 @@ class DeviceConnection {
       return;
     }
 
+    await this.finalizeTurn(turnId);
+  }
+
+  private async finalizeTurn(turnId: string): Promise<void> {
+    if (!this.turn || this.turn.id !== turnId) {
+      return;
+    }
+
     const turn = this.turn;
     clearTimeout(turn.timeout);
     this.turn = null;
+    this.activeVad = null;
+    this.rememberCompletedTurn(turn.id);
+    this.ignoreAudioUntil = Date.now() + 2_000;
     this.setState("thinking", turn.id);
 
     const device = this.device;
@@ -498,6 +581,7 @@ class DeviceConnection {
       clearTimeout(this.turn.timeout);
       this.turn = null;
     }
+    this.activeVad = null;
     if (this.processingTurnId) {
       this.cancelledTurnIds.add(this.processingTurnId);
       this.processingTurnId = null;
@@ -654,6 +738,7 @@ export class DeviceGateway {
       helloTimeoutMs: this.options.helloTimeoutMs,
       audioTurnTimeoutMs: this.options.audioTurnTimeoutMs,
       maxAudioBytes: this.options.maxAudioBytes,
+      vad: this.options.vad,
     });
     this.connections.set(socket, connection);
   }

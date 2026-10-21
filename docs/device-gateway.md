@@ -49,6 +49,21 @@ All control messages are JSON text frames. Audio chunks are binary frames.
 - Buffers are held only in memory for the turn. They are handed to the voice pipeline and dropped;
   raw audio is not written to the database or object storage.
 
+## End-of-speech detection
+
+PCM16 turns run through Silero VAD as frames arrive. After `DEVICE_VAD_SILENCE_MS` (800 ms) of
+silence, the server finalizes the turn and sends `state: thinking` without waiting for `audio.end`.
+Silence must last at least `DEVICE_VAD_MIN_SPEECH_MS` (250 ms) to count as speech. Opus turns skip
+VAD and must end with `audio.end` or the turn timeout.
+
+Late binary frames that arrive just after a VAD or `audio.end` finalization are ignored for 2 s
+instead of producing `AUDIO_TURN_NOT_STARTED`; a repeated `audio.end` for the completed turn is
+also ignored. Starting a new turn clears that grace window.
+
+VAD loads the bundled Silero ONNX model on server startup. If the model or `onnxruntime-node`
+cannot load, the server logs a warning and falls back to `audio.end`/timeout. Set
+`DEVICE_VAD_ENABLED=false` to skip loading it.
+
 `onAudioTurn(turn, session)` is wired to the voice pipeline (STT -> agent -> sentence TTS). See
 [`voice-pipeline.md`](voice-pipeline.md) for the service contracts and failure behavior. If a
 server embeds the gateway without an `onAudioTurn` handler, it replies with
@@ -61,12 +76,18 @@ DEVICE_HELLO_TIMEOUT_MS=10000
 DEVICE_HEARTBEAT_INTERVAL_MS=30000
 DEVICE_AUDIO_TURN_TIMEOUT_MS=15000
 DEVICE_AUDIO_MAX_BYTES=2097152
+DEVICE_VAD_ENABLED=true
+DEVICE_VAD_SILENCE_MS=800
+DEVICE_VAD_MIN_SPEECH_MS=250
+# DEVICE_VAD_MODEL_PATH=/path/to/silero_vad.onnx
 ```
 
 ## Tests
 
 `apps/server/tests/realtime-gateway.test.ts` covers authentication, hello requirements, audio
-buffering, TTS session output, turn timeout, size limits and heartbeat liveness:
+buffering, TTS session output, turn timeout, size limits, heartbeat liveness, barge-in cancellation
+and VAD finalization. `apps/server/tests/vad.test.ts` runs the bundled Silero model against silence
+and a speech fixture:
 
 ```bash
 pnpm --dir apps/server test
