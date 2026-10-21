@@ -111,6 +111,12 @@ function failureSpeech(error: unknown): string {
   return "Sorry, something went wrong. Please try again.";
 }
 
+function assertTurnActive(turn: DeviceAudioTurn, session: DeviceSession): void {
+  if (session.isTurnActive && !session.isTurnActive(turn.turnId)) {
+    throw new Error("TURN_CANCELLED");
+  }
+}
+
 async function speak(
   text: string,
   turn: DeviceAudioTurn,
@@ -118,7 +124,11 @@ async function speak(
   language: string,
   synthesize: NonNullable<VoicePipelineDeps["synthesize"]>
 ): Promise<void> {
+  assertTurnActive(turn, session);
+
   const speech = await synthesize(text, { language });
+  assertTurnActive(turn, session);
+
   session.setState("speaking", turn.turnId);
   session.send({
     type: "tts.start",
@@ -129,12 +139,15 @@ async function speak(
 
   if (speech.codec === "pcm16") {
     for (let offset = 0; offset < speech.audio.length; offset += AUDIO_CHUNK_BYTES) {
+      assertTurnActive(turn, session);
       session.sendAudio(speech.audio.subarray(offset, offset + AUDIO_CHUNK_BYTES));
     }
   } else {
+    assertTurnActive(turn, session);
     session.sendAudio(speech.audio);
   }
 
+  assertTurnActive(turn, session);
   session.send({ type: "tts.end", turnId: turn.turnId });
 }
 
@@ -165,8 +178,10 @@ export function createVoiceTurnHandler(
     }
 
     try {
+      assertTurnActive(turn, session);
       const transcription = await transcribe(turn, { language: profile.locale });
       timings.sttMs = Date.now() - startedAt;
+      assertTurnActive(turn, session);
       const transcriptText = transcription.text.trim();
 
       if (!transcriptText) {
@@ -190,6 +205,7 @@ export function createVoiceTurnHandler(
       const agentStartedAt = Date.now();
       const response = await reply(turn.userId, transcriptText);
       timings.agentMs = Date.now() - agentStartedAt;
+      assertTurnActive(turn, session);
 
       const spokenText = (response.voiceText?.trim() || response.text).trim();
       if (!spokenText) {
@@ -217,6 +233,10 @@ export function createVoiceTurnHandler(
         "voice turn completed"
       );
     } catch (error) {
+      if (error instanceof Error && error.message === "TURN_CANCELLED") {
+        return;
+      }
+
       log.error(
         { err: error, userId: turn.userId, turnId: turn.turnId, timings },
         "voice turn failed"
@@ -240,6 +260,13 @@ export function createVoiceTurnHandler(
           synthesize
         );
       } catch (fallbackError) {
+        if (
+          fallbackError instanceof Error &&
+          fallbackError.message === "TURN_CANCELLED"
+        ) {
+          return;
+        }
+
         log.error(
           { err: fallbackError, userId: turn.userId, turnId: turn.turnId },
           "voice fallback failed"
@@ -251,7 +278,9 @@ export function createVoiceTurnHandler(
         );
       }
     } finally {
-      session.setState("idle", turn.turnId);
+      if (!session.isTurnActive || session.isTurnActive(turn.turnId)) {
+        session.setState("idle", turn.turnId);
+      }
     }
   };
 }

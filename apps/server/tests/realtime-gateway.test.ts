@@ -2,7 +2,11 @@ import { createServer, type Server } from "node:http";
 import WebSocket from "ws";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AuthenticatedDevice } from "@robo/shared/devices";
-import type { DeviceAudioTurn, DeviceServerMessage } from "@robo/shared/realtime";
+import type {
+  DeviceAudioTurn,
+  DeviceServerMessage,
+  DeviceSession,
+} from "@robo/shared/realtime";
 import {
   DeviceGateway,
   type DeviceGatewayOptions,
@@ -207,6 +211,81 @@ describe("device WebSocket gateway", () => {
 
     expect(state).toEqual({ type: "state", state: "idle" });
     expect(testGateway.gateway.size).toBe(1);
+
+    await stopGateway(testGateway, client);
+  });
+
+  it("cancels the previous reply when a new turn starts", async () => {
+    let release: () => void = () => undefined;
+    const blocked = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    let firstFinished = false;
+    let firstSession: DeviceSession | undefined;
+
+    const testGateway = await startGateway({
+      onAudioTurn: async (turn, session) => {
+        if (turn.turnId !== "turn-1") {
+          return;
+        }
+
+        firstSession = session;
+        await blocked;
+        firstFinished = true;
+      },
+    });
+    const client = await TestClient.connect(testGateway.url);
+    await client.hello();
+
+    client.send({
+      type: "audio.start",
+      codec: "pcm16",
+      sampleRate: 16_000,
+      turnId: "turn-1",
+    });
+    expect(await client.next()).toMatchObject({
+      type: "state",
+      state: "listening",
+      turnId: "turn-1",
+    });
+    client.sendAudio(Buffer.alloc(16));
+    client.send({ type: "audio.end", turnId: "turn-1" });
+    expect(await client.next()).toMatchObject({
+      type: "state",
+      state: "thinking",
+      turnId: "turn-1",
+    });
+
+    await vi.waitFor(() => expect(firstSession).toBeDefined());
+    expect(firstSession?.isTurnActive?.("turn-1")).toBe(true);
+
+    client.send({
+      type: "audio.start",
+      codec: "pcm16",
+      sampleRate: 16_000,
+      turnId: "turn-2",
+    });
+    expect(await client.next()).toMatchObject({
+      type: "state",
+      state: "listening",
+      turnId: "turn-2",
+    });
+    expect(firstSession?.isTurnActive?.("turn-1")).toBe(false);
+
+    release();
+    await vi.waitFor(() => expect(firstFinished).toBe(true));
+
+    client.send({ type: "audio.end", turnId: "turn-2" });
+    expect(await client.next()).toMatchObject({
+      type: "state",
+      state: "thinking",
+      turnId: "turn-2",
+    });
+    expect(await client.next()).toMatchObject({
+      type: "state",
+      state: "idle",
+      turnId: "turn-2",
+    });
 
     await stopGateway(testGateway, client);
   });

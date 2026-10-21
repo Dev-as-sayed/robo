@@ -145,6 +145,8 @@ export interface DeviceSession {
   sendAudio: (chunk: Buffer) => void;
   setState: (state: DeviceState, turnId?: string) => void;
   sendError: (code: GatewayErrorCode, message: string, turnId?: string) => void;
+  /** False once the device starts a newer turn or disconnects. */
+  isTurnActive?: (turnId: string) => boolean;
 }
 
 export type DeviceAudioTurnHandler = (

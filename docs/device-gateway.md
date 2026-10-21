@@ -24,7 +24,7 @@ All control messages are JSON text frames. Audio chunks are binary frames.
 | Type | Payload | Notes |
 | --- | --- | --- |
 | `hello` | `deviceId`, `token`, `protocolVersion`, `firmwareVersion?`, `locale?` | Must be the first message |
-| `audio.start` | `turnId`, `codec` (`pcm16`/`opus`), `sampleRate` | Cancels an in-flight turn (barge-in) |
+| `audio.start` | `turnId`, `codec` (`pcm16`/`opus`), `sampleRate` | Cancels an in-flight turn and stops the server-side voice reply (barge-in) |
 | binary frame | raw audio bytes | Only valid between `audio.start` and `audio.end` |
 | `audio.end` | `turnId` | Must match the active turn |
 | `heartbeat` | optional `at` | Refreshes presence |

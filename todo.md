@@ -178,7 +178,7 @@
 - [ ] 🔴 Reply format: `voiceText` + `displayContent` [AGT-08] — 1 d
 - [ ] 🔴 Router v1: fallback chain Groq → Gemini → OpenRouter → Ollama; error classification [LLM-02, LLM-06] — 3 d
 - [ ] 🔴 **Regression test set** (50+ utterances: tool choice, parameters, refusals) and runner [AGT-12] — 4 d
-- [ ] 🟡 Barge-in/interrupt handling [GW-05, FR-VOI-05] — 2 d
+- [ ] 🟡 Barge-in/interrupt handling [GW-05, FR-VOI-05] — server cancels the old reply; firmware must stop playback locally
 
 ### R2.4 Firmware
 

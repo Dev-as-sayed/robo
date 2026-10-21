@@ -17,6 +17,11 @@ The device is moved through `thinking`, `speaking`, and `idle` states by the gat
 Raw audio stays in memory only for the duration of the turn; it is never written to PostgreSQL,
 Redis, MinIO, or Qdrant.
 
+When the device sends a new `audio.start` while a reply is being generated, the gateway marks the
+old turn as cancelled. The pipeline checks `session.isTurnActive(turnId)` before STT, before the
+agent reply, and between TTS chunks, then stops without sending an error or resetting the new
+turn's state.
+
 ## STT service contract
 
 The local service is selected with `STT_SERVICE_URL`:

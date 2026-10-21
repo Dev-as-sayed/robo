@@ -215,6 +215,40 @@ describe("voice turn pipeline", () => {
     expect(session.states.at(-1)).toBe("idle");
   });
 
+  it("stops streaming when the device starts a newer turn", async () => {
+    let active = true;
+    const session = createSession();
+    session.isTurnActive = (turnId): boolean =>
+      active && turnId === "turn-1";
+
+    const chunk = Buffer.alloc(4 * 1024);
+    session.sendAudio = vi.fn((audio: Buffer) => {
+      session.audio.push(audio);
+      active = false;
+    });
+
+    const handler = createVoiceTurnHandler({
+      transcribe: async () => transcript("Tell me a long story."),
+      reply: async () => ({ text: "Once upon a time there was a robot." }),
+      synthesize: async () => ({
+        audio: Buffer.concat([chunk, chunk, chunk]),
+        codec: "pcm16",
+        sampleRate: 16_000,
+        provider: "piper",
+        durationMs: 300,
+      }),
+      getProfile: async () => ({ locale: "en", timezone: "UTC" }),
+      logger: silentLogger,
+    });
+
+    await handler(turn, session);
+
+    expect(session.audio).toHaveLength(1);
+    expect(session.messages.filter(message => message.type === "tts.end")).toHaveLength(0);
+    expect(session.states).toEqual(["speaking"]);
+    expect(session.errors).toEqual([]);
+  });
+
   it("falls back to English when the profile cannot be loaded", async () => {
     const transcribe = vi.fn(async () => transcript("Hello"));
     const session = createSession();

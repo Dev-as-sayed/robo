@@ -82,6 +82,8 @@ class DeviceConnection {
   private readonly maxAudioBytes: number;
   private device: AuthenticatedDevice | null = null;
   private turn: AudioTurn | null = null;
+  private processingTurnId: string | null = null;
+  private readonly cancelledTurnIds = new Set<string>();
   private state: DeviceState = "idle";
   private alive = true;
   private lastSeenPersistedAt = 0;
@@ -173,6 +175,12 @@ class DeviceConnection {
     }
   }
 
+  private isTurnActive(turnId: string): boolean {
+    return (
+      this.processingTurnId === turnId && !this.cancelledTurnIds.has(turnId)
+    );
+  }
+
   private session(): DeviceSession {
     const device = this.device;
 
@@ -191,6 +199,7 @@ class DeviceConnection {
       },
       setState: (state, turnId) => this.setState(state, turnId),
       sendError: (code, message, turnId) => this.sendError(code, message, turnId),
+      isTurnActive: turnId => this.isTurnActive(turnId),
     };
   }
 
@@ -307,6 +316,18 @@ class DeviceConnection {
   }
 
   private handleAudioStart(turnId: string, codec: AudioCodec, sampleRate: number): void {
+    if (this.processingTurnId && this.processingTurnId !== turnId) {
+      this.cancelledTurnIds.add(this.processingTurnId);
+      this.gateway.log.info(
+        {
+          deviceId: this.deviceId,
+          previousTurnId: this.processingTurnId,
+          turnId,
+        },
+        "new audio turn cancelled the previous reply"
+      );
+    }
+
     if (this.turn) {
       clearTimeout(this.turn.timeout);
       this.gateway.log.info(
@@ -405,6 +426,8 @@ class DeviceConnection {
     };
 
     const startedAt = Date.now();
+    this.processingTurnId = turn.id;
+
     try {
       await this.gateway.processAudioTurn(audioTurn, this.session());
       this.gateway.log.info(
@@ -423,10 +446,15 @@ class DeviceConnection {
         "device audio turn failed"
       );
       this.sendError("INTERNAL_ERROR", "The voice request could not be processed", turn.id);
-    }
-
-    if (this.state === "thinking") {
-      this.setState("idle", turn.id);
+    } finally {
+      const active = this.isTurnActive(turn.id);
+      if (this.state === "thinking" && active) {
+        this.setState("idle", turn.id);
+      }
+      if (this.processingTurnId === turn.id) {
+        this.processingTurnId = null;
+      }
+      this.cancelledTurnIds.delete(turn.id);
     }
   }
 
@@ -469,6 +497,10 @@ class DeviceConnection {
     if (this.turn) {
       clearTimeout(this.turn.timeout);
       this.turn = null;
+    }
+    if (this.processingTurnId) {
+      this.cancelledTurnIds.add(this.processingTurnId);
+      this.processingTurnId = null;
     }
 
     const device = this.device;
