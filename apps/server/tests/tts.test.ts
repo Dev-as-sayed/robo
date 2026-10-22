@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { synthesizeSpeech, type TtsOptions } from "../src/modules/voice/tts";
+import {
+  resolveTtsVoice,
+  synthesizeSpeech,
+  type TtsOptions,
+} from "../src/modules/voice/tts";
 import type { FetchLike } from "../src/modules/voice/stt";
 
 function audioResponse(
@@ -13,6 +17,23 @@ function audioResponse(
 }
 
 describe("text-to-speech", () => {
+  it("selects a voice from the language map with a primary-subtag fallback", () => {
+    const voiceMap = "en:en_US-amy-medium,hi-IN:hi_IN-pratham-medium";
+
+    expect(resolveTtsVoice("en-US", voiceMap, "en_US-lessac-medium")).toBe(
+      "en_US-amy-medium"
+    );
+    expect(resolveTtsVoice("hi_IN", voiceMap, "en_US-lessac-medium")).toBe(
+      "hi_IN-pratham-medium"
+    );
+    expect(resolveTtsVoice("fr", voiceMap, "en_US-lessac-medium")).toBe(
+      "en_US-lessac-medium"
+    );
+    expect(resolveTtsVoice(undefined, voiceMap, "en_US-lessac-medium")).toBe(
+      "en_US-lessac-medium"
+    );
+  });
+
   it("sends the sentence to Piper and returns PCM audio", async () => {
     const audio = Buffer.alloc(640);
     const fetchImpl = vi.fn(async () => audioResponse(audio)) as unknown as FetchLike;

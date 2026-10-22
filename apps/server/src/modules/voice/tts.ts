@@ -32,6 +32,48 @@ function parseHeaderNumber(value: string | null): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function normalizeLanguage(language: string): string {
+  return language.trim().toLowerCase().replace(/_/g, "-");
+}
+
+function parseVoiceMap(raw: string): Map<string, string> {
+  const voices = new Map<string, string>();
+
+  for (const entry of raw.split(",")) {
+    const separator = entry.indexOf(":");
+    if (separator <= 0) {
+      continue;
+    }
+
+    const language = normalizeLanguage(entry.slice(0, separator));
+    const voice = entry.slice(separator + 1).trim();
+    if (language && voice) {
+      voices.set(language, voice);
+    }
+  }
+
+  return voices;
+}
+
+export function resolveTtsVoice(
+  language?: string,
+  voiceMap: string | undefined = env.TTS_VOICE_MAP,
+  fallback: string | undefined = env.TTS_VOICE
+): string | undefined {
+  if (language && voiceMap) {
+    const normalized = normalizeLanguage(language);
+    const voices = parseVoiceMap(voiceMap);
+    const selected =
+      voices.get(normalized) ?? voices.get(normalized.split("-")[0]);
+
+    if (selected) {
+      return selected;
+    }
+  }
+
+  return fallback;
+}
+
 export async function synthesizeSpeech(
   text: string,
   options: TtsOptions = {}
@@ -46,7 +88,7 @@ export async function synthesizeSpeech(
     throw new Error("TTS_NOT_CONFIGURED");
   }
 
-  const voice = options.voice ?? env.TTS_VOICE;
+  const voice = options.voice ?? resolveTtsVoice(options.language);
   const sampleRate = options.sampleRate ?? env.TTS_SAMPLE_RATE;
   const timeoutMs = options.timeoutMs ?? env.TTS_SERVICE_TIMEOUT_MS;
   const fetchImpl = options.fetchImpl ?? fetch;

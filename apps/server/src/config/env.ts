@@ -108,6 +108,7 @@ const envSchema = z.object({
   TTS_SERVICE_URL: optionalEnvUrl,
   TTS_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
   TTS_VOICE: optionalEnvString,
+  TTS_VOICE_MAP: optionalEnvString,
   TTS_SAMPLE_RATE: z.coerce.number().int().min(8_000).max(48_000).default(16_000),
 });
 

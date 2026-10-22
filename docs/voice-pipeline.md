@@ -106,8 +106,14 @@ GROQ_STT_MODEL=whisper-large-v3-turbo
 TTS_SERVICE_URL=http://localhost:8002
 TTS_SERVICE_TIMEOUT_MS=15000
 TTS_VOICE=en_US-lessac-medium
+TTS_VOICE_MAP=
 TTS_SAMPLE_RATE=16000
 ```
+
+`TTS_VOICE_MAP` maps a language to a Piper voice, for example
+`en:en_US-lessac-medium,hi:hi_IN-pratham-medium`. Lookup uses the full locale first, then the
+primary subtag; `TTS_VOICE` is the fallback. The Piper service must already have the selected voice
+installed at `/models/<voice>.onnx`.
 
 `GROQ_API_KEY` is the existing shared key. If neither `STT_SERVICE_URL` nor `GROQ_API_KEY` is set,
 voice turns speak the STT fallback. Without `TTS_SERVICE_URL`, voice turns return an error after

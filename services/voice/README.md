@@ -78,7 +78,9 @@ device that sends PCM16.
 ```
 
 The response is raw PCM16 with `X-Audio-Codec` and `X-Sample-Rate` headers. Piper voices are
-selected with `voice`; the server passes `TTS_VOICE` by default.
+selected with `voice`; the server resolves it from `TTS_VOICE_MAP` by language, then falls back to
+`TTS_VOICE`. Only the `TTS_VOICE` model is downloaded at startup, so add each mapped voice to the
+`tts_models` volume or pre-download it before switching languages.
 
 ## Changing the TTS voice
 

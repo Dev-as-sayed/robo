@@ -101,7 +101,7 @@
 - [x] 🔴 Audio turn handling: `audio.start`, binary frames, `audio.end`, timeout — 2 d
 - [x] 🔴 Silero VAD integration for end-of-speech detection [VP-01] — 2 d
 - [x] 🔴 STT service: faster-whisper (Docker) with Groq Whisper fallback [VP-02] — image builds; real 16 kHz PCM fixture transcribed and Groq fallback covered by tests
-- [ ] 🔴 TTS service: Piper (Docker), per-language voice selection, chunked output [VP-04, VP-08] — image builds and PCM synthesis verified; per-language voice selection pending
+- [x] 🔴 TTS service: Piper (Docker), per-language voice selection, chunked output [VP-04, VP-08] — image builds, PCM synthesis verified, `TTS_VOICE_MAP` selects a voice by language
 - [x] 🔴 Sentence splitter: stream LLM tokens → sentences → TTS → device [FR-VOI-06] — 2 d
 - [ ] 🟡 Stage timing metrics (VAD, STT, first token, TTS start) [VP-06] — STT/agent/TTS logged; VAD and first token pending
 - [x] 🔴 Delete raw audio after transcription [VP-07] — 0.5 d
