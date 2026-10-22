@@ -87,8 +87,8 @@ with `TTS_VOICE` or the request `voice` field.
 | TTS fails | `error` message (`INTERNAL_ERROR`); the device returns to `idle` |
 | Fallback TTS also fails | `error` message (`INTERNAL_ERROR`) |
 
-Stage timings (`sttMs`, `agentMs`, `ttsMs`, `totalMs`) are logged for every completed turn. First
-token, VAD, and TTS-start timings await streaming/VAD support.
+Stage timings (`sttMs`, `agentMs`, `firstTtsMs`, `ttsMs`, `totalMs`) and cumulative `vadMs` are
+logged for every completed turn. First-token timing awaits streaming LLM output.
 
 ## Conversation continuity
 

@@ -50,6 +50,7 @@ interface AudioTurn {
   chunks: Buffer[];
   bytes: number;
   startedAt: number;
+  vadMs: number;
   timeout: NodeJS.Timeout;
 }
 
@@ -372,6 +373,7 @@ class DeviceConnection {
       chunks: [],
       bytes: 0,
       startedAt: Date.now(),
+      vadMs: 0,
       timeout,
     };
 
@@ -432,7 +434,12 @@ class DeviceConnection {
           return;
         }
 
+        const vadStartedAt = Date.now();
         const ended = await vad.push(chunk);
+        if (this.turn?.id === turnId) {
+          this.turn.vadMs += Date.now() - vadStartedAt;
+        }
+
         if (ended) {
           await this.finalizeTurn(turnId);
         }
@@ -506,6 +513,7 @@ class DeviceConnection {
       audio: Buffer.concat(turn.chunks, turn.bytes),
       durationMs: Date.now() - turn.startedAt,
       receivedAt: new Date(),
+      vadMs: turn.vadMs,
     };
 
     const startedAt = Date.now();
@@ -519,6 +527,7 @@ class DeviceConnection {
           turnId: audioTurn.turnId,
           bytes: audioTurn.audio.length,
           durationMs: audioTurn.durationMs,
+          vadMs: audioTurn.vadMs,
           processingMs: Date.now() - startedAt,
         },
         "device audio turn processed"

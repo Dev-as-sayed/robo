@@ -136,6 +136,7 @@ export interface DeviceAudioTurn {
   audio: Buffer;
   durationMs: number;
   receivedAt: Date;
+  vadMs?: number;
 }
 
 export interface DeviceSession {

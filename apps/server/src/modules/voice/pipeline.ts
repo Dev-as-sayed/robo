@@ -122,13 +122,15 @@ async function speak(
   turn: DeviceAudioTurn,
   session: DeviceSession,
   language: string,
-  synthesize: NonNullable<VoicePipelineDeps["synthesize"]>
+  synthesize: NonNullable<VoicePipelineDeps["synthesize"]>,
+  onFirstAudio?: () => void
 ): Promise<void> {
   assertTurnActive(turn, session);
 
   const speech = await synthesize(text, { language });
   assertTurnActive(turn, session);
 
+  onFirstAudio?.();
   session.setState("speaking", turn.turnId);
   session.send({
     type: "tts.start",
@@ -168,7 +170,14 @@ export function createVoiceTurnHandler(
 
   return async (turn, session) => {
     const startedAt = Date.now();
-    const timings = { sttMs: 0, agentMs: 0, ttsMs: 0 };
+    const timings = { sttMs: 0, agentMs: 0, firstTtsMs: 0, ttsMs: 0 };
+    let firstTtsRecorded = false;
+    const recordFirstTts = (): void => {
+      if (!firstTtsRecorded) {
+        timings.firstTtsMs = Date.now() - startedAt;
+        firstTtsRecorded = true;
+      }
+    };
     let profile: VoiceProfile = { locale: "en", timezone: "UTC" };
 
     try {
@@ -190,7 +199,8 @@ export function createVoiceTurnHandler(
           turn,
           session,
           profile.locale,
-          synthesize
+          synthesize,
+          recordFirstTts
         );
         return;
       }
@@ -216,7 +226,14 @@ export function createVoiceTurnHandler(
       const sentences = splitSentences(spokenText);
 
       for (const sentence of sentences.length > 0 ? sentences : [spokenText]) {
-        await speak(sentence, turn, session, profile.locale, synthesize);
+        await speak(
+          sentence,
+          turn,
+          session,
+          profile.locale,
+          synthesize,
+          recordFirstTts
+        );
       }
 
       timings.ttsMs = Date.now() - ttsStartedAt;
@@ -227,6 +244,7 @@ export function createVoiceTurnHandler(
           turnId: turn.turnId,
           transcriptionProvider: transcription.provider,
           audioMs: turn.durationMs,
+          vadMs: turn.vadMs,
           timings,
           totalMs: Date.now() - startedAt,
         },
@@ -257,7 +275,8 @@ export function createVoiceTurnHandler(
           turn,
           session,
           profile.locale,
-          synthesize
+          synthesize,
+          recordFirstTts
         );
       } catch (fallbackError) {
         if (

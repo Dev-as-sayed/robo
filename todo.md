@@ -103,7 +103,7 @@
 - [x] 🔴 STT service: faster-whisper (Docker) with Groq Whisper fallback [VP-02] — image builds; real 16 kHz PCM fixture transcribed and Groq fallback covered by tests
 - [x] 🔴 TTS service: Piper (Docker), per-language voice selection, chunked output [VP-04, VP-08] — image builds, PCM synthesis verified, `TTS_VOICE_MAP` selects a voice by language
 - [x] 🔴 Sentence splitter: stream LLM tokens → sentences → TTS → device [FR-VOI-06] — 2 d
-- [ ] 🟡 Stage timing metrics (VAD, STT, first token, TTS start) [VP-06] — STT/agent/TTS logged; VAD and first token pending
+- [ ] 🟡 Stage timing metrics (VAD, STT, first token, TTS start) [VP-06] — VAD/STT/agent/TTS/first-audio logged; first token pending streaming
 - [x] 🔴 Delete raw audio after transcription [VP-07] — 0.5 d
 - [ ] 🔴 Fallback speech messages for errors/offline [FR-VOI-07] — STT/agent fallbacks done; offline fallback pending
 

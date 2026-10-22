@@ -118,6 +118,31 @@ describe("voice turn pipeline", () => {
     expect(session.errors).toEqual([]);
   });
 
+  it("logs VAD and first-audio stage timings", async () => {
+    const info = vi.fn();
+    const session = createSession();
+
+    const handler = createVoiceTurnHandler({
+      transcribe: async () => transcript("What is next?"),
+      reply: async () => ({ text: "Biology is next." }),
+      synthesize: async text => speech(text),
+      getProfile: async () => ({ locale: "en", timezone: "UTC" }),
+      logger: { info, warn: (): void => undefined, error: (): void => undefined },
+    });
+
+    await handler({ ...turn, vadMs: 14 }, session);
+
+    expect(info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vadMs: 14,
+        timings: expect.objectContaining({
+          firstTtsMs: expect.any(Number),
+        }),
+      }),
+      "voice turn completed"
+    );
+  });
+
   it("speaks a fallback when no speech was recognized", async () => {
     const reply = vi.fn();
     const synthesize = vi.fn(async (text: string) => speech(text));

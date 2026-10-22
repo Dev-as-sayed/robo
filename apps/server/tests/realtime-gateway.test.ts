@@ -333,6 +333,7 @@ describe("device WebSocket gateway", () => {
     expect(vadTurn.push).toHaveBeenCalledWith(audio);
     expect(turns).toHaveLength(1);
     expect(turns[0]?.audio.equals(audio)).toBe(true);
+    expect(turns[0]?.vadMs).toBeGreaterThanOrEqual(0);
 
     client.send({ type: "audio.end", turnId: "turn-1" });
     client.send({
