@@ -29,12 +29,32 @@ The TTS image downloads the selected Piper voice from `rhasspy/piper-voices` on 
 stores it in the `tts_models` volume. The STT model is downloaded from Hugging Face into the
 `stt_models` volume on the first transcription.
 
+Downloads use `HF_ENDPOINT` (default `https://hf-mirror.com`) because the Xet backend is disabled
+with `HF_HUB_DISABLE_XET=1`. The Piper voice downloader tries the official Hub first, then
+`PIPER_VOICE_BASE_URL`; set both to `https://huggingface.co` if the mirror is not needed. The first
+download can take a few minutes and needs network access.
+
 ## Health checks
 
 ```bash
 curl http://localhost:8001/health
 curl http://localhost:8002/health
 ```
+
+## Verified locally
+
+Both images build with Podman and respond on the compose network:
+
+```bash
+curl http://localhost:8001/health
+curl http://localhost:8002/health
+curl -X POST http://localhost:8002/synthesize \
+  -H 'content-type: application/json' \
+  -d '{"text":"Hello, I am Robo.","format":"pcm16"}' --output hello.pcm
+```
+
+A 16 kHz PCM16 fixture (`apps/server/tests/fixtures/speech.wav`, header stripped) transcribes to
+`{"text":"Hello, what class is next?","language":"en","durationMs":1961}`.
 
 ## STT contract
 

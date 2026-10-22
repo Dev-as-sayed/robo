@@ -1,6 +1,8 @@
-FROM python:3.11-slim
+FROM public.ecr.aws/docker/library/python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1
+ENV PIP_DEFAULT_TIMEOUT=120
+ENV PIP_RETRIES=10
 ENV HF_HOME=/models
 
 WORKDIR /app

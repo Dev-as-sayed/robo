@@ -70,6 +70,8 @@ services:
       WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
       WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
       HF_HOME: /models
+      HF_ENDPOINT: ${HF_ENDPOINT:-https://hf-mirror.com}
+      HF_HUB_DISABLE_XET: "1"
     volumes:
       - stt_models:/models
     ports:
@@ -83,6 +85,7 @@ services:
     environment:
       TTS_VOICE: ${TTS_VOICE:-en_US-lessac-medium}
       TTS_DATA_DIR: /models
+      PIPER_VOICE_BASE_URL: ${PIPER_VOICE_BASE_URL:-https://hf-mirror.com}
     volumes:
       - tts_models:/models
     ports:
