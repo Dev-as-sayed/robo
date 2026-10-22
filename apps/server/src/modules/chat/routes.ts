@@ -6,9 +6,10 @@ import {
   chatMessageSchema,
 } from "@robo/shared/schemas";
 import { getConversation, listConversations } from "@robo/shared/chat";
-import { sendChatMessage } from "../ai/chat-service";
+import { sendChatMessage, streamChatMessage } from "../ai/chat-service";
 import { asyncHandler } from "../../http/async-handler";
 import { sendSuccess } from "../../http/response";
+import { formatSseEvent, openSse } from "../../http/sse";
 import { aiMessageLimiter } from "../../middleware/ai-rate-limit";
 import { authenticate } from "../../middleware/authenticate";
 import { validate } from "../../middleware/validate";
@@ -28,6 +29,58 @@ router.post(
       message: "Assistant replied successfully",
       data: result,
     });
+  })
+);
+
+router.post(
+  "/messages/stream",
+  authenticate,
+  aiMessageLimiter,
+  validate({ body: chatMessageSchema }),
+  asyncHandler(async (req, res) => {
+    openSse(res);
+
+    const abort = new AbortController();
+    let closed = false;
+    res.on("close", () => {
+      if (!res.writableEnded) {
+        closed = true;
+        abort.abort();
+      }
+    });
+
+    const emit = (event: string, data: unknown): void => {
+      if (!closed && !res.writableEnded) {
+        res.write(formatSseEvent(event, data));
+      }
+    };
+
+    try {
+      const result = await streamChatMessage(
+        req.user!.id,
+        req.body,
+        token => emit("token", { token }),
+        abort.signal
+      );
+
+      emit("done", {
+        conversation: result.conversation,
+        userMessage: result.userMessage,
+        assistantMessage: result.assistantMessage,
+        toolCallCount: result.toolCallCount,
+      });
+    } catch (error) {
+      if (!closed && !abort.signal.aborted) {
+        emit("error", {
+          code: error instanceof Error ? error.message : "INTERNAL_ERROR",
+          message: "The AI response stream failed",
+        });
+      }
+    } finally {
+      if (!res.writableEnded) {
+        res.end();
+      }
+    }
   })
 );
 

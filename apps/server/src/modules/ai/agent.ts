@@ -1,4 +1,9 @@
-import { HumanMessage, SystemMessage, type BaseMessage } from "@langchain/core/messages";
+import {
+  HumanMessage,
+  SystemMessage,
+  type BaseMessage,
+  type BaseMessageChunk,
+} from "@langchain/core/messages";
 import { RunnableBinding, type RunnableConfig } from "@langchain/core/runnables";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
@@ -23,6 +28,7 @@ export interface RunAgentInput {
     timezone: string;
   };
   now?: Date;
+  signal?: AbortSignal;
 }
 
 export interface RunAgentResult {
@@ -91,7 +97,7 @@ function latestAssistantText(messages: BaseMessage[]): string {
   return "";
 }
 
-export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
+async function prepareAgent(input: RunAgentInput) {
   const now = input.now ?? new Date();
   const tools = buildTools({
     userId: input.userId,
@@ -116,74 +122,122 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
     name: "robo",
   });
 
-  const config = {
+  const config: RunnableConfig = {
     configurable: { thread_id: input.conversationId },
     recursionLimit: env.AI_AGENT_STEP_LIMIT,
     callbacks,
+    ...(input.signal ? { signal: input.signal } : {}),
   };
 
-  const startedAt = Date.now();
+  const snapshot = await agent.getState(config);
+  const existingMessages = (snapshot?.values?.messages ?? []) as BaseMessage[];
+  const messages =
+    existingMessages.length > 0
+      ? [new HumanMessage(input.content)]
+      : [...buildHistoryMessages(input.history), new HumanMessage(input.content)];
+
+  return { agent, config, messages, startedAt: Date.now() };
+}
+
+function buildAgentResult(
+  input: RunAgentInput,
+  resultMessages: BaseMessage[],
+  startedAt: number
+): RunAgentResult {
+  const content = latestAssistantText(resultMessages);
+
+  if (!content) {
+    throw new Error("AI_EMPTY_RESPONSE");
+  }
+
+  const toolCallCount = resultMessages.reduce((count, message) => {
+    if (message.getType() !== "ai") {
+      return count;
+    }
+
+    const toolCalls = (message as { tool_calls?: unknown[] }).tool_calls;
+    return count + (Array.isArray(toolCalls) ? toolCalls.length : 0);
+  }, 0);
+
+  const lastAiMessage = [...resultMessages]
+    .reverse()
+    .find((message) => message.getType() === "ai");
+  const metadata = lastAiMessage?.response_metadata as
+    | Record<string, unknown>
+    | undefined;
+
+  logger.info(
+    {
+      userId: input.userId,
+      conversationId: input.conversationId,
+      task: "agent_tools",
+      latencyMs: Date.now() - startedAt,
+      tools: toolCallCount,
+      model: typeof metadata?.model_name === "string" ? metadata.model_name : undefined,
+    },
+    "AI agent response generated"
+  );
+
+  return {
+    content,
+    toolCallCount,
+    model: typeof metadata?.model_name === "string" ? metadata.model_name : undefined,
+    usage: (lastAiMessage as { usage_metadata?: unknown } | undefined)?.usage_metadata,
+  };
+}
+
+function agentFailure(error: unknown, input: RunAgentInput): never {
+  if (error instanceof Error && error.message.startsWith("AI_")) {
+    throw error;
+  }
+
+  logger.warn(
+    { err: error, userId: input.userId, conversationId: input.conversationId },
+    "AI agent request failed"
+  );
+  throw new Error("AI_PROVIDER_UNAVAILABLE");
+}
+
+export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
+  const { agent, config, messages, startedAt } = await prepareAgent(input);
 
   try {
-    const snapshot = await agent.getState(config);
-    const existingMessages = (snapshot?.values?.messages ?? []) as BaseMessage[];
-    const messages =
-      existingMessages.length > 0
-        ? [new HumanMessage(input.content)]
-        : [...buildHistoryMessages(input.history), new HumanMessage(input.content)];
-
     const result = await agent.invoke({ messages }, config);
-    const resultMessages = result.messages as BaseMessage[];
-    const content = latestAssistantText(resultMessages);
+    return buildAgentResult(input, result.messages as BaseMessage[], startedAt);
+  } catch (error) {
+    agentFailure(error, input);
+  }
+}
 
-    if (!content) {
-      throw new Error("AI_EMPTY_RESPONSE");
-    }
+export async function runAgentStream(
+  input: RunAgentInput,
+  onToken: (token: string) => void
+): Promise<RunAgentResult> {
+  const { agent, config, messages, startedAt } = await prepareAgent(input);
 
-    const toolCallCount = resultMessages.reduce((count, message) => {
-      if (message.getType() !== "ai") {
-        return count;
+  try {
+    const stream = await agent.stream(
+      { messages },
+      { ...config, streamMode: "messages" }
+    );
+
+    for await (const event of stream) {
+      const [chunk] = event as [BaseMessageChunk, Record<string, unknown>];
+      if (chunk.getType() !== "ai") {
+        continue;
       }
 
-      const toolCalls = (message as { tool_calls?: unknown[] }).tool_calls;
-      return count + (Array.isArray(toolCalls) ? toolCalls.length : 0);
-    }, 0);
-
-    const lastAiMessage = [...resultMessages]
-      .reverse()
-      .find((message) => message.getType() === "ai");
-    const metadata = lastAiMessage?.response_metadata as
-      | Record<string, unknown>
-      | undefined;
-
-    logger.info(
-      {
-        userId: input.userId,
-        conversationId: input.conversationId,
-        task: "agent_tools",
-        latencyMs: Date.now() - startedAt,
-        tools: toolCallCount,
-        model: typeof metadata?.model_name === "string" ? metadata.model_name : undefined,
-      },
-      "AI agent response generated"
-    );
-
-    return {
-      content,
-      toolCallCount,
-      model: typeof metadata?.model_name === "string" ? metadata.model_name : undefined,
-      usage: (lastAiMessage as { usage_metadata?: unknown } | undefined)?.usage_metadata,
-    };
-  } catch (error) {
-    if (error instanceof Error && error.message.startsWith("AI_")) {
-      throw error;
+      const text = chunk.text;
+      if (text) {
+        onToken(text);
+      }
     }
 
-    logger.warn(
-      { err: error, userId: input.userId, conversationId: input.conversationId },
-      "AI agent request failed"
-    );
-    throw new Error("AI_PROVIDER_UNAVAILABLE");
+    const snapshot = await agent.getState(config);
+    const resultMessages = (snapshot?.values?.messages ?? []) as BaseMessage[];
+    return buildAgentResult(input, resultMessages, startedAt);
+  } catch (error) {
+    agentFailure(error, input);
   }
 }
 

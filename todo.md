@@ -109,11 +109,11 @@
 
 ### R1.4 AI basics
 
-- [ ] 🔴 LLM router v0: `getModel(task)` with Groq (voice) and Gemini (general), config-driven [LLM-01, LLM-03] — 2 d
-- [ ] 🔴 LangGraph basic agent (no tools yet) with PostgreSQL checkpointer [AGT-03] — 2 d
-- [ ] 🔴 System prompt with name, locale, time zone, current time [AGT-02] — 1 d
-- [ ] 🔴 `POST /chat/messages` with streaming response [FR-AI-01, API-11] — 2 d
-- [ ] 🟡 Short-answer mode for voice [FR-VOI-08 groundwork] — 1 d
+- [x] 🔴 LLM router v0: `getModel(task)` with Groq (voice) and Gemini (general), config-driven [LLM-01, LLM-03] — `getChatModel` with provider chains and fallbacks
+- [x] 🔴 LangGraph basic agent (no tools yet) with PostgreSQL checkpointer [AGT-03] — tool-using ReAct agent with Postgres checkpointer
+- [x] 🔴 System prompt with name, locale, time zone, current time [AGT-02] — text and agent prompts built per request
+- [x] 🔴 `POST /chat/messages` with streaming response [FR-AI-01, API-11] — SSE at `POST /chat/messages/stream` with token/done/error events
+- [x] 🟡 Short-answer mode for voice [FR-VOI-08 groundwork] — `voiceText` caps speech to two sentences / 320 characters
 
 ### R1.5 Firmware (ESP32-S3)
 
