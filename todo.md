@@ -14,11 +14,11 @@
 | Phase | Goal                                    | Est.       | Status        |
 | ----- | --------------------------------------- | ---------- | ------------- |
 | P0    | Decisions, setup, hardware ordered      | 10–15 d    | Partial (code setup in place; decisions/hardware pending) |
-| R1    | Voice foundation                        | 30–40 d    | In progress (R1.3 gateway + voice pipeline; firmware/mobile pending) |
-| R2    | Productivity (MVP complete)             | 30–40 d    | ☐             |
-| R3    | Study Brain (documents, quizzes, plans) | 40–50 d    | ☐             |
-| R4    | Communication (calls, messages)         | 25–30 d    | ☐             |
-| R5    | Proactive (study mode, analytics)       | 35–40 d    | ☐             |
+| R1    | Voice foundation                        | 30–40 d    | In progress (R1.3 gateway + voice pipeline; mobile auth/chat in place — firmware, pairing and BLE setup pending) |
+| R2    | Productivity (MVP complete)             | 30–40 d    | In progress (all R2 mobile screens built — Today, Tasks, Reminders, Schedule, Settings; push tokens and local notifications still missing) |
+| R3    | Study Brain (documents, quizzes, plans) | 40–50 d    | In progress (Documents + Exams/plan screens built and typechecking; quiz generator still returns placeholder questions, and document upload stores metadata only — no object storage, no chunk indexing) |
+| R4    | Communication (calls, messages)         | 25–30 d    | ☐ (contacts screen + `tel:`/`sms:`/`mailto:` done; `PendingAction` model missing, so nothing can be confirmed before it dials) |
+| R5    | Proactive (study mode, analytics)       | 35–40 d    | ☐ (Insights + Activity screens built, but 4 of 6 summary metrics are server-side stubs that always read 0) |
 | R6    | Advanced (vision, sync)                 | Ongoing    | ☐             |
 | X     | Cross-cutting: security, QA, launch     | Continuous | ☐             |
 
@@ -129,12 +129,13 @@
 
 ### R1.6 Mobile app
 
-- [ ] 🔴 Expo project with Expo Router, TypeScript, EAS development build [APP-20] — 2 d
-- [ ] 🔴 Redux Toolkit store + RTK Query API slice with token refresh [APP-21] — 2 d
-- [ ] 🔴 Secure token storage (`expo-secure-store`) [APP-22] — 0.5 d
-- [ ] 🔴 Auth and onboarding screens (language, time zone) [APP-01] — 3 d
-- [ ] 🔴 Device setup: QR scan, BLE scan, Wi-Fi provisioning, status [APP-02, FR-ACC-02/03] — 5 d
-- [ ] 🔴 Chat screen with streaming text [APP-04] — 3 d
+- [ ] 🔴 Expo project with Expo Router, TypeScript, EAS development build [APP-20] — scaffold, router and screens are in place; EAS development build not run yet
+- [x] 🔴 Redux Toolkit store + RTK Query API slice with token refresh [APP-21] — `src/store.ts`, `src/api/base-query.ts` (single-flight refresh on 401), `auth-api`/`chat-api` slices
+- [x] 🔴 Secure token storage (`expo-secure-store`) [APP-22] — `src/auth/tokens.ts`, localStorage fallback on web
+- [x] 🔴 Auth and onboarding screens (language, time zone) [APP-01] — `app/sign-in.tsx`, `app/sign-up.tsx`, `app/onboarding.tsx`
+- [ ] 🔴 Device setup: QR scan, BLE scan, Wi-Fi provisioning, status [APP-02, FR-ACC-02/03] — pairing code, device list/status, rename, revoke and factory reset are in `app/(app)/devices.tsx`; QR scan (expo-camera) and BLE provisioning (react-native-ble-plx, needs an EAS dev build) still pending
+- [ ] 🔴 Chat screen with streaming text [APP-04] — SSE client over `XMLHttpRequest` + `app/(app)/chat.tsx` built; needs a run on a phone to confirm incremental delivery
+- [x] 🟡 Tab navigation shell [APP-03] — `app/(app)/_layout.tsx` is a `Tabs` navigator (Today / Chat / Tasks / Insights / Settings) with the detail screens registered as `href: null` routes, guarded by the auth redirect
 - [ ] 🟡 Permission request helper with explanations [APP-26] — 1 d
 
 ### R1.7 Quality and release
@@ -189,13 +190,13 @@
 
 ### R2.5 Mobile app
 
-- [ ] 🔴 Home screen: next class, today's tasks, exam countdown [APP-03] — 3 d
-- [ ] 🔴 Tasks and reminders screens with recurrence picker [APP-05] — 4 d
-- [ ] 🔴 Schedule screen with exceptions [APP-06] — 3 d
-- [ ] 🔴 Push notification registration and handling [APP-23] — 2 d
+- [x] 🔴 Home screen: next class, today's tasks, exam countdown [APP-03] — `app/(app)/index.tsx`: next class from the timetable, today's + overdue tasks with inline complete, soonest-exam countdown, library shortcuts
+- [x] 🔴 Tasks and reminders screens [APP-05] — `app/(app)/tasks.tsx` (filter, create with date/time via `parseDateTime`, priority, complete/reopen, delete) and `app/(app)/reminders.tsx` (snooze, channels, linked entity, delete). Recurrence picker NOT built: the `rrule` field exists on the API and type but no UI writes it
+- [x] 🔴 Schedule screen with exceptions [APP-06] — `app/(app)/schedule.tsx`: day-grouped entries, create/edit, "Skip today" posting a schedule exception, delete
+- [ ] 🔴 Push notification registration and handling [APP-23] — 2 d (blocked: no PushToken endpoints on the server)
 - [ ] 🟡 Local notification fallback [APP-29] — 2 d
-- [ ] 🟡 Device/connection status UI [APP-27] — 1 d
-- [ ] 🔴 Settings and privacy: quiet hours, data export/delete request [APP-13, FR-ACC-06] — 3 d
+- [x] 🟡 Device/connection status UI [APP-27] — `app/(app)/devices.tsx` shows per-device status pill and last-seen
+- [x] 🔴 Settings and privacy: quiet hours, data export/delete request [APP-13, FR-ACC-06] — `app/(app)/settings.tsx`: identity, quiet hours, wake phrase, nudges (0–20 per day, matching the server's zod bound), cloud-AI-for-docs, export via the system share sheet with oversize handling, two-step delete + sign out
 - [ ] 🔴 Account deletion job (PostgreSQL, files, later vectors) [FR-ACC-06] — 2 d
 
 ### R2.6 Release
@@ -255,9 +256,9 @@
 
 ### R3.5 Mobile app
 
-- [ ] 🔴 Documents screen: upload (files, photos), subjects, status, delete [APP-08] — 5 d
-- [ ] 🔴 Exams and plan screen with approve/edit [APP-07] — 4 d
-- [ ] 🔴 Quiz runner and history [APP-09] — 4 d
+- [x] 🔴 Documents screen: upload (files), subjects, status, delete [APP-08] — `app/(app)/documents.tsx` uploads via `expo-document-picker` + multipart `POST /documents/upload`. Photo capture and indexing are outstanding: the server writes only document metadata — it never stores bytes to object storage and never enqueues chunking, so `status` cannot advance and `chunkCount` stays 0
+- [x] 🔴 Exams and plan screen with approve/edit [APP-07] — `app/(app)/exams.tsx`: exam list with countdowns, activate (draft → active), generate plan, approve plan by PLAN id, readiness bar
+- [ ] 🔴 Quiz runner and history [APP-09] — 4 d (blocked: `generateQuiz` in `packages/shared/src/quizzes/index.ts` inserts placeholder questions — "Question N about X" with "Option A" always correct — so there is nothing real to take)
 - [ ] 🔴 Chat: rich cards (plans, quizzes, tappable citations) — 3 d
 - [ ] 🟡 i18n and right-to-left support [APP-28] — 3 d
 - [ ] 🟡 Second voice language: STT/TTS/wake word [FR-VOI-09] — 4 d
@@ -273,14 +274,14 @@
 
 **Exit criteria:** no call or message executes without confirmation; zero wrong-recipient cases in tests.
 
-- [ ] 🔴 `Contact` and `PendingAction` models, API, expiry job (5 min) [API-12] — 3 d
-- [ ] 🔴 Contact import from phone with consent; groups [FR-COM-01, APP-10] — 3 d
+- [ ] 🔴 `Contact` and `PendingAction` models, API, expiry job (5 min) [API-12] — 3 d — `Contact` model + CRUD API are live (`modules/contacts`); **`PendingAction` does not exist** in `apps/server/prisma/schema.prisma`, which is what blocks the confirm rows below
+- [ ] 🔴 Contact import from phone with consent; groups [FR-COM-01, APP-10] — `app/(app)/contacts.tsx` does manual create, group headers, delete and `tel:` / `sms:` / `mailto:` actions via `Linking`; importing from the device address book (needs `expo-contacts` + an EAS dev build) is still pending
 - [ ] 🔴 `find_contact` with ambiguity handling [FR-COM-05] — 2 d
 - [ ] 🔴 LangGraph human-in-the-loop pause/resume for confirmable tools [AGT-05] — 4 d
 - [ ] 🔴 App WebSocket + push for `action.confirm.request` / `action.execute` [GW-02, APP-24] — 4 d
-- [ ] 🔴 `prepare_call` → confirm → `tel:` dialer [FR-COM-02, APP-25] — 2 d
-- [ ] 🔴 `prepare_message` → confirm → SMS composer [FR-COM-03] — 2 d
-- [ ] 🟡 WhatsApp (`wa.me`) and email composer drafts [FR-COM-04] — 2 d
+- [ ] 🔴 `prepare_call` → confirm → `tel:` dialer [FR-COM-02, APP-25] — 2 d (the `tel:` dialer side is done in `contacts.tsx`; the agent-side prepare/confirm half needs `PendingAction`)
+- [ ] 🔴 `prepare_message` → confirm → SMS composer [FR-COM-03] — 2 d (`sms:` opening works from the contacts screen)
+- [ ] 🟡 WhatsApp (`wa.me`) and email composer drafts [FR-COM-04] — 2 d (`mailto:` works from the contacts screen; `wa.me` not wired)
 - [ ] 🟡 "Remind me to call X after class" [FR-COM-06] — 1 d
 - [ ] 🟡 Confirm by voice on the device as well as by tap — 2 d
 - [ ] 🟡 Action history and contact deletion UI [FR-COM-08] — 2 d
@@ -307,10 +308,10 @@
 
 ### R5.2 Analytics and proactivity
 
-- [ ] 🔴 `DailyStats` model and nightly aggregation job [JOB-07, FR-ANL-01] — 3 d
+- [ ] 🔴 `DailyStats` model and nightly aggregation job [JOB-07, FR-ANL-01] — 3 d — still needed: `getAnalyticsSummary` counts live rows instead of reading aggregates, which is why four of its six fields are effectively always 0 (see below)
 - [ ] 🔴 `get_analytics` tool and weekly summaries [FR-ANL-02] — 2 d
-- [ ] 🟡 Dashboard charts in app [APP-12, FR-ANL-05] — 4 d
-- [ ] 🟡 Trends per subject [FR-ANL-03] — 2 d
+- [x] 🟡 Insights screen in app [APP-12, FR-ANL-05] — `app/(app)/insights.tsx` renders `GET /analytics/summary` with a day/week/month/year picker, and `app/(app)/activity.tsx` renders `GET /actions` with safe `unknown` payload dumps. **The screen is honest but mostly zeros**: `streakDays` is hardcoded `0` (`packages/shared/src/analytics/index.ts:100`), `totalStudyHours` is `sessions * 0.5` from `StudySession` rows that nothing creates, `completedTasks` filters on `Todo.completedAt` which `completeTodo` never writes (it only sets `status`), and `upcomingExams` counts `status: "active"` exams while `createExam` hardcodes `"draft"`. Only `activeReminders` (not range-scoped) and `completedQuizzes` are real. Charts are not drawn — stat cards only
+- [ ] 🟡 Trends per subject [FR-ANL-03] — 2 d (`GET /analytics/subjects/:id` exists server-side but its handler returns placeholder values, and the mobile `analyticsApi` slice exposes only the summary hook)
 - [ ] 🟡 Nudge rules engine with quiet hours and daily caps [JOB-08, FR-ANL-04] — 4 d
 - [ ] 🟡 "What should I do today?" planner and multi-intent handling [FR-ANL-06, FR-AI-08] — 4 d
 - [ ] 🟡 Readiness score and plan recalculation [FR-EXM-05/06] — 5 d

@@ -1,13 +1,12 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQueryWithReauth } from "./base-query";
 import type { LoginInput, RegisterInput } from "@/schemas";
-import type { ApiEnvelope, AuthResult, User } from "@/types";
-
-interface UpdateMeInput {
-  name?: string;
-  locale?: string;
-  timezone?: string;
-}
+import type {
+  AccountPreferences,
+  ApiEnvelope,
+  AuthResult,
+  User,
+} from "@/types";
 
 export const authApi = createApi({
   reducerPath: "authApi",
@@ -31,7 +30,7 @@ export const authApi = createApi({
         response.data.user,
       providesTags: ["Me"],
     }),
-    updateMe: builder.mutation<User, UpdateMeInput>({
+    updateMe: builder.mutation<User, AccountPreferences>({
       query: body => ({ url: "/users/me", method: "PATCH", body }),
       transformResponse: (response: ApiEnvelope<{ user: User }>) =>
         response.data.user,

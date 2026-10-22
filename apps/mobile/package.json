@@ -13,10 +13,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@babel/runtime": "^7.29.10",
     "@hookform/resolvers": "^3.9.0",
     "@reduxjs/toolkit": "^2.2.7",
     "expo": "^51.0.28",
     "expo-constants": "~16.0.2",
+    "expo-document-picker": "~12.0.2",
     "expo-linking": "~6.3.1",
     "expo-localization": "~15.0.3",
     "expo-router": "~3.5.24",

@@ -26,7 +26,7 @@ export async function uploadDocument(userId: string, file: any, data: { subject?
       filename: file.filename,
       originalName: file.originalname,
       size: file.size,
-      mimeType: file.mimeType,
+      mimeType: file.mimetype,
       s3Key,
       s3Url,
       status: "uploaded",

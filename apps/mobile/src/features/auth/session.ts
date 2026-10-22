@@ -1,10 +1,12 @@
 import { authApi } from "@/api/auth-api";
+import { apis } from "@/api/registry";
 import { clearTokens, getTokens } from "@/auth/tokens";
 import {
   clearUser,
   finishBootstrap,
   setUser,
 } from "@/features/auth/auth-slice";
+import { startNewConversation } from "@/features/chat/chat-slice";
 import type { AppThunk } from "@/store";
 
 export const restoreSession = (): AppThunk => async dispatch => {
@@ -46,5 +48,9 @@ export const signOut = (): AppThunk => async dispatch => {
 
   await clearTokens();
   dispatch(clearUser());
-  dispatch(authApi.util.resetApiState());
+  dispatch(startNewConversation());
+
+  for (const api of apis) {
+    dispatch(api.util.resetApiState());
+  }
 };

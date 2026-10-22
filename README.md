@@ -7,7 +7,7 @@ backend that runs the voice pipeline and LangGraph agent.
 
 ```
 apps/server       Express API, Prisma, LangGraph agent, device WebSocket gateway
-apps/mobile       Expo app (scaffold)
+apps/mobile       Expo app: auth, onboarding, streaming chat, Today/Tasks/Reminders/Schedule/Exams/Documents/Contacts/Activity/Insights/Settings, device pairing
 packages/shared   Zod schemas, JWT helpers, device/store services shared by the server
 services/voice    faster-whisper (STT) and Piper (TTS) HTTP services
 firmware          ESP-IDF firmware (to be added)
@@ -50,12 +50,37 @@ docker compose up -d stt tts
 The first start downloads the Whisper model and the Piper voice; see
 [`services/voice/README.md`](services/voice/README.md).
 
+The mobile app talks to the API through `EXPO_PUBLIC_API_URL`; on a physical device this must
+be the LAN address of the machine running the server.
+
+```bash
+EXPO_PUBLIC_API_URL=http://192.168.1.20:3000/api/v1 pnpm --dir apps/mobile start
+```
+
+## Mobile app
+
+`app/(app)/` is a tab shell (Today, Chat, Tasks, Insights, Settings) with the remaining
+screens pushed as detail routes: devices, reminders, schedule, exams, documents, contacts
+and activity. Every screen reads and writes through the RTK Query slices in `src/api/`,
+which unwrap the `{ success, code, data }` envelope and refresh tokens once on a 401.
+
+Verified statically only — typecheck, lint and a Metro Android bundle. Nothing here has
+been run on a device, so these are server-side limits of the current build, not app bugs:
+
+- Quiz questions are placeholders (`generateQuiz` inserts "Question N" with a fixed answer), so there is no quiz screen yet.
+- Document upload records metadata only: no object storage write and no chunk indexing, so `status` never advances past `uploaded` and `chunkCount` stays 0.
+- Four of the six insights metrics are stubs (`streakDays` hardcoded; `totalStudyHours`, `completedTasks` and `upcomingExams` count fields nothing writes).
+- `POST /exams/:id/plan` ignores `dailyLimit`, and plan approval addresses the **plan** id, not the exam id.
+- Voice replies, push notifications, QR/BLE provisioning and phone-book import need a dev build and endpoints that do not exist yet.
+
 ## Checks
 
 ```bash
 pnpm --dir apps/server typecheck
 pnpm --dir apps/server test
 pnpm --dir apps/server lint
+pnpm --dir apps/mobile typecheck
+pnpm --dir apps/mobile lint
 ```
 
 ## Documentation

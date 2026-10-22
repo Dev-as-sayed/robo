@@ -10,6 +10,7 @@ import {
   deleteExam,
   generatePlan,
   getExam,
+  getExams,
   getReadiness,
   updateExam,
 } from "@robo/shared/exams";
@@ -32,6 +33,25 @@ router.post(
       message: "Exam created successfully",
       data: { exam },
     });
+  })
+);
+
+router.get(
+  "/",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const status = req.query.status as string | undefined;
+    const from = req.query.from as string | undefined;
+    const to = req.query.to as string | undefined;
+
+    const exams = await getExams(req.user!.id, {
+      ...(status === "draft" || status === "active" || status === "completed"
+        ? { status }
+        : {}),
+      ...(from ? { from: new Date(from) } : {}),
+      ...(to ? { to: new Date(to) } : {}),
+    });
+    sendSuccess(res, { code: "EXAMS_FETCHED", data: { exams } });
   })
 );
 

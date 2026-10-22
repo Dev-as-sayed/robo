@@ -48,7 +48,7 @@ async function refreshTokens(): Promise<boolean> {
   }
 }
 
-function refreshOnce(): Promise<boolean> {
+export function refreshOnce(): Promise<boolean> {
   refreshPromise ??= refreshTokens().finally(() => {
     refreshPromise = null;
   });
