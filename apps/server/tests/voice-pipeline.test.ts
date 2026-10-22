@@ -214,16 +214,18 @@ describe("voice turn pipeline", () => {
     expect(session.states.at(-1)).toBe("idle");
   });
 
-  it("reports an error when TTS itself is unavailable", async () => {
+  it("speaks a bundled fallback when TTS is unavailable", async () => {
     const synthesize = vi.fn(async () => {
       throw new Error("TTS_FAILED");
     });
+    const fallbackSpeech = vi.fn(async () => speech("fallback"));
     const session = createSession();
 
     const handler = createVoiceTurnHandler({
       transcribe: async () => transcript("What is next?"),
       reply: async () => ({ text: "Your next class is Biology." }),
       synthesize,
+      fallbackSpeech,
       getProfile: async () => ({ locale: "en", timezone: "UTC" }),
       logger: silentLogger,
     });
@@ -231,12 +233,10 @@ describe("voice turn pipeline", () => {
     await handler(turn, session);
 
     expect(synthesize).toHaveBeenCalledOnce();
-    expect(session.errors).toEqual([
-      {
-        code: "INTERNAL_ERROR",
-        message: "The voice reply could not be generated",
-      },
-    ]);
+    expect(fallbackSpeech).toHaveBeenCalledOnce();
+    expect(session.errors).toEqual([]);
+    expect(session.audio.map(chunk => chunk.toString())).toEqual(["audio:fallback"]);
+    expect(session.messages.filter(message => message.type === "tts.start")).toHaveLength(1);
     expect(session.states.at(-1)).toBe("idle");
   });
 

@@ -105,7 +105,7 @@
 - [x] 🔴 Sentence splitter: stream LLM tokens → sentences → TTS → device [FR-VOI-06] — 2 d
 - [ ] 🟡 Stage timing metrics (VAD, STT, first token, TTS start) [VP-06] — VAD/STT/agent/TTS/first-audio logged; first token pending streaming
 - [x] 🔴 Delete raw audio after transcription [VP-07] — 0.5 d
-- [ ] 🔴 Fallback speech messages for errors/offline [FR-VOI-07] — STT/agent fallbacks done; offline fallback pending
+- [x] 🔴 Fallback speech messages for errors/offline [FR-VOI-07] — STT/agent messages and cached English PCM when Piper fails
 
 ### R1.4 AI basics
 

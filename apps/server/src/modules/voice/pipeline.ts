@@ -6,6 +6,7 @@ import type {
 import { getMe } from "@robo/shared/users";
 import logger from "../../lib/logger";
 import { sendChatMessage } from "../ai/chat-service";
+import { loadFallbackSpeech } from "./fallback";
 import { splitSentences } from "./sentence-splitter";
 import { transcribeAudio, type TranscriptionResult } from "./stt";
 import { synthesizeSpeech, type SpeechResult } from "./tts";
@@ -36,6 +37,7 @@ export interface VoicePipelineDeps {
     text: string,
     options: { language: string }
   ) => Promise<SpeechResult>;
+  fallbackSpeech?: () => Promise<SpeechResult>;
   getProfile?: (userId: string) => Promise<VoiceProfile>;
   logger?: PipelineLogger;
 }
@@ -117,17 +119,12 @@ function assertTurnActive(turn: DeviceAudioTurn, session: DeviceSession): void {
   }
 }
 
-async function speak(
-  text: string,
+async function sendSpeech(
+  speech: SpeechResult,
   turn: DeviceAudioTurn,
   session: DeviceSession,
-  language: string,
-  synthesize: NonNullable<VoicePipelineDeps["synthesize"]>,
   onFirstAudio?: () => void
 ): Promise<void> {
-  assertTurnActive(turn, session);
-
-  const speech = await synthesize(text, { language });
   assertTurnActive(turn, session);
 
   onFirstAudio?.();
@@ -153,6 +150,22 @@ async function speak(
   session.send({ type: "tts.end", turnId: turn.turnId });
 }
 
+async function speak(
+  text: string,
+  turn: DeviceAudioTurn,
+  session: DeviceSession,
+  language: string,
+  synthesize: NonNullable<VoicePipelineDeps["synthesize"]>,
+  onFirstAudio?: () => void
+): Promise<void> {
+  assertTurnActive(turn, session);
+
+  const speech = await synthesize(text, { language });
+  assertTurnActive(turn, session);
+
+  await sendSpeech(speech, turn, session, onFirstAudio);
+}
+
 export function createVoiceTurnHandler(
   deps: VoicePipelineDeps = {}
 ): DeviceAudioTurnHandler {
@@ -165,6 +178,7 @@ export function createVoiceTurnHandler(
     deps.synthesize ??
     ((text, options): Promise<SpeechResult> =>
       synthesizeSpeech(text, { language: options.language }));
+  const fallbackSpeech = deps.fallbackSpeech ?? loadFallbackSpeech;
   const getProfile = deps.getProfile ?? defaultProfile;
   const log = deps.logger ?? logger;
 
@@ -261,12 +275,34 @@ export function createVoiceTurnHandler(
       );
 
       if (error instanceof Error && error.message.startsWith("TTS_")) {
-        session.sendError(
-          "INTERNAL_ERROR",
-          "The voice reply could not be generated",
-          turn.turnId
+        log.warn(
+          { err: error, userId: turn.userId, turnId: turn.turnId },
+          "tts failed; sending bundled fallback speech"
         );
-        return;
+
+        try {
+          const speech = await fallbackSpeech();
+          await sendSpeech(speech, turn, session, recordFirstTts);
+          return;
+        } catch (fallbackError) {
+          if (
+            fallbackError instanceof Error &&
+            fallbackError.message === "TURN_CANCELLED"
+          ) {
+            return;
+          }
+
+          log.error(
+            { err: fallbackError, userId: turn.userId, turnId: turn.turnId },
+            "bundled fallback speech failed"
+          );
+          session.sendError(
+            "INTERNAL_ERROR",
+            "The voice reply could not be generated",
+            turn.turnId
+          );
+          return;
+        }
       }
 
       try {

@@ -84,11 +84,15 @@ with `TTS_VOICE` or the request `voice` field.
 | Empty transcript | Spoken fallback: "Sorry, I did not catch that. Please try again." |
 | STT providers fail | Spoken STT fallback |
 | Agent/provider fails | Spoken fallback: "Sorry, I could not reach your assistant. Please try again." |
-| TTS fails | `error` message (`INTERNAL_ERROR`); the device returns to `idle` |
-| Fallback TTS also fails | `error` message (`INTERNAL_ERROR`) |
+| TTS fails | Bundled English fallback speech (`assets/fallback-en.pcm`) |
+| Bundled fallback fails | `error` message (`INTERNAL_ERROR`); the device returns to `idle` |
 
 Stage timings (`sttMs`, `agentMs`, `firstTtsMs`, `ttsMs`, `totalMs`) and cumulative `vadMs` are
 logged for every completed turn. First-token timing awaits streaming LLM output.
+
+When the TTS service fails, the server sends the cached 22.05 kHz English PCM prompt in
+`apps/server/assets/fallback-en.pcm`. It is loaded once per process and sent through the normal
+`tts.start` / binary frames / `tts.end` path.
 
 ## Conversation continuity
 
