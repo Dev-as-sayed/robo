@@ -35,6 +35,10 @@ pnpm --dir apps/server dev
 The API listens on `http://localhost:3000`; health check: `GET /health`. The device WebSocket
 endpoint is `ws://localhost:3000/ws/device`.
 
+`@robo/shared` is installed into `apps/server` as a **copy**, not a live symlink. After editing
+anything under `packages/shared/src`, run `pnpm --dir apps/server install` again — otherwise the
+server typechecks, tests and serves the previous snapshot and the change appears to do nothing.
+
 At least one LLM provider key (`GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`) or a
 running Ollama instance is required for chat. Document search also needs Ollama embeddings and
 Qdrant.
@@ -57,6 +61,21 @@ be the LAN address of the machine running the server.
 EXPO_PUBLIC_API_URL=http://192.168.1.20:3000/api/v1 pnpm --dir apps/mobile start
 ```
 
+## Reminders and jobs
+
+Reminders carry a `nextAt` fire slot instead of living in a job queue. An in-process tick
+(`REMINDER_TICK_INTERVAL_MS`, default 15 s; `REMINDER_SCHEDULER_ENABLED=false` turns it off)
+claims rows whose slot has passed, moves each one to its next slot or completes it, and pushes
+`reminder.fire` to that user's connected device sockets. Claiming is atomic per row, so two
+server processes against one database do not double-fire, and a restart loses nothing because
+the slots live in the rows.
+
+- Recurrence uses a dependency-free subset of RFC 5545 (`FREQ=DAILY|WEEKLY|MONTHLY`, `INTERVAL`, `BYDAY`, `COUNT`, `UNTIL`). Anything outside the subset is refused so the reminder falls back to a single fire. Rules are anchored to the user's timezone with a **fixed** offset, so a rule that crosses a DST transition can land an hour off.
+- Snoozing delays a reminder (one-offs by `minutes`, recurring rules skip the due occurrence) rather than parking it in a `snoozed` status that never fires again.
+- Mobile push is storage only: `POST/GET/DELETE /api/v1/users/me/push-token` keeps tokens, but no sender is configured, so a `phone`/`push` channel is reported as not delivered in the fire log.
+- A fire while no device is connected is dropped, not queued.
+- `apps/server/prisma/migrations/20261022120000_reminder_next_fire_push_tokens` is written by hand and **not applied**. Run `pnpm --dir apps/server db:migrate` before using the scheduler; until then `nextAt`, `lastFiredAt` and `PushToken` do not exist in the database.
+
 ## Mobile app
 
 `app/(app)/` is a tab shell (Today, Chat, Tasks, Insights, Settings) with the remaining
@@ -71,11 +90,12 @@ been run on a device, so these are server-side limits of the current build, not 
 - Document upload records metadata only: no object storage write and no chunk indexing, so `status` never advances past `uploaded` and `chunkCount` stays 0.
 - Four of the six insights metrics are stubs (`streakDays` hardcoded; `totalStudyHours`, `completedTasks` and `upcomingExams` count fields nothing writes).
 - `POST /exams/:id/plan` ignores `dailyLimit`, and plan approval addresses the **plan** id, not the exam id.
-- Voice replies, push notifications, QR/BLE provisioning and phone-book import need a dev build and endpoints that do not exist yet.
+- Voice replies, push notifications, QR/BLE provisioning and phone-book import need a dev build. Push tokens have endpoints, but there is no push sender behind them yet.
 
 ## Checks
 
 ```bash
+pnpm --dir apps/server install    # re-links packages/shared into apps/server; run it after editing shared
 pnpm --dir apps/server typecheck
 pnpm --dir apps/server test
 pnpm --dir apps/server lint

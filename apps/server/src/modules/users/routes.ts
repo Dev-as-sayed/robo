@@ -1,6 +1,14 @@
 import { Router } from "express";
-import { updateMeSchema } from "@robo/shared/schemas";
-import { deleteMe, exportUserData, getMe, updateMe } from "@robo/shared/users";
+import { registerPushTokenSchema, updateMeSchema } from "@robo/shared/schemas";
+import {
+  deleteMe,
+  exportUserData,
+  getMe,
+  listPushTokens,
+  registerPushToken,
+  revokePushToken,
+  updateMe,
+} from "@robo/shared/users";
 import { asyncHandler } from "../../http/async-handler";
 import { sendSuccess } from "../../http/response";
 import { authenticate } from "../../middleware/authenticate";
@@ -27,6 +35,42 @@ router.patch(
       code: "USER_UPDATED",
       message: "User updated successfully",
       data: { user },
+    });
+  })
+);
+
+router.post(
+  "/me/push-token",
+  authenticate,
+  validate({ body: registerPushTokenSchema }),
+  asyncHandler(async (req, res) => {
+    const pushToken = await registerPushToken(req.user!.id, req.body);
+    sendSuccess(res, {
+      code: "PUSH_TOKEN_REGISTERED",
+      message: "Push token registered successfully",
+      data: { pushToken },
+    });
+  })
+);
+
+router.get(
+  "/me/push-tokens",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const pushTokens = await listPushTokens(req.user!.id);
+    sendSuccess(res, { code: "PUSH_TOKENS_FETCHED", data: { pushTokens } });
+  })
+);
+
+router.delete(
+  "/me/push-token/:id",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const result = await revokePushToken(req.user!.id, req.params.id);
+    sendSuccess(res, {
+      code: "PUSH_TOKEN_REVOKED",
+      message: "Push token revoked successfully",
+      data: result,
     });
   })
 );

@@ -98,6 +98,8 @@ const envSchema = z.object({
   DEVICE_VAD_SILENCE_MS: z.coerce.number().int().min(200).max(3_000).default(800),
   DEVICE_VAD_MIN_SPEECH_MS: z.coerce.number().int().min(0).max(2_000).default(250),
   DEVICE_VAD_MODEL_PATH: optionalEnvString,
+  REMINDER_SCHEDULER_ENABLED: booleanEnv.default(true),
+  REMINDER_TICK_INTERVAL_MS: z.coerce.number().int().min(1_000).default(15_000),
   STT_SERVICE_URL: optionalEnvUrl,
   STT_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
   STT_LANGUAGE: z.preprocess(

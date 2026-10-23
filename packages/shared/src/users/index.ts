@@ -6,6 +6,7 @@ import { toPublicUser } from "./select";
 
 export * from "./roles";
 export * from "./admin";
+export * from "./push-tokens";
 
 export async function getAccountState(userId: string) {
   return prisma.user.findUnique({

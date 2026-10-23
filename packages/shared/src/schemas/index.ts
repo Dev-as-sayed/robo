@@ -183,6 +183,7 @@ export const createScheduleSchema = z.object({
   subject: z.string().max(100).optional(),
   room: z.string().max(100).optional(),
   teacher: z.string().max(100).optional(),
+  alertLeadMinutes: z.number().int().min(0).max(240).optional(),
 });
 
 export const updateScheduleSchema = createScheduleSchema.partial();
@@ -202,6 +203,11 @@ export const createReminderSchema = z.object({
 
 export const updateReminderSchema = createReminderSchema.partial().extend({
   status: z.enum(["active", "completed", "snoozed", "expired"]).optional(),
+});
+
+export const registerPushTokenSchema = z.object({
+  token: z.string().trim().min(8).max(4096),
+  platform: z.enum(["ios", "android"]),
 });
 
 export const createExamSchema = z.object({
@@ -281,6 +287,7 @@ export type UpdateScheduleInput = z.infer<typeof updateScheduleSchema>;
 export type ScheduleExceptionInput = z.infer<typeof scheduleExceptionSchema>;
 export type CreateReminderInput = z.infer<typeof createReminderSchema>;
 export type UpdateReminderInput = z.infer<typeof updateReminderSchema>;
+export type RegisterPushTokenInput = z.infer<typeof registerPushTokenSchema>;
 export type CreateExamInput = z.infer<typeof createExamSchema>;
 export type UpdateExamInput = z.infer<typeof updateExamSchema>;
 export type GenerateStudyPlanInput = z.infer<typeof generateStudyPlanSchema>;

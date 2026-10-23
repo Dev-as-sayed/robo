@@ -146,6 +146,15 @@ class DeviceConnection {
     return this.device?.device.deviceId;
   }
 
+  get userId(): string | undefined {
+    return this.device?.userId;
+  }
+
+  /** Server-initiated message; silently dropped while the socket is not open. */
+  deliver(message: DeviceServerMessage): void {
+    this.send(message);
+  }
+
   ping(): boolean {
     if (this.closed) {
       return false;
@@ -700,6 +709,26 @@ export class DeviceGateway {
 
   removeConnection(socket: WebSocket): void {
     this.connections.delete(socket);
+  }
+
+  /**
+   * Push a server-initiated message to every authenticated socket belonging to a
+   * user. Returns how many devices took it, so a caller can tell "nobody online"
+   * from "delivered".
+   */
+  notifyUser(userId: string, message: DeviceServerMessage): number {
+    let delivered = 0;
+
+    for (const connection of this.connections.values()) {
+      if (connection.userId !== userId) {
+        continue;
+      }
+
+      connection.deliver(message);
+      delivered += 1;
+    }
+
+    return delivered;
   }
 
   get size(): number {

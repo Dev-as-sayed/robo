@@ -10,6 +10,8 @@ import { env } from "./config/env";
 import logger from "./lib/logger";
 import { DeviceGateway } from "./modules/realtime/gateway";
 import { SileroVad } from "./modules/realtime/vad";
+import { createReminderNotifier } from "./modules/reminders/notify";
+import { ReminderScheduler } from "./modules/reminders/scheduler";
 import { createVoiceTurnHandler } from "./modules/voice/pipeline";
 
 const app = createApp();
@@ -55,6 +57,19 @@ const deviceGateway = new DeviceGateway(server, {
   logger,
 });
 
+const reminderScheduler = env.REMINDER_SCHEDULER_ENABLED
+  ? new ReminderScheduler({
+      intervalMs: env.REMINDER_TICK_INTERVAL_MS,
+      logger,
+      deliver: createReminderNotifier({
+        notifyUser: (userId, message): number => deviceGateway.notifyUser(userId, message),
+        logger,
+      }),
+    })
+  : null;
+
+reminderScheduler?.start();
+
 server.listen(env.PORT, () => {
   logger.info({ port: env.PORT }, "server started");
 });
@@ -68,6 +83,8 @@ function shutdown(signal: string, exitCode = 0): void {
 
   shuttingDown = true;
   logger.info({ signal }, "shutting down");
+
+  reminderScheduler?.stop();
 
   void deviceGateway.close().catch((error: unknown) => {
     logger.warn({ err: error }, "error while closing device gateway");

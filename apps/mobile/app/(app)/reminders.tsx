@@ -49,6 +49,25 @@ const linkedOptions: Option<"none" | "todo" | "exam" | "schedule">[] = [
   { value: "schedule", label: "Schedule" },
 ];
 
+/**
+ * Only rules the server can evaluate are offered. The weekday set is the one pattern
+ * the reminder engine supports beyond a plain weekly repeat.
+ */
+const repeatOptions: Option<string>[] = [
+  { value: "none", label: "Once" },
+  { value: "FREQ=DAILY", label: "Every day" },
+  { value: "FREQ=WEEKLY", label: "Same day each week" },
+  { value: "FREQ=WEEKLY;BYDAY=MO,WE,FR", label: "Mon, Wed, Fri" },
+  { value: "FREQ=MONTHLY", label: "Same day each month" },
+];
+
+function repeatLabel(rrule: string | null): string | null {
+  if (!rrule) return null;
+  return (
+    repeatOptions.find(option => option.value === rrule)?.label ?? "Repeats"
+  );
+}
+
 export default function RemindersScreen() {
   const router = useRouter();
 
@@ -59,6 +78,7 @@ export default function RemindersScreen() {
   const [linked, setLinked] = useState<"none" | "todo" | "exam" | "schedule">(
     "none"
   );
+  const [repeat, setRepeat] = useState("none");
   const [picked, setPicked] = useState<ReminderChannel[]>(["device"]);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -76,6 +96,7 @@ export default function RemindersScreen() {
     setDatePart("");
     setTimePart("");
     setLinked("none");
+    setRepeat("none");
     setPicked(["device"]);
     setFormError(null);
   };
@@ -110,11 +131,17 @@ export default function RemindersScreen() {
       at = parsed;
     }
 
+    if (repeat !== "none" && !at) {
+      setFormError("A repeating reminder needs a first date and time.");
+      return;
+    }
+
     try {
       await createReminder({
         text: text.trim(),
         channels: picked,
         ...(at ? { at } : {}),
+        ...(repeat === "none" ? {} : { rrule: repeat }),
         ...(linked === "none" ? {} : { linkedEntity: linked }),
       }).unwrap();
       reset();
@@ -175,7 +202,9 @@ export default function RemindersScreen() {
               </Text>
               <Text style={styles.rowMeta}>
                 {reminder.at ? `${relativeTime(reminder.at)}` : "No time set"}
-                {reminder.rrule ? " · Repeats" : ""}
+                {repeatLabel(reminder.rrule)
+                  ? ` · ${repeatLabel(reminder.rrule)}`
+                  : ""}
                 {reminder.linkedEntity ? ` · ${reminder.linkedEntity}` : ""}
               </Text>
               <Text style={styles.rowChannels}>
@@ -250,6 +279,12 @@ export default function RemindersScreen() {
           value={linked}
           options={linkedOptions}
           onChange={setLinked}
+        />
+        <OptionList
+          label="Repeats"
+          value={repeat}
+          options={repeatOptions}
+          onChange={setRepeat}
         />
         <View style={styles.channelGroup}>
           <Text style={styles.channelLabel}>Channels</Text>

@@ -31,6 +31,7 @@ const DOMAIN_ERRORS: Record<string, { statusCode: number; message: string }> = {
     message: "Google sign-in is not configured",
   },
   USER_NOT_FOUND: { statusCode: 404, message: "User not found" },
+  PUSH_TOKEN_NOT_FOUND: { statusCode: 404, message: "Push token not found" },
   ACCOUNT_NOT_FOUND: { statusCode: 401, message: "Account no longer exists" },
   ACCOUNT_SUSPENDED: { statusCode: 403, message: "Account is suspended" },
   CANNOT_MODIFY_SELF: { statusCode: 403, message: "You cannot modify your own account here" },

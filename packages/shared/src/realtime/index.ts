@@ -112,11 +112,35 @@ export interface ServerErrorMessage {
   turnId?: string;
 }
 
+export interface ServerReminderFireMessage {
+  type: "reminder.fire";
+  reminderId: string;
+  text: string;
+  /** The slot the reminder was scheduled for, so a late delivery can be shown as such. */
+  dueAt: string;
+  firedAt: string;
+  /** Present only for recurring reminders, so the device can label "every day". */
+  rrule?: string;
+}
+
+export interface ServerClassAlertMessage {
+  type: "class.alert";
+  scheduleId: string;
+  title: string;
+  startsAt: string;
+  /** How far ahead of the class the device is being told, in minutes. */
+  minutesUntil: number;
+  room?: string;
+  subject?: string;
+}
+
 export type DeviceServerMessage =
   | ServerStateMessage
   | ServerTranscriptMessage
   | ServerTtsStartMessage
   | ServerTtsEndMessage
+  | ServerReminderFireMessage
+  | ServerClassAlertMessage
   | ServerErrorMessage;
 
 export type DeviceHello = z.infer<typeof deviceHelloSchema>;

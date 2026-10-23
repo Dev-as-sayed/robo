@@ -39,6 +39,20 @@ All control messages are JSON text frames. Audio chunks are binary frames.
 | `error` | `code`, `message`, optional `turnId` | Spoken/displayed fallback |
 | `transcript` | `turnId`, `text`, `isFinal?` | Ready for the STT stage |
 | `tts.start` / binary / `tts.end` | `turnId`, codec, sample rate | Ready for the TTS stage |
+| `reminder.fire` | `reminderId`, `text`, `dueAt`, `firedAt`, `rrule?` | Server-initiated; sent by the scheduler tick, not tied to a turn |
+
+## Server-initiated messages
+
+`DeviceGateway.notifyUser(userId, message)` fans a message out to every authenticated
+socket owned by that user and returns how many took it. The reminder scheduler
+(`apps/server/src/modules/reminders/scheduler.ts`) uses it on a
+`REMINDER_TICK_INTERVAL_MS` tick (15 s by default) after claiming due rows.
+
+Claiming happens in the database: a row only fires when its own `nextAt` can still be
+matched, so two server processes cannot fire the same reminder twice. A device that is
+offline simply does not take the message — the fire is lost, not queued, and the
+reminder is already marked delivered (`lastFiredAt`, next slot computed). Queueing fires
+for offline devices is still open work.
 
 ## Audio turn limits
 

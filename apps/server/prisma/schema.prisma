@@ -82,6 +82,7 @@ model User {
   contacts           Contact[]
   studySessions      StudySession[]
   actionLogs         ActionLog[]
+  pushTokens         PushToken[]
 
   @@index([role])
   @@index([status])
@@ -183,6 +184,8 @@ model Reminder {
   text         String
   at           DateTime?
   rrule        String?
+  nextAt       DateTime?
+  lastFiredAt  DateTime?
   channels     String[]  @default(["device", "phone", "push"])
   linkedEntity String?
   status       String    @default("active")
@@ -191,26 +194,46 @@ model Reminder {
 
   @@unique([id, userId])
   @@index([userId, status])
+  @@index([status, nextAt])
+}
+
+/// Registered device tokens. Storage only: the push send itself needs Expo/FCM
+/// credentials, so rows are written and listed but never dispatched yet.
+model PushToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, token])
+  @@index([userId])
 }
 
 model ScheduleEntry {
-  id          String              @id @default(uuid())
-  userId      String
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  startAt     DateTime
-  endAt       DateTime?
-  allDay      Boolean             @default(false)
-  subject     String?
-  room        String?
-  teacher     String?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  exceptions  ScheduleException[]
+  id               String              @id @default(uuid())
+  userId           String
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  startAt          DateTime
+  endAt            DateTime?
+  allDay           Boolean             @default(false)
+  subject          String?
+  room             String?
+  teacher          String?
+  alertLeadMinutes Int?
+  alertAt          DateTime?
+  alertedAt        DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  exceptions       ScheduleException[]
 
   @@unique([id, userId])
   @@index([userId, startAt])
+  @@index([alertedAt, alertAt])
 }
 
 model ScheduleException {
