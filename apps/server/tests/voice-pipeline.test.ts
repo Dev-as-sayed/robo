@@ -5,7 +5,10 @@ import type {
   DeviceSession,
   DeviceState,
 } from "@robo/shared/realtime";
-import { createVoiceTurnHandler } from "../src/modules/voice/pipeline";
+import {
+  createVoiceTurnHandler,
+  type VoiceReplyStreamOptions,
+} from "../src/modules/voice/pipeline";
 import type { SpeechResult } from "../src/modules/voice/tts";
 import type { TranscriptionResult } from "../src/modules/voice/stt";
 
@@ -291,5 +294,83 @@ describe("voice turn pipeline", () => {
     await handler(turn, session);
 
     expect(transcribe).toHaveBeenCalledWith(turn, { language: "en" });
+  });
+
+  it("synthesizes streamed sentences before the agent reply finishes", async () => {
+    let releaseSecond!: () => void;
+    const secondReady = new Promise<void>(resolve => {
+      releaseSecond = resolve;
+    });
+    const synthesize = vi.fn(async (text: string) => {
+      if (text === "First sentence.") {
+        releaseSecond();
+      }
+      return speech(text);
+    });
+    const replyStream = vi.fn(
+      async (
+        _userId: string,
+        _text: string,
+        options: VoiceReplyStreamOptions
+      ) => {
+        options.onToken("First sentence. ");
+        await secondReady;
+        options.onToken("Second sentence.");
+        return {
+          text: "First sentence. Second sentence.",
+          voiceText: "First sentence. Second sentence.",
+        };
+      }
+    );
+    const session = createSession();
+
+    const handler = createVoiceTurnHandler({
+      transcribe: async () => transcript("Tell me what is next."),
+      replyStream,
+      synthesize,
+      getProfile: async () => ({ locale: "en", timezone: "UTC" }),
+      logger: silentLogger,
+    });
+
+    await handler(turn, session);
+
+    expect(replyStream).toHaveBeenCalledOnce();
+    expect(synthesize.mock.calls.map(call => call[0])).toEqual([
+      "First sentence.",
+      "Second sentence.",
+    ]);
+    expect(session.states.at(-1)).toBe("idle");
+    expect(session.errors).toEqual([]);
+  });
+
+  it("caps streamed speech at two sentences", async () => {
+    const synthesize = vi.fn(async (text: string) => speech(text));
+    const replyStream = vi.fn(
+      async (
+        _userId: string,
+        _text: string,
+        options: VoiceReplyStreamOptions
+      ) => {
+        options.onToken("One. Two. Three.");
+        return { text: "One. Two. Three." };
+      }
+    );
+    const session = createSession();
+
+    const handler = createVoiceTurnHandler({
+      transcribe: async () => transcript("Count."),
+      replyStream,
+      synthesize,
+      getProfile: async () => ({ locale: "en", timezone: "UTC" }),
+      logger: silentLogger,
+    });
+
+    await handler(turn, session);
+
+    expect(synthesize.mock.calls.map(call => call[0])).toEqual([
+      "One.",
+      "Two.",
+    ]);
+    expect(session.states.at(-1)).toBe("idle");
   });
 });

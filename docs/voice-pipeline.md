@@ -7,8 +7,8 @@ The device gateway hands each completed audio turn to `createVoiceTurnHandler`
 audio turn
   -> STT (local faster-whisper, Groq Whisper fallback)
   -> transcript message to device
-  -> LangGraph agent (device conversation)
-  -> sentence splitter
+  -> LangGraph agent (streamed tokens, device conversation)
+  -> sentence splitter (incremental)
   -> Piper TTS per sentence
   -> tts.start / binary PCM chunks / tts.end
 ```
@@ -18,9 +18,13 @@ Raw audio stays in memory only for the duration of the turn; it is never written
 Redis, MinIO, or Qdrant.
 
 When the device sends a new `audio.start` while a reply is being generated, the gateway marks the
-old turn as cancelled. The pipeline checks `session.isTurnActive(turnId)` before STT, before the
-agent reply, and between TTS chunks, then stops without sending an error or resetting the new
-turn's state.
+old turn as cancelled. The pipeline checks `session.isTurnActive(turnId)` before STT, on every
+streamed token, and between TTS chunks, then aborts the agent stream and stops without sending an
+error or resetting the new turn's state.
+
+The agent reply is spoken as it streams: completed sentences are queued for synthesis while later
+tokens are still arriving. Spoken output uses the same two-sentence / 320-character limit as
+`voiceText`, so the device does not read long or markdown-heavy replies aloud.
 
 PCM16 turns end automatically after 800 ms of silence detected by Silero VAD, or earlier if the
 device sends `audio.end`. Opus turns still require `audio.end` or the turn timeout.
@@ -87,8 +91,9 @@ with `TTS_VOICE` or the request `voice` field.
 | TTS fails | Bundled English fallback speech (`assets/fallback-en.pcm`) |
 | Bundled fallback fails | `error` message (`INTERNAL_ERROR`); the device returns to `idle` |
 
-Stage timings (`sttMs`, `agentMs`, `firstTtsMs`, `ttsMs`, `totalMs`) and cumulative `vadMs` are
-logged for every completed turn. First-token timing awaits streaming LLM output.
+Stage timings (`sttMs`, `agentMs`, `firstTokenMs`, `firstTtsMs`, `ttsMs`, `totalMs`) and cumulative
+`vadMs` are logged for every completed turn. `firstTokenMs` is recorded when the first streamed
+agent token arrives; `firstTtsMs` is recorded when the first audio frame is ready to send.
 
 When the TTS service fails, the server sends the cached 22.05 kHz English PCM prompt in
 `apps/server/assets/fallback-en.pcm`. It is loaded once per process and sent through the normal
@@ -125,8 +130,8 @@ transcription.
 
 ## Still missing
 
-- Streaming LLM tokens through the sentence splitter (the agent currently returns a full reply).
 - Per-user TTS voice selection and the second launch language.
+- Hardware testing of streamed playback and barge-in on the device.
 
 ## Tests
 
@@ -134,5 +139,6 @@ transcription.
 pnpm --dir apps/server test
 ```
 
-Coverage includes the sentence splitter, STT provider fallback, TTS contracts, and the full pipeline
-with mocked providers.
+Coverage includes the sentence splitter, STT provider fallback, TTS contracts, incremental
+sentence speech before the agent stream finishes, the two-sentence speech cap, and the full
+pipeline with mocked providers.

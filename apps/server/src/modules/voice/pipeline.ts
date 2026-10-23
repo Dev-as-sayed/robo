@@ -5,9 +5,10 @@ import type {
 } from "@robo/shared/realtime";
 import { getMe } from "@robo/shared/users";
 import logger from "../../lib/logger";
-import { sendChatMessage } from "../ai/chat-service";
+import { sendChatMessage, streamChatMessage } from "../ai/chat-service";
+import { toVoiceText } from "../ai/prompt";
 import { loadFallbackSpeech } from "./fallback";
-import { splitSentences } from "./sentence-splitter";
+import { SentenceSplitter, splitSentences } from "./sentence-splitter";
 import { transcribeAudio, type TranscriptionResult } from "./stt";
 import { synthesizeSpeech, type SpeechResult } from "./tts";
 
@@ -21,6 +22,17 @@ interface VoiceReply {
   voiceText?: string | null;
 }
 
+export interface VoiceReplyStreamOptions {
+  onToken: (token: string) => void;
+  signal?: AbortSignal;
+}
+
+type VoiceReplyStream = (
+  userId: string,
+  text: string,
+  options: VoiceReplyStreamOptions
+) => Promise<VoiceReply>;
+
 interface PipelineLogger {
   info: (payload: unknown, message?: string) => void;
   warn: (payload: unknown, message?: string) => void;
@@ -33,6 +45,7 @@ export interface VoicePipelineDeps {
     options: { language: string }
   ) => Promise<TranscriptionResult>;
   reply?: (userId: string, text: string) => Promise<VoiceReply>;
+  replyStream?: VoiceReplyStream;
   synthesize?: (
     text: string,
     options: { language: string }
@@ -84,6 +97,55 @@ async function defaultReply(userId: string, text: string): Promise<VoiceReply> {
         content: text,
         channel: "device",
       });
+
+      rememberConversation(userId, result.conversation.id);
+      return {
+        text: result.assistantMessage.content,
+        voiceText: result.assistantMessage.voiceText,
+      };
+    }
+
+    throw error;
+  }
+}
+
+async function defaultReplyStream(
+  userId: string,
+  text: string,
+  options: VoiceReplyStreamOptions
+): Promise<VoiceReply> {
+  const conversationId = conversations.get(userId);
+
+  try {
+    const result = await streamChatMessage(
+      userId,
+      {
+        content: text,
+        channel: "device",
+        ...(conversationId ? { conversationId } : {}),
+      },
+      options.onToken,
+      options.signal
+    );
+
+    rememberConversation(userId, result.conversation.id);
+    return {
+      text: result.assistantMessage.content,
+      voiceText: result.assistantMessage.voiceText,
+    };
+  } catch (error) {
+    if (
+      conversationId &&
+      error instanceof Error &&
+      error.message === "CONVERSATION_NOT_FOUND"
+    ) {
+      conversations.delete(userId);
+      const result = await streamChatMessage(
+        userId,
+        { content: text, channel: "device" },
+        options.onToken,
+        options.signal
+      );
 
       rememberConversation(userId, result.conversation.id);
       return {
@@ -174,6 +236,8 @@ export function createVoiceTurnHandler(
     ((turn, options): Promise<TranscriptionResult> =>
       transcribeAudio(turn, { language: options.language }));
   const reply = deps.reply ?? defaultReply;
+  const replyStream =
+    deps.replyStream ?? (deps.reply ? undefined : defaultReplyStream);
   const synthesize =
     deps.synthesize ??
     ((text, options): Promise<SpeechResult> =>
@@ -184,7 +248,13 @@ export function createVoiceTurnHandler(
 
   return async (turn, session) => {
     const startedAt = Date.now();
-    const timings = { sttMs: 0, agentMs: 0, firstTtsMs: 0, ttsMs: 0 };
+    const timings = {
+      sttMs: 0,
+      agentMs: 0,
+      firstTokenMs: 0,
+      firstTtsMs: 0,
+      ttsMs: 0,
+    };
     let firstTtsRecorded = false;
     const recordFirstTts = (): void => {
       if (!firstTtsRecorded) {
@@ -227,30 +297,157 @@ export function createVoiceTurnHandler(
       });
 
       const agentStartedAt = Date.now();
-      const response = await reply(turn.userId, transcriptText);
-      timings.agentMs = Date.now() - agentStartedAt;
-      assertTurnActive(turn, session);
 
-      const spokenText = (response.voiceText?.trim() || response.text).trim();
-      if (!spokenText) {
-        throw new Error("AI_EMPTY_RESPONSE");
+      if (replyStream) {
+        const abort = new AbortController();
+        const splitter = new SentenceSplitter();
+        const maxVoiceSentences = 2;
+        const maxVoiceLength = 320;
+        let speechChain = Promise.resolve();
+        let speechError: unknown;
+        let spokenSentences = 0;
+        let spokenChars = 0;
+        let ttsStartedAt = 0;
+        let firstTokenRecorded = false;
+        let replyError: unknown;
+        let response: VoiceReply | undefined;
+
+        const isCancelled = (): boolean =>
+          abort.signal.aborted ||
+          Boolean(session.isTurnActive && !session.isTurnActive(turn.turnId));
+
+        const queueSpeech = (sentence: string): void => {
+          if (
+            spokenSentences >= maxVoiceSentences ||
+            spokenChars >= maxVoiceLength
+          ) {
+            return;
+          }
+
+          const cleaned = toVoiceText(sentence, maxVoiceLength - spokenChars);
+          if (!cleaned) {
+            return;
+          }
+
+          spokenSentences += 1;
+          spokenChars += cleaned.length;
+          if (ttsStartedAt === 0) {
+            ttsStartedAt = Date.now();
+          }
+
+          speechChain = speechChain
+            .then(async () => {
+              if (speechError) {
+                return;
+              }
+
+              await speak(
+                cleaned,
+                turn,
+                session,
+                profile.locale,
+                synthesize,
+                recordFirstTts
+              );
+            })
+            .catch((error: unknown) => {
+              if (speechError === undefined) {
+                speechError = error;
+              }
+            });
+        };
+
+        try {
+          response = await replyStream(turn.userId, transcriptText, {
+            onToken: token => {
+              if (isCancelled()) {
+                abort.abort();
+                return;
+              }
+
+              if (!firstTokenRecorded) {
+                timings.firstTokenMs = Date.now() - agentStartedAt;
+                firstTokenRecorded = true;
+              }
+
+              for (const sentence of splitter.push(token)) {
+                queueSpeech(sentence);
+              }
+            },
+            signal: abort.signal,
+          });
+        } catch (error) {
+          replyError = error;
+        }
+
+        timings.agentMs = Date.now() - agentStartedAt;
+
+        if (isCancelled()) {
+          return;
+        }
+
+        for (const sentence of splitter.flush()) {
+          queueSpeech(sentence);
+        }
+
+        await speechChain;
+
+        if (replyError) {
+          throw replyError;
+        }
+
+        if (speechError) {
+          throw speechError;
+        }
+
+        if (!response) {
+          throw new Error("AI_EMPTY_RESPONSE");
+        }
+
+        const spokenText = (response.voiceText?.trim() || response.text).trim();
+        if (!spokenText) {
+          throw new Error("AI_EMPTY_RESPONSE");
+        }
+
+        if (spokenSentences === 0) {
+          for (const sentence of splitSentences(spokenText)) {
+            queueSpeech(sentence);
+          }
+          await speechChain;
+
+          if (speechError) {
+            throw speechError;
+          }
+        }
+
+        timings.ttsMs = ttsStartedAt === 0 ? 0 : Date.now() - ttsStartedAt;
+      } else {
+        const response = await reply(turn.userId, transcriptText);
+        timings.agentMs = Date.now() - agentStartedAt;
+        assertTurnActive(turn, session);
+
+        const spokenText = (response.voiceText?.trim() || response.text).trim();
+        if (!spokenText) {
+          throw new Error("AI_EMPTY_RESPONSE");
+        }
+
+        const ttsStartedAt = Date.now();
+        const sentences = splitSentences(spokenText);
+
+        for (const sentence of sentences.length > 0 ? sentences : [spokenText]) {
+          await speak(
+            sentence,
+            turn,
+            session,
+            profile.locale,
+            synthesize,
+            recordFirstTts
+          );
+        }
+
+        timings.ttsMs = Date.now() - ttsStartedAt;
       }
 
-      const ttsStartedAt = Date.now();
-      const sentences = splitSentences(spokenText);
-
-      for (const sentence of sentences.length > 0 ? sentences : [spokenText]) {
-        await speak(
-          sentence,
-          turn,
-          session,
-          profile.locale,
-          synthesize,
-          recordFirstTts
-        );
-      }
-
-      timings.ttsMs = Date.now() - ttsStartedAt;
       log.info(
         {
           userId: turn.userId,

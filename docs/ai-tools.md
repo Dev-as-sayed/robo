@@ -90,10 +90,9 @@ Tracing is disabled unless both Langfuse keys are set.
 
 ## Known gaps
 
-- Chat is not streaming yet.
 - Document ingestion, OCR, chunking, and indexing are not wired to Qdrant yet.
 - Token quotas and degraded mode are not implemented.
 - Long-term memory tools are not implemented.
-- Device audio turns run through Silero VAD -> STT -> agent -> sentence TTS; streaming LLM tokens remain missing.
+- Device audio turns stream agent tokens through the sentence splitter into TTS; hardware playback and barge-in are still untested.
 - Device tools still need server-initiated event routing; see `docs/device-gateway.md`.
 - The confirmation flag is a basic model-facing safeguard; a server-enforced pending-action flow is still needed for production.
