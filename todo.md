@@ -14,8 +14,8 @@
 | Phase | Goal                                    | Est.       | Status        |
 | ----- | --------------------------------------- | ---------- | ------------- |
 | P0    | Decisions, setup, hardware ordered      | 10–15 d    | Partial (code setup in place; decisions/hardware pending) |
-| R1    | Voice foundation                        | 30–40 d    | In progress (R1.3 gateway + voice pipeline; mobile auth/chat in place — firmware, pairing and BLE setup pending) |
-| R2    | Productivity (MVP complete)             | 30–40 d    | In progress (all R2 mobile screens built — Today, Tasks, Reminders, Schedule, Settings; push tokens and local notifications still missing) |
+| R1    | Voice foundation                        | 30–40 d    | In progress (R1.3 gateway + voice pipeline now stream agent tokens through sentence-level TTS; mobile auth/chat in place — firmware, pairing and BLE setup pending) |
+| R2    | Productivity (MVP complete)             | 30–40 d    | In progress (all R2 mobile screens built — Today, Tasks, Reminders incl. recurrence, Schedule, Settings; reminders now fire through an in-process scheduler tick over the device WebSocket — class-alert/ deadline jobs, offline queueing and mobile push delivery still missing) |
 | R3    | Study Brain (documents, quizzes, plans) | 40–50 d    | In progress (Documents + Exams/plan screens built and typechecking; quiz generator still returns placeholder questions, and document upload stores metadata only — no object storage, no chunk indexing) |
 | R4    | Communication (calls, messages)         | 25–30 d    | ☐ (contacts screen + `tel:`/`sms:`/`mailto:` done; `PendingAction` model missing, so nothing can be confirmed before it dials) |
 | R5    | Proactive (study mode, analytics)       | 35–40 d    | ☐ (Insights + Activity screens built, but 4 of 6 summary metrics are server-side stubs that always read 0) |
@@ -55,14 +55,14 @@
 
 ### P0.4 Repository and environment
 
-- [ ] 🔴 Create monorepo with pnpm workspaces: `apps/mobile`, `apps/server`, `packages/shared`, `firmware/` — 1 d
-- [ ] 🔴 Configure TypeScript (strict), ESLint, Prettier, commit hooks — 0.5 d
-- [ ] 🔴 `docker-compose.yml`: PostgreSQL, Redis, Qdrant, MinIO — 1 d
-- [ ] 🟡 Add Ollama service to Compose and pull one small model + one embedding model — 0.5 d
-- [ ] 🔴 GitHub Actions: lint, test, build on every pull request — 1 d
+- [ ] 🔴 Create monorepo with pnpm workspaces: `apps/mobile`, `apps/server`, `packages/shared`, `firmware/` — 1 d — `apps/mobile`, `apps/server`, `packages/shared` and `firmware/` exist, but each app keeps its own pnpm workspace and lockfile; there is no root `pnpm-workspace.yaml`
+- [ ] 🔴 Configure TypeScript (strict), ESLint, Prettier, commit hooks — 0.5 d — strict TypeScript, ESLint and Prettier are configured; commit hooks are missing
+- [x] 🔴 `docker-compose.yml`: PostgreSQL, Redis, Qdrant, MinIO — 1 d — also includes Ollama, STT, TTS and Langfuse, but no server service
+- [ ] 🟡 Add Ollama service to Compose and pull one small model + one embedding model — 0.5 d — service is in Compose; model pulls are still a manual step
+- [x] 🔴 GitHub Actions: lint, test, build on every pull request — 1 d — server lint/typecheck/test/build plus Python compile and voice image builds; mobile, shared and firmware are not covered
 - [ ] 🟡 Provision the dev VPS, domain name and TLS (Caddy/Nginx + Let's Encrypt) — 1 d
 - [ ] 🟡 Create project board (Backlog → Ready → In progress → Review → Done) and import this TODO — 0.5 d
-- [ ] 📦 `README.md` with setup steps; `.env.example` for each app
+- [ ] 📦 `README.md` with setup steps; `.env.example` for each app — root `README.md` and `.env.example` exist; the apps do not have their own examples
 
 ### P0.5 Early de-risking spikes (time-boxed)
 
@@ -85,13 +85,13 @@
 
 ### R1.2 Backend API
 
-- [ ] 🔴 Express app skeleton: config, pino logging, error handler, request IDs, Zod validation middleware [API-01, API-06] — 2 d
-- [ ] 🔴 Prisma setup; models `User`, `Device`, `PushToken`, `Conversation`, `Message`; first migration [DAT-01, DAT-02] — 2 d
-- [ ] 🔴 Auth: register, login, refresh rotation, logout; argon2; JWT middleware [FR-ACC-01, DAT-04] — 3 d
-- [ ] 🟡 Google sign-in endpoint — 1 d
-- [ ] 🔴 Device pairing: pairing code generation, `POST /devices/pair`, hashed device token [FR-ACC-02, FR-ACC-04] — 2 d
-- [ ] 🔴 User settings: language, time zone, quiet hours [FR-ACC-05] — 1 d
-- [ ] 🔴 Rate limiting (Redis store) and helmet/CORS [API-04] — 1 d
+- [x] 🔴 Express app skeleton: config, pino logging, error handler, request IDs, Zod validation middleware [API-01, API-06] — 2 d
+- [x] 🔴 Prisma setup; models `User`, `Device`, `PushToken`, `Conversation`, `Message`; first migration [DAT-01, DAT-02] — 2 d — all listed models exist; the `PushToken` migration is still uncommitted
+- [x] 🔴 Auth: register, login, refresh rotation, logout; argon2; JWT middleware [FR-ACC-01, DAT-04] — 3 d — refresh-token reuse revokes the user's token family
+- [x] 🟡 Google sign-in endpoint — 1 d
+- [x] 🔴 Device pairing: pairing code generation, `POST /devices/pair`, hashed device token [FR-ACC-02, FR-ACC-04] — 2 d
+- [x] 🔴 User settings: language, time zone, quiet hours [FR-ACC-05] — 1 d
+- [ ] 🔴 Rate limiting (Redis store) and helmet/CORS [API-04] — 1 d — helmet, CORS and per-route limiters exist, but `express-rate-limit` uses its in-memory store; no Redis store
 - [ ] 🟡 OpenAPI generation from Zod [API-05] — 1 d
 - [ ] 🔴 Ownership-isolation test helper (user A cannot read user B) [API-02, NFR-07] — 1 d
 
@@ -102,8 +102,8 @@
 - [x] 🔴 Silero VAD integration for end-of-speech detection [VP-01] — 2 d
 - [x] 🔴 STT service: faster-whisper (Docker) with Groq Whisper fallback [VP-02] — image builds; real 16 kHz PCM fixture transcribed and Groq fallback covered by tests
 - [x] 🔴 TTS service: Piper (Docker), per-language voice selection, chunked output [VP-04, VP-08] — image builds, PCM synthesis verified, `TTS_VOICE_MAP` selects a voice by language
-- [x] 🔴 Sentence splitter: stream LLM tokens → sentences → TTS → device [FR-VOI-06] — 2 d
-- [ ] 🟡 Stage timing metrics (VAD, STT, first token, TTS start) [VP-06] — VAD/STT/agent/TTS/first-audio logged; first token pending streaming
+- [x] 🔴 Sentence splitter: stream LLM tokens → sentences → TTS → device [FR-VOI-06] — 2 d — the voice pipeline now consumes `streamChatMessage` tokens through `SentenceSplitter`, queues completed sentences for synthesis while the agent is still streaming, aborts on barge-in, and caps spoken output at two sentences / 320 characters. Covered by new pipeline tests.
+- [x] 🟡 Stage timing metrics (VAD, STT, first token, TTS start) [VP-06] — VAD/STT/agent/first-token/first-audio/TTS timings are logged per turn; the first token is recorded from the streamed token callback
 - [x] 🔴 Delete raw audio after transcription [VP-07] — 0.5 d
 - [x] 🔴 Fallback speech messages for errors/offline [FR-VOI-07] — STT/agent messages and cached English PCM when Piper fails
 
@@ -152,34 +152,38 @@
 
 ### R2.1 Data models and API
 
-- [ ] 🔴 Prisma models: `Subject`, `Topic`, `ScheduleEntry`, `ScheduleException`, `Todo`, `Reminder`, `Exam`, `ActionLog` — 2 d
-- [ ] 🔴 CRUD: subjects, todos, reminders (+ snooze), schedule (+ exceptions), exams [FR-PRD-01/02, FR-CLS-01, FR-EXM-01] — 6 d
-- [ ] 🔴 Time handling: UTC storage, `luxon`, `rrule` utilities with tests across DST [FR-PRD-08, DAT-03] — 3 d
-- [ ] 🟡 Actions log endpoint [FR-AI-06] — 1 d
-- [ ] 🟡 Push token endpoints [APP-23] — 0.5 d
+- [ ] 🔴 Prisma models: `Subject`, `Topic`, `ScheduleEntry`, `ScheduleException`, `Todo`, `Reminder`, `Exam`, `ActionLog` — 2 d — every listed model except `Subject` and `Topic` exists
+- [ ] 🔴 CRUD: subjects, todos, reminders (+ snooze), schedule (+ exceptions), exams [FR-PRD-01/02, FR-CLS-01, FR-EXM-01] — 6 d — todos, reminders, schedule entries/exceptions and exams have routes; subjects and topics do not
+- [ ] 🔴 Time handling: UTC storage, `luxon`, `rrule` utilities with tests across DST [FR-PRD-08, DAT-03] — 3 d — recurrence is covered instead: `packages/shared/src/reminders/rrule.ts` evaluates a documented RFC 5545 subset (`FREQ=DAILY|WEEKLY|MONTHLY`, `INTERVAL`, `BYDAY`, `COUNT`, `UNTIL`) with 18 tests, refusing anything it cannot evaluate. Still missing: luxon is not used, and stepping happens in a **fixed** UTC offset taken from the user's timezone, so a rule that crosses a DST transition can land an hour off
+- [x] 🟡 Actions log endpoint [FR-AI-06] — 1 d — `GET /actions` with pagination, backed by `ActionLog`
+- [x] 🟡 Push token endpoints [APP-23] — `POST/GET/DELETE /api/v1/users/me/push-token(s)` over the new `PushToken` model (`packages/shared/src/users/push-tokens.ts`). Storage only: no sender is configured, so a stored token is not yet a delivered notification
 
 ### R2.2 Jobs and notifications
 
-- [ ] 🔴 BullMQ (or pg-boss) setup with queues `reminders`, `class-alerts` [JOB-01] — 2 d
-- [ ] 🔴 Schedule/unschedule jobs on create/edit/delete with deterministic job IDs [JOB-02] — 3 d
-- [ ] 🔴 Reminder fire: device WebSocket + Expo push + delivery status [JOB-04, FR-PRD-04] — 3 d
-- [ ] 🔴 Rebuild schedules from the database on server start [JOB-06] — 1 d
+Chosen design (instead of BullMQ/pg-boss): the database is the queue. `Reminder.nextAt`
+holds the next fire slot, an in-process tick claims due rows atomically, and delivery goes
+over the existing device WebSocket. No Redis, no extra dependency, restart-safe.
+
+- [x] 🔴 Job backend [JOB-01] — in-process `ReminderScheduler` (`apps/server/src/modules/reminders/scheduler.ts`) ticking every `REMINDER_TICK_INTERVAL_MS` (15 s default, `REMINDER_SCHEDULER_ENABLED=false` disables it). Class alerts and cleanup still have no runner
+- [x] 🔴 Schedule/unschedule on create/edit/delete [JOB-02] — replaced by a stored slot: `createReminder`/`updateReminder` compute `nextAt` from `at` + `rrule` + the user's timezone, `snoozeReminder` moves it forward, deleting the row removes it. No job IDs to keep in sync
+- [ ] 🔴 Reminder fire: device WebSocket + Expo push + delivery status [JOB-04, FR-PRD-04] — device channel done (`DeviceGateway.notifyUser` fans `reminder.fire` out to the user's sockets); **mobile push is not sent**, it only stores tokens; delivery status is the `channels` array in the `reminder fired` log line, not a persisted record
+- [x] 🔴 Rebuild schedules from the database on server start [JOB-06] — nothing to rebuild: `nextAt` lives on the row, so the first tick after boot picks up whatever is overdue. Covered by `claimDueReminders`
 - [ ] 🔴 Pre-class alerts with exception handling [FR-CLS-03] — 2 d
 - [ ] 🟡 Deadline warnings (24 h and 2 h) [FR-PRD-07] — 1 d
-- [ ] 🟡 Retry/backoff and failed-job visibility [JOB-05] — 1 d
-- [ ] 🔴 Measure reminder latency and meet the ±30 s target [JOB-10] — 1 d
-- [ ] 🔴 Queue offline events and deliver on device reconnect [GW-06] — 2 d
+- [ ] 🟡 Retry/backoff and failed-job visibility [JOB-05] — partial and deliberate: a row leaves the due set when it is claimed, so a failed delivery is logged (`reminder delivery failed`) and that fire is lost rather than retried. Add a delivery table before claiming retry semantics
+- [ ] 🔴 Measure reminder latency and meet the ±30 s target [JOB-10] — measurement in place (`latencyMs` per fire, `maxLatencyMs` per tick); the ±30 s target is unverified because nothing has been run against a real database in this session
+- [ ] 🔴 Queue offline events and deliver on device reconnect [GW-06] — 2 d (a fire while the speaker is offline is dropped)
 
 ### R2.3 Agent and tools
 
-- [ ] 🔴 Tool framework: Zod in/out, `userId` from context, action logging, step limit [AGT-04, AGT-06, AGT-09] — 3 d
-- [ ] 🔴 Tools: `get_schedule`, `create_todo`, `update_todo`, `complete_todo`, `list_todos`, `create_reminder`, `start_timer`, `create_alarm`, `create_exam`, `get_exam`, `device_show`, `device_speak` — 8 d
-- [ ] 🔴 Confirmation flag for `delete_todo`, `cancel_reminder` (basic version) — 1 d
-- [ ] 🔴 Clarifying questions for missing parameters [FR-AI-03] — 1 d
-- [ ] 🔴 Reply format: `voiceText` + `displayContent` [AGT-08] — 1 d
-- [ ] 🔴 Router v1: fallback chain Groq → Gemini → OpenRouter → Ollama; error classification [LLM-02, LLM-06] — 3 d
+- [x] 🔴 Tool framework: Zod in/out, `userId` from context, action logging, step limit [AGT-04, AGT-06, AGT-09] — 3 d — `createRoboTool` injects user/conversation context, validates input, writes `ActionLog`, and the agent uses `AI_AGENT_STEP_LIMIT`
+- [ ] 🔴 Tools: `get_schedule`, `create_todo`, `update_todo`, `complete_todo`, `list_todos`, `create_reminder`, `start_timer`, `create_alarm`, `create_exam`, `get_exam`, `device_show`, `device_speak` — 8 d — 21 tools are registered, including schedule, todos, reminders, exams, plans, analytics, contacts, documents, search, quiz and time; still missing `start_timer`, `create_alarm`, `device_show` and `device_speak`
+- [x] 🔴 Confirmation flag for `delete_todo`, `cancel_reminder` (basic version) — 1 d — first call returns a confirmation requirement; a second call with `confirm=true` executes
+- [ ] 🔴 Clarifying questions for missing parameters [FR-AI-03] — 1 d — tool descriptions ask the model to gather missing fields, but there is no deterministic clarification loop or test coverage
+- [ ] 🔴 Reply format: `voiceText` + `displayContent` [AGT-08] — 1 d — `voiceText` is generated and stored; structured `displayContent` is absent
+- [ ] 🔴 Router v1: fallback chain Groq → Gemini → OpenRouter → Ollama; error classification [LLM-02, LLM-06] — 3 d — the four-provider chain and `withFallbacks` are implemented; classification is limited to AI_* versus provider failure
 - [ ] 🔴 **Regression test set** (50+ utterances: tool choice, parameters, refusals) and runner [AGT-12] — 4 d
-- [ ] 🟡 Barge-in/interrupt handling [GW-05, FR-VOI-05] — server cancels the old reply; firmware must stop playback locally
+- [ ] 🟡 Barge-in/interrupt handling [GW-05, FR-VOI-05] — server cancels the old reply via the turn check; firmware must stop playback locally
 
 ### R2.4 Firmware
 
@@ -191,13 +195,13 @@
 ### R2.5 Mobile app
 
 - [x] 🔴 Home screen: next class, today's tasks, exam countdown [APP-03] — `app/(app)/index.tsx`: next class from the timetable, today's + overdue tasks with inline complete, soonest-exam countdown, library shortcuts
-- [x] 🔴 Tasks and reminders screens [APP-05] — `app/(app)/tasks.tsx` (filter, create with date/time via `parseDateTime`, priority, complete/reopen, delete) and `app/(app)/reminders.tsx` (snooze, channels, linked entity, delete). Recurrence picker NOT built: the `rrule` field exists on the API and type but no UI writes it
+- [x] 🔴 Tasks and reminders screens [APP-05] — `app/(app)/tasks.tsx` (filter, create with date/time via `parseDateTime`, priority, complete/reopen, delete) and `app/(app)/reminders.tsx` (snooze, channels, linked entity, delete, plus a **Repeats** picker that offers only the rules the server can evaluate: `FREQ=DAILY`, `FREQ=WEEKLY`, `FREQ=WEEKLY;BYDAY=MO,WE,FR`, `FREQ=MONTHLY`, each requiring a first date/time as its anchor)
 - [x] 🔴 Schedule screen with exceptions [APP-06] — `app/(app)/schedule.tsx`: day-grouped entries, create/edit, "Skip today" posting a schedule exception, delete
-- [ ] 🔴 Push notification registration and handling [APP-23] — 2 d (blocked: no PushToken endpoints on the server)
+- [ ] 🔴 Push notification registration and handling [APP-23] — 2 d — server side is ready (`POST/GET/DELETE /users/me/push-token`); the app still needs `expo-notifications`, the permission flow and `getExpoPushTokenAsync`, all of which require a dev build rather than Expo Go. The server also has no Expo push sender yet.
 - [ ] 🟡 Local notification fallback [APP-29] — 2 d
 - [x] 🟡 Device/connection status UI [APP-27] — `app/(app)/devices.tsx` shows per-device status pill and last-seen
 - [x] 🔴 Settings and privacy: quiet hours, data export/delete request [APP-13, FR-ACC-06] — `app/(app)/settings.tsx`: identity, quiet hours, wake phrase, nudges (0–20 per day, matching the server's zod bound), cloud-AI-for-docs, export via the system share sheet with oversize handling, two-step delete + sign out
-- [ ] 🔴 Account deletion job (PostgreSQL, files, later vectors) [FR-ACC-06] — 2 d
+- [ ] 🔴 Account deletion job (PostgreSQL, files, later vectors) [FR-ACC-06] — 2 d — `DELETE /users/me` deletes the user row and cascades in PostgreSQL; files and vectors are not cleaned up
 
 ### R2.6 Release
 
@@ -257,7 +261,7 @@
 ### R3.5 Mobile app
 
 - [x] 🔴 Documents screen: upload (files), subjects, status, delete [APP-08] — `app/(app)/documents.tsx` uploads via `expo-document-picker` + multipart `POST /documents/upload`. Photo capture and indexing are outstanding: the server writes only document metadata — it never stores bytes to object storage and never enqueues chunking, so `status` cannot advance and `chunkCount` stays 0
-- [x] 🔴 Exams and plan screen with approve/edit [APP-07] — `app/(app)/exams.tsx`: exam list with countdowns, activate (draft → active), generate plan, approve plan by PLAN id, readiness bar
+- [x] 🔴 Exams and plan screen with approve/edit [APP-07] — `app/(app)/exams.tsx`: exam list with countdowns, activate (draft → active), generate plan, approve plan by PLAN id, readiness bar. Approval is currently cosmetic: the server marks daily tasks complete instead of creating todos/reminders.
 - [ ] 🔴 Quiz runner and history [APP-09] — 4 d (blocked: `generateQuiz` in `packages/shared/src/quizzes/index.ts` inserts placeholder questions — "Question N about X" with "Option A" always correct — so there is nothing real to take)
 - [ ] 🔴 Chat: rich cards (plans, quizzes, tappable citations) — 3 d
 - [ ] 🟡 i18n and right-to-left support [APP-28] — 3 d
@@ -274,9 +278,9 @@
 
 **Exit criteria:** no call or message executes without confirmation; zero wrong-recipient cases in tests.
 
-- [ ] 🔴 `Contact` and `PendingAction` models, API, expiry job (5 min) [API-12] — 3 d — `Contact` model + CRUD API are live (`modules/contacts`); **`PendingAction` does not exist** in `apps/server/prisma/schema.prisma`, which is what blocks the confirm rows below
+- [ ] 🔴 `Contact` and `PendingAction` models, API, expiry job (5 min) [API-12] — 3 d — `Contact` model plus create/list/delete API exist (`modules/contacts`); contact **update** and **`PendingAction`** are missing, which blocks the confirm rows below
 - [ ] 🔴 Contact import from phone with consent; groups [FR-COM-01, APP-10] — `app/(app)/contacts.tsx` does manual create, group headers, delete and `tel:` / `sms:` / `mailto:` actions via `Linking`; importing from the device address book (needs `expo-contacts` + an EAS dev build) is still pending
-- [ ] 🔴 `find_contact` with ambiguity handling [FR-COM-05] — 2 d
+- [ ] 🔴 `find_contact` with ambiguity handling [FR-COM-05] — 2 d — `find_contact` filters by name/phone/email/group and returns every match; a deterministic ambiguity prompt/test is still missing
 - [ ] 🔴 LangGraph human-in-the-loop pause/resume for confirmable tools [AGT-05] — 4 d
 - [ ] 🔴 App WebSocket + push for `action.confirm.request` / `action.execute` [GW-02, APP-24] — 4 d
 - [ ] 🔴 `prepare_call` → confirm → `tel:` dialer [FR-COM-02, APP-25] — 2 d (the `tel:` dialer side is done in `contacts.tsx`; the agent-side prepare/confirm half needs `PendingAction`)
@@ -299,7 +303,7 @@
 
 ### R5.1 Study mode
 
-- [ ] 🔴 `StudySession` model, API (start, pause, resume, extend, end) [FR-STM-01/04/06] — 3 d
+- [ ] 🔴 `StudySession` model, API (start, pause, resume, extend, end) [FR-STM-01/04/06] — 3 d — the model exists and export/analytics read it, but there are no start/pause/resume/extend/end routes
 - [ ] 🔴 Tools `start_study_session` / `end_study_session` [FR-STM-01] — 2 d
 - [ ] 🔴 Device: timer screen, end announcement, break suggestion [FR-STM-02/03] — 4 d
 - [ ] 🔴 App session screen mirroring the device [APP-11] — 3 d
@@ -309,7 +313,7 @@
 ### R5.2 Analytics and proactivity
 
 - [ ] 🔴 `DailyStats` model and nightly aggregation job [JOB-07, FR-ANL-01] — 3 d — still needed: `getAnalyticsSummary` counts live rows instead of reading aggregates, which is why four of its six fields are effectively always 0 (see below)
-- [ ] 🔴 `get_analytics` tool and weekly summaries [FR-ANL-02] — 2 d
+- [ ] 🔴 `get_analytics` tool and weekly summaries [FR-ANL-02] — 2 d — `get_analytics_summary` exists for day/week/month/year, but it reads stub metrics; there are no generated weekly summaries
 - [x] 🟡 Insights screen in app [APP-12, FR-ANL-05] — `app/(app)/insights.tsx` renders `GET /analytics/summary` with a day/week/month/year picker, and `app/(app)/activity.tsx` renders `GET /actions` with safe `unknown` payload dumps. **The screen is honest but mostly zeros**: `streakDays` is hardcoded `0` (`packages/shared/src/analytics/index.ts:100`), `totalStudyHours` is `sessions * 0.5` from `StudySession` rows that nothing creates, `completedTasks` filters on `Todo.completedAt` which `completeTodo` never writes (it only sets `status`), and `upcomingExams` counts `status: "active"` exams while `createExam` hardcodes `"draft"`. Only `activeReminders` (not range-scoped) and `completedQuizzes` are real. Charts are not drawn — stat cards only
 - [ ] 🟡 Trends per subject [FR-ANL-03] — 2 d (`GET /analytics/subjects/:id` exists server-side but its handler returns placeholder values, and the mobile `analyticsApi` slice exposes only the summary hook)
 - [ ] 🟡 Nudge rules engine with quiet hours and daily caps [JOB-08, FR-ANL-04] — 4 d

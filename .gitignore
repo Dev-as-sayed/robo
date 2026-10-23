@@ -25,6 +25,7 @@ playwright-report/
 .DS_Store
 .idea/
 .vscode/
+.qoder/
 *.swp
 
 # Runtime files
