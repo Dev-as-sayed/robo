@@ -1,0 +1,459 @@
+{
+  "version": 1,
+  "description": "Synthetic retrieval evaluation set. expectedSource is the document filename; expectedTerms are terms that must appear in the winning passages.",
+  "questions": [
+    {
+      "id": "bio-1",
+      "question": "What is photosynthesis?",
+      "expectedSource": "biology-101.pdf",
+      "expectedTerms": [
+        "photosynthesis",
+        "chloroplast"
+      ]
+    },
+    {
+      "id": "bio-2",
+      "question": "Which organelle performs photosynthesis?",
+      "expectedSource": "biology-101.pdf",
+      "expectedTerms": [
+        "chloroplast"
+      ]
+    },
+    {
+      "id": "bio-3",
+      "question": "What pigment absorbs light in plants?",
+      "expectedSource": "biology-101.pdf",
+      "expectedTerms": [
+        "chlorophyll"
+      ]
+    },
+    {
+      "id": "bio-4",
+      "question": "What are the products of photosynthesis?",
+      "expectedSource": "biology-101.pdf",
+      "expectedTerms": [
+        "glucose",
+        "oxygen"
+      ]
+    },
+    {
+      "id": "bio-5",
+      "question": "What is cellular respiration?",
+      "expectedSource": "biology-101.pdf",
+      "expectedTerms": [
+        "respiration",
+        "ATP"
+      ]
+    },
+    {
+      "id": "bio-6",
+      "question": "Where does glycolysis happen?",
+      "expectedSource": "biology-101.pdf",
+      "expectedTerms": [
+        "glycolysis",
+        "cytoplasm"
+      ]
+    },
+    {
+      "id": "bio-7",
+      "question": "What is the role of mitochondria?",
+      "expectedSource": "biology-101.pdf",
+      "expectedTerms": [
+        "mitochondria",
+        "ATP"
+      ]
+    },
+    {
+      "id": "bio-8",
+      "question": "How do enzymes speed up reactions?",
+      "expectedSource": "biology-101.pdf",
+      "expectedTerms": [
+        "enzyme",
+        "activation"
+      ]
+    },
+    {
+      "id": "bio-9",
+      "question": "What is diffusion?",
+      "expectedSource": "biology-101.pdf",
+      "expectedTerms": [
+        "diffusion",
+        "concentration"
+      ]
+    },
+    {
+      "id": "bio-10",
+      "question": "What is osmosis?",
+      "expectedSource": "biology-101.pdf",
+      "expectedTerms": [
+        "osmosis",
+        "water"
+      ]
+    },
+    {
+      "id": "chem-1",
+      "question": "What is the atomic number?",
+      "expectedSource": "chemistry-notes.pdf",
+      "expectedTerms": [
+        "atomic",
+        "protons"
+      ]
+    },
+    {
+      "id": "chem-2",
+      "question": "How many electrons does carbon have?",
+      "expectedSource": "chemistry-notes.pdf",
+      "expectedTerms": [
+        "carbon",
+        "electrons"
+      ]
+    },
+    {
+      "id": "chem-3",
+      "question": "What is an ionic bond?",
+      "expectedSource": "chemistry-notes.pdf",
+      "expectedTerms": [
+        "ionic",
+        "electrons"
+      ]
+    },
+    {
+      "id": "chem-4",
+      "question": "What is a covalent bond?",
+      "expectedSource": "chemistry-notes.pdf",
+      "expectedTerms": [
+        "covalent",
+        "shared"
+      ]
+    },
+    {
+      "id": "chem-5",
+      "question": "How do you balance a chemical equation?",
+      "expectedSource": "chemistry-notes.pdf",
+      "expectedTerms": [
+        "balance",
+        "equation"
+      ]
+    },
+    {
+      "id": "chem-6",
+      "question": "What is the mole?",
+      "expectedSource": "chemistry-notes.pdf",
+      "expectedTerms": [
+        "mole",
+        "Avogadro"
+      ]
+    },
+    {
+      "id": "chem-7",
+      "question": "What is pH?",
+      "expectedSource": "chemistry-notes.pdf",
+      "expectedTerms": [
+        "pH",
+        "hydrogen"
+      ]
+    },
+    {
+      "id": "chem-8",
+      "question": "What happens in an acid-base reaction?",
+      "expectedSource": "chemistry-notes.pdf",
+      "expectedTerms": [
+        "acid",
+        "base"
+      ]
+    },
+    {
+      "id": "chem-9",
+      "question": "What is oxidation?",
+      "expectedSource": "chemistry-notes.pdf",
+      "expectedTerms": [
+        "oxidation",
+        "electrons"
+      ]
+    },
+    {
+      "id": "chem-10",
+      "question": "What is the periodic table?",
+      "expectedSource": "chemistry-notes.pdf",
+      "expectedTerms": [
+        "periodic",
+        "elements"
+      ]
+    },
+    {
+      "id": "phys-1",
+      "question": "State Newton's first law.",
+      "expectedSource": "physics-formulas.pdf",
+      "expectedTerms": [
+        "Newton",
+        "inertia"
+      ]
+    },
+    {
+      "id": "phys-2",
+      "question": "What is Newton's second law?",
+      "expectedSource": "physics-formulas.pdf",
+      "expectedTerms": [
+        "force",
+        "mass",
+        "acceleration"
+      ]
+    },
+    {
+      "id": "phys-3",
+      "question": "What does Newton's third law say?",
+      "expectedSource": "physics-formulas.pdf",
+      "expectedTerms": [
+        "action",
+        "reaction"
+      ]
+    },
+    {
+      "id": "phys-4",
+      "question": "What is the formula for kinetic energy?",
+      "expectedSource": "physics-formulas.pdf",
+      "expectedTerms": [
+        "kinetic",
+        "energy"
+      ]
+    },
+    {
+      "id": "phys-5",
+      "question": "What is gravitational potential energy?",
+      "expectedSource": "physics-formulas.pdf",
+      "expectedTerms": [
+        "potential",
+        "gravity"
+      ]
+    },
+    {
+      "id": "phys-6",
+      "question": "What is Ohm's law?",
+      "expectedSource": "physics-formulas.pdf",
+      "expectedTerms": [
+        "Ohm",
+        "voltage",
+        "current"
+      ]
+    },
+    {
+      "id": "phys-7",
+      "question": "How do you calculate power?",
+      "expectedSource": "physics-formulas.pdf",
+      "expectedTerms": [
+        "power",
+        "work",
+        "time"
+      ]
+    },
+    {
+      "id": "phys-8",
+      "question": "What is momentum?",
+      "expectedSource": "physics-formulas.pdf",
+      "expectedTerms": [
+        "momentum",
+        "mass",
+        "velocity"
+      ]
+    },
+    {
+      "id": "phys-9",
+      "question": "What is the speed of light?",
+      "expectedSource": "physics-formulas.pdf",
+      "expectedTerms": [
+        "light",
+        "speed"
+      ]
+    },
+    {
+      "id": "phys-10",
+      "question": "What is a wavelength?",
+      "expectedSource": "physics-formulas.pdf",
+      "expectedTerms": [
+        "wavelength",
+        "wave"
+      ]
+    },
+    {
+      "id": "hist-1",
+      "question": "When did World War II begin?",
+      "expectedSource": "history-ww2.pdf",
+      "expectedTerms": [
+        "1939",
+        "war"
+      ]
+    },
+    {
+      "id": "hist-2",
+      "question": "What was the Treaty of Versailles?",
+      "expectedSource": "history-ww2.pdf",
+      "expectedTerms": [
+        "Versailles",
+        "treaty"
+      ]
+    },
+    {
+      "id": "hist-3",
+      "question": "Who was Adolf Hitler?",
+      "expectedSource": "history-ww2.pdf",
+      "expectedTerms": [
+        "Hitler",
+        "Germany"
+      ]
+    },
+    {
+      "id": "hist-4",
+      "question": "What was the Holocaust?",
+      "expectedSource": "history-ww2.pdf",
+      "expectedTerms": [
+        "Holocaust",
+        "Jews"
+      ]
+    },
+    {
+      "id": "hist-5",
+      "question": "What was D-Day?",
+      "expectedSource": "history-ww2.pdf",
+      "expectedTerms": [
+        "D-Day",
+        "Normandy"
+      ]
+    },
+    {
+      "id": "hist-6",
+      "question": "What was the Manhattan Project?",
+      "expectedSource": "history-ww2.pdf",
+      "expectedTerms": [
+        "Manhattan",
+        "atomic"
+      ]
+    },
+    {
+      "id": "hist-7",
+      "question": "Why did the United States enter the war?",
+      "expectedSource": "history-ww2.pdf",
+      "expectedTerms": [
+        "Pearl Harbor",
+        "United States"
+      ]
+    },
+    {
+      "id": "hist-8",
+      "question": "What was the Cold War?",
+      "expectedSource": "history-ww2.pdf",
+      "expectedTerms": [
+        "Cold War",
+        "Soviet"
+      ]
+    },
+    {
+      "id": "hist-9",
+      "question": "What was the Marshall Plan?",
+      "expectedSource": "history-ww2.pdf",
+      "expectedTerms": [
+        "Marshall",
+        "Europe"
+      ]
+    },
+    {
+      "id": "hist-10",
+      "question": "When did World War II end?",
+      "expectedSource": "history-ww2.pdf",
+      "expectedTerms": [
+        "1945",
+        "end"
+      ]
+    },
+    {
+      "id": "calc-1",
+      "question": "What is a derivative?",
+      "expectedSource": "calculus-textbook.pdf",
+      "expectedTerms": [
+        "derivative",
+        "rate"
+      ]
+    },
+    {
+      "id": "calc-2",
+      "question": "What is a limit?",
+      "expectedSource": "calculus-textbook.pdf",
+      "expectedTerms": [
+        "limit",
+        "approach"
+      ]
+    },
+    {
+      "id": "calc-3",
+      "question": "State the power rule.",
+      "expectedSource": "calculus-textbook.pdf",
+      "expectedTerms": [
+        "power rule",
+        "exponent"
+      ]
+    },
+    {
+      "id": "calc-4",
+      "question": "What is the chain rule?",
+      "expectedSource": "calculus-textbook.pdf",
+      "expectedTerms": [
+        "chain rule",
+        "composite"
+      ]
+    },
+    {
+      "id": "calc-5",
+      "question": "What is an integral?",
+      "expectedSource": "calculus-textbook.pdf",
+      "expectedTerms": [
+        "integral",
+        "area"
+      ]
+    },
+    {
+      "id": "calc-6",
+      "question": "What is the fundamental theorem of calculus?",
+      "expectedSource": "calculus-textbook.pdf",
+      "expectedTerms": [
+        "fundamental theorem",
+        "derivative",
+        "integral"
+      ]
+    },
+    {
+      "id": "calc-7",
+      "question": "How do you find a local maximum?",
+      "expectedSource": "calculus-textbook.pdf",
+      "expectedTerms": [
+        "maximum",
+        "critical"
+      ]
+    },
+    {
+      "id": "calc-8",
+      "question": "What is a definite integral?",
+      "expectedSource": "calculus-textbook.pdf",
+      "expectedTerms": [
+        "definite",
+        "bounds"
+      ]
+    },
+    {
+      "id": "calc-9",
+      "question": "What is the product rule?",
+      "expectedSource": "calculus-textbook.pdf",
+      "expectedTerms": [
+        "product rule",
+        "derivative"
+      ]
+    },
+    {
+      "id": "calc-10",
+      "question": "What does the second derivative tell you?",
+      "expectedSource": "calculus-textbook.pdf",
+      "expectedTerms": [
+        "concavity",
+        "second derivative"
+      ]
+    }
+  ]
+}

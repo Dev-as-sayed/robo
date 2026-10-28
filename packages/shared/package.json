@@ -17,11 +17,23 @@
     "./reminders": "./src/reminders/index.ts",
     "./exams": "./src/exams/index.ts",
     "./documents": "./src/documents/index.ts",
+    "./consents": "./src/consents/index.ts",
     "./quizzes": "./src/quizzes/index.ts",
     "./contacts": "./src/contacts/index.ts",
+    "./subjects": "./src/subjects/index.ts",
     "./analytics": "./src/analytics/index.ts",
     "./chat": "./src/chat/index.ts",
-    "./action-logs": "./src/action-logs/index.ts"
+    "./action-logs": "./src/action-logs/index.ts",
+    "./realtime/pending": "./src/realtime/pending.ts",
+    "./sessions": "./src/sessions/index.ts",
+    "./pending-actions": "./src/pending-actions/index.ts",
+    "./nudges": "./src/nudges/index.ts",
+    "./planner": "./src/planner/index.ts",
+    "./ai-usage": "./src/ai-usage/index.ts",
+    "./memories": "./src/memories/index.ts",
+    "./class-notes": "./src/class-notes/index.ts",
+    "./maintenance": "./src/maintenance/index.ts",
+    "./lib/prisma": "./src/lib/prisma.ts"
   },
   "scripts": {
     "build": "tsc --build",
@@ -34,11 +46,13 @@
     "jsonwebtoken": "^9.0.2",
     "prisma": "^5.19.0",
     "uuid": "^11.1.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "luxon": "^3.5.0"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.14.9",
-    "typescript": "^5.5.2"
+    "typescript": "^5.5.2",
+    "@types/luxon": "^3.4.2"
   }
 }

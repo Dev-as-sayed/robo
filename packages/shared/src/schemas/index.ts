@@ -162,6 +162,19 @@ export const actionLogQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
+export const startStudySessionSchema = z.object({
+  subject: z.string().trim().min(1).max(100).optional(),
+  plannedMinutes: z.number().int().min(5).max(480).optional(),
+});
+
+export const extendStudySessionSchema = z.object({
+  minutes: z.number().int().min(1).max(180),
+});
+
+export const studySessionQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
 export const createTodoSchema = z.object({
   title: z.string().min(1).max(200),
   due: z.coerce.date().optional(),
@@ -210,6 +223,19 @@ export const registerPushTokenSchema = z.object({
   platform: z.enum(["ios", "android"]),
 });
 
+export const consentKindSchema = z.enum([
+  "MICROPHONE",
+  "CONTACTS",
+  "DOCUMENTS",
+  "CLOUD_AI",
+]);
+
+export const updateConsentSchema = z.object({
+  granted: z.boolean(),
+  policyVersion: z.string().trim().min(1).max(40).optional(),
+  source: z.string().trim().min(1).max(80).optional(),
+});
+
 export const createExamSchema = z.object({
   subject: z.string().min(1).max(100),
   date: z.coerce.date(),
@@ -251,8 +277,116 @@ export const createContactSchema = z.object({
   group: z.string().max(100).optional(),
 });
 
+export const updateContactSchema = createContactSchema.partial();
+
+export const createSubjectSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Expected a #RRGGBB color").optional(),
+});
+
+export const updateSubjectSchema = createSubjectSchema.partial();
+
+export const subjectParamSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export const createTopicSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  masteryScore: z.number().int().min(0).max(100).optional(),
+});
+
+export const updateTopicSchema = createTopicSchema.partial();
+
+export const topicParamSchema = z.object({
+  id: z.string().uuid(),
+  topicId: z.string().uuid(),
+});
+
 export const analyticsQuerySchema = z.object({
   range: z.enum(["day", "week", "month", "year"]).default("week"),
+});
+
+export const memoryCategorySchema = z.enum([
+  "general",
+  "preference",
+  "fact",
+  "goal",
+  "study",
+]);
+
+export const createMemorySchema = z.object({
+  content: z.string().trim().min(1).max(1000),
+  category: memoryCategorySchema.optional(),
+});
+
+export const updateMemorySchema = z
+  .object({
+    content: z.string().trim().min(1).max(1000).optional(),
+    category: memoryCategorySchema.optional(),
+  })
+  .refine((value) => value.content !== undefined || value.category !== undefined, {
+    message: "Provide content or category",
+  });
+
+export const memoryQuerySchema = z.object({
+  category: memoryCategorySchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+export const createClassNoteSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    subject: z.string().trim().min(1).max(100).optional(),
+    content: z.string().trim().min(1).max(10000),
+    classAt: z.string().datetime({ offset: true }).optional(),
+    scheduleEntryId: z.string().uuid().optional(),
+  })
+  .refine((value) => Boolean(value.title || value.scheduleEntryId), {
+    message: "Provide a title or scheduleEntryId",
+  });
+
+export const updateClassNoteSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    subject: z.string().trim().max(100).optional(),
+    content: z.string().trim().min(1).max(10000).optional(),
+    classAt: z.string().datetime({ offset: true }).optional(),
+  })
+  .refine((value) => Object.values(value).some((item) => item !== undefined), {
+    message: "Provide at least one field",
+  });
+
+export const classNoteQuerySchema = z.object({
+  subject: z.string().trim().min(1).max(100).optional(),
+  search: z.string().trim().min(1).max(200).optional(),
+  from: z.string().datetime({ offset: true }).optional(),
+  to: z.string().datetime({ offset: true }).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+export const documentUploadUrlSchema = z.object({
+  originalName: z.string().trim().min(1).max(255),
+  mimeType: z.string().trim().min(1).max(200),
+  size: z.number().int().positive(),
+  subject: z.string().trim().min(1).max(100).optional(),
+});
+
+export const completeDocumentUploadSchema = z.object({
+  size: z.number().int().positive().optional(),
+  checksum: z
+    .string()
+    .trim()
+    .regex(/^[a-f0-9]{64}$/i, "checksum must be a SHA-256 hex digest")
+    .optional(),
+});
+
+export const documentUploadSchema = z.object({
+  subject: z.string().trim().min(1).max(100).optional(),
+  file: z.any().describe("Binary document file"),
+});
+
+export const documentParamSchema = z.object({
+  id: z.string().uuid(),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
@@ -274,11 +408,29 @@ export type DevicePairingInput = z.infer<typeof devicePairingSchema>;
 export type PairDeviceInput = z.infer<typeof pairDeviceSchema>;
 export type UpdateDeviceInput = z.infer<typeof updateDeviceSchema>;
 export type DeviceParamInput = z.infer<typeof deviceParamSchema>;
+export type DocumentUploadUrlInput = z.infer<typeof documentUploadUrlSchema>;
+export type CompleteDocumentUploadInput = z.infer<typeof completeDocumentUploadSchema>;
+export type DocumentParamInput = z.infer<typeof documentParamSchema>;
+export const explainImageSchema = z.object({
+  imageBase64: z
+    .string()
+    .min(100)
+    .max(6_990_516)
+    .regex(/^[A-Za-z0-9+/=]+$/, "Invalid image data"),
+  mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  question: z.string().trim().min(1).max(1_000).optional(),
+});
+
+export type ExplainImageInput = z.infer<typeof explainImageSchema>;
+
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
 export type ChatConversationParamInput = z.infer<typeof chatConversationParamSchema>;
 export type ChatConversationQueryInput = z.infer<typeof chatConversationQuerySchema>;
 export type ChatMessageQueryInput = z.infer<typeof chatMessageQuerySchema>;
 export type ActionLogQueryInput = z.infer<typeof actionLogQuerySchema>;
+export type StartStudySessionInput = z.infer<typeof startStudySessionSchema>;
+export type ExtendStudySessionInput = z.infer<typeof extendStudySessionSchema>;
+export type StudySessionQueryInput = z.infer<typeof studySessionQuerySchema>;
 export type QuietHoursInput = z.infer<typeof quietHoursSchema>;
 export type CreateTodoInput = z.infer<typeof createTodoSchema>;
 export type UpdateTodoInput = z.infer<typeof updateTodoSchema>;
@@ -288,10 +440,25 @@ export type ScheduleExceptionInput = z.infer<typeof scheduleExceptionSchema>;
 export type CreateReminderInput = z.infer<typeof createReminderSchema>;
 export type UpdateReminderInput = z.infer<typeof updateReminderSchema>;
 export type RegisterPushTokenInput = z.infer<typeof registerPushTokenSchema>;
+export type ConsentKindInput = z.infer<typeof consentKindSchema>;
+export type UpdateConsentInput = z.infer<typeof updateConsentSchema>;
 export type CreateExamInput = z.infer<typeof createExamSchema>;
 export type UpdateExamInput = z.infer<typeof updateExamSchema>;
 export type GenerateStudyPlanInput = z.infer<typeof generateStudyPlanSchema>;
 export type GenerateQuizInput = z.infer<typeof generateQuizSchema>;
 export type SubmitQuizAttemptInput = z.infer<typeof submitQuizAttemptSchema>;
 export type CreateContactInput = z.infer<typeof createContactSchema>;
+export type UpdateContactInput = z.infer<typeof updateContactSchema>;
+export type CreateSubjectInput = z.infer<typeof createSubjectSchema>;
+export type UpdateSubjectInput = z.infer<typeof updateSubjectSchema>;
+export type SubjectParamInput = z.infer<typeof subjectParamSchema>;
+export type CreateTopicInput = z.infer<typeof createTopicSchema>;
+export type UpdateTopicInput = z.infer<typeof updateTopicSchema>;
+export type TopicParamInput = z.infer<typeof topicParamSchema>;
 export type AnalyticsQueryInput = z.infer<typeof analyticsQuerySchema>;
+export type CreateMemoryInput = z.infer<typeof createMemorySchema>;
+export type UpdateMemoryInput = z.infer<typeof updateMemorySchema>;
+export type MemoryQueryInput = z.infer<typeof memoryQuerySchema>;
+export type CreateClassNoteInput = z.infer<typeof createClassNoteSchema>;
+export type UpdateClassNoteInput = z.infer<typeof updateClassNoteSchema>;
+export type ClassNoteQueryInput = z.infer<typeof classNoteQuerySchema>;

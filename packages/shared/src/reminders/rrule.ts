@@ -1,15 +1,16 @@
+import { DateTime } from "luxon";
+
 /**
- * A deliberately small, dependency-free subset of RFC 5545 recurrence rules.
+ * A deliberately small subset of RFC 5545 recurrence rules.
  *
  * Supported: FREQ=DAILY|WEEKLY|MONTHLY, INTERVAL, BYDAY (WEEKLY only), COUNT, UNTIL.
  * A rule containing anything it does not understand returns null, so callers fall
  * back to a one-off reminder instead of silently mis-firing.
  *
- * Recurrence is defined against a wall clock, so every entry point takes an explicit
- * `offsetMinutes` (minutes ahead of UTC) for the zone the rule was authored in. All
- * stepping happens in "wall milliseconds" — an instant shifted so that its UTC
- * getters read the local date and time. A fixed offset means a rule spanning a DST
- * transition can land an hour off; that is the accepted cost of no timezone library.
+ * Recurrence is defined against a wall clock. Passing `timezone` makes stepping
+ * DST-correct: each occurrence is rebuilt from local calendar parts in that IANA
+ * zone. `offsetMinutes` remains for callers that only have a fixed offset and for
+ * the existing stored rules.
  */
 
 export type RruleFreq = "DAILY" | "WEEKLY" | "MONTHLY";
@@ -125,6 +126,45 @@ function instantFromWallMs(wallMs: number, offsetMinutes: number): Date {
   return new Date(wallMs - offsetMinutes * MINUTE_MS);
 }
 
+/** Local calendar parts encoded as if they were UTC, so day stepping stays simple. */
+function localWallMs(instant: Date, timezone: string): number {
+  const local = DateTime.fromJSDate(instant, { zone: timezone });
+  if (!local.isValid) return instant.getTime();
+
+  return Date.UTC(
+    local.year,
+    local.month - 1,
+    local.day,
+    local.hour,
+    local.minute,
+    local.second,
+    local.millisecond
+  );
+}
+
+/**
+ * Rebuilds an instant from local wall parts in `timezone`. Luxon applies the offset
+ * that is in force on that date, which is what keeps a daily 09:00 reminder at 09:00
+ * across a DST transition instead of drifting to 08:00 or 10:00.
+ */
+function instantFromLocalWallMs(wallMs: number, timezone: string): Date {
+  const wall = new Date(wallMs);
+  const local = DateTime.fromObject(
+    {
+      year: wall.getUTCFullYear(),
+      month: wall.getUTCMonth() + 1,
+      day: wall.getUTCDate(),
+      hour: wall.getUTCHours(),
+      minute: wall.getUTCMinutes(),
+      second: wall.getUTCSeconds(),
+      millisecond: wall.getUTCMilliseconds(),
+    },
+    { zone: timezone }
+  );
+
+  return local.isValid ? local.toJSDate() : new Date(wallMs);
+}
+
 /** Monday-anchored, matching how school timetables group a week. */
 function weekStartWallMs(wallMs: number): number {
   const dayStart = Math.floor(wallMs / DAY_MS) * DAY_MS;
@@ -146,6 +186,8 @@ export interface OccurrencesInput {
   /** The rule's anchor, usually the reminder's original `at`. */
   dtstart: Date;
   offsetMinutes: number;
+  /** IANA zone used for DST-correct wall-clock stepping. */
+  timezone?: string;
   /** Emit at most this many occurrences; defaults to MAX_OCCURRENCES. */
   limit?: number;
 }
@@ -156,14 +198,21 @@ export interface OccurrencesInput {
  * earlier occurrences are already in the past.
  */
 export function occurrences(input: OccurrencesInput): Date[] {
-  const { rrule, dtstart, offsetMinutes } = input;
+  const { rrule, dtstart, offsetMinutes, timezone } = input;
   const rule = parseRrule(rrule, offsetMinutes);
   if (!rule) return [];
 
-  const startWallMs = wallMsOf(dtstart, offsetMinutes);
+  const startWallMs = timezone
+    ? localWallMs(dtstart, timezone)
+    : wallMsOf(dtstart, offsetMinutes);
   const clock = timeOfDayMs(startWallMs);
   const cap = Math.min(input.limit ?? MAX_OCCURRENCES, MAX_OCCURRENCES);
   const found: number[] = [];
+
+  const toInstant = (wallMs: number): Date =>
+    timezone
+      ? instantFromLocalWallMs(wallMs, timezone)
+      : instantFromWallMs(wallMs, offsetMinutes);
 
   for (let step = 0; step < MAX_OCCURRENCES && found.length < cap; step += 1) {
     const candidates = candidatesFor(rule, startWallMs, step);
@@ -172,18 +221,18 @@ export function occurrences(input: OccurrencesInput): Date[] {
       const wallMs = candidate + clock;
       if (wallMs < startWallMs) continue;
       if (rule.untilWallMs !== null && wallMs > rule.untilWallMs) {
-        return found.map(ms => instantFromWallMs(ms, offsetMinutes));
+        return found.map(toInstant);
       }
 
       found.push(wallMs);
 
       if (rule.count !== null && found.length >= rule.count) {
-        return found.map(ms => instantFromWallMs(ms, offsetMinutes));
+        return found.map(toInstant);
       }
     }
   }
 
-  return found.map(ms => instantFromWallMs(ms, offsetMinutes));
+  return found.map(toInstant);
 }
 
 /**
@@ -227,6 +276,8 @@ export interface NextOccurrenceInput {
   /** Only occurrences strictly after this instant are considered. */
   after: Date;
   offsetMinutes: number;
+  /** IANA zone used for DST-correct wall-clock stepping. */
+  timezone?: string;
 }
 
 /** The first occurrence strictly after `after`, or null when the rule is exhausted. */

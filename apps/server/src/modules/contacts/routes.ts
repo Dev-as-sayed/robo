@@ -1,6 +1,11 @@
 import { Router } from "express";
-import { createContactSchema } from "@robo/shared/schemas";
-import { createContact, deleteContact, getContacts } from "@robo/shared/contacts";
+import { createContactSchema, updateContactSchema } from "@robo/shared/schemas";
+import {
+  createContact,
+  deleteContact,
+  getContacts,
+  updateContact,
+} from "@robo/shared/contacts";
 import { asyncHandler } from "../../http/async-handler";
 import { sendSuccess } from "../../http/response";
 import { authenticate } from "../../middleware/authenticate";
@@ -27,6 +32,20 @@ router.post(
       status: 201,
       code: "CONTACT_CREATED",
       message: "Contact created successfully",
+      data: { contact },
+    });
+  })
+);
+
+router.patch(
+  "/:id",
+  authenticate,
+  validate({ body: updateContactSchema }),
+  asyncHandler(async (req, res) => {
+    const contact = await updateContact(req.user!.id, req.params.id, req.body);
+    sendSuccess(res, {
+      code: "CONTACT_UPDATED",
+      message: "Contact updated successfully",
       data: { contact },
     });
   })

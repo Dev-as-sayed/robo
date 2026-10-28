@@ -11,7 +11,8 @@ import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import type { ChatMessage } from "@robo/shared/chat";
 import { env } from "../../config/env";
 import logger from "../../lib/logger";
-import { getChatModels } from "./llm-router";
+import { getChatModels, type ChatTask } from "./llm-router";
+import { classifyProviderError, toProviderError } from "./provider-errors";
 import { getTraceCallbacks } from "./observability";
 import { buildAgentSystemPrompt, buildHistoryMessages, extractAssistantText } from "./prompt";
 import { buildTools } from "./tools";
@@ -29,11 +30,18 @@ export interface RunAgentInput {
   };
   now?: Date;
   signal?: AbortSignal;
+  task?: ChatTask;
+}
+
+export interface AgentToolCall {
+  name: string;
+  args: unknown;
 }
 
 export interface RunAgentResult {
   content: string;
   toolCallCount: number;
+  toolCalls: AgentToolCall[];
   model?: string;
   usage?: unknown;
 }
@@ -58,8 +66,11 @@ async function getCheckpointer(): Promise<PostgresSaver> {
   return checkpointerSetup;
 }
 
-function bindToolsWithFallbacks(tools: StructuredToolInterface[]) {
-  const models = getChatModels("agent_tools");
+function bindToolsWithFallbacks(
+  tools: StructuredToolInterface[],
+  task: ChatTask = "agent_tools"
+) {
+  const models = getChatModels(task);
 
   if (models.length === 0) {
     throw new Error("AI_NOT_CONFIGURED");
@@ -107,7 +118,7 @@ async function prepareAgent(input: RunAgentInput) {
     now,
   });
 
-  const llm = bindToolsWithFallbacks(tools);
+  const llm = bindToolsWithFallbacks(tools, input.task ?? "agent_tools");
   const saver = await getCheckpointer();
   const callbacks = await getTraceCallbacks({
     userId: input.userId,
@@ -150,14 +161,22 @@ function buildAgentResult(
     throw new Error("AI_EMPTY_RESPONSE");
   }
 
-  const toolCallCount = resultMessages.reduce((count, message) => {
-    if (message.getType() !== "ai") {
-      return count;
-    }
+  const toolCalls: AgentToolCall[] = [];
+  for (const message of resultMessages) {
+    if (message.getType() !== "ai") continue;
+    const calls = (message as { tool_calls?: unknown[] }).tool_calls;
+    if (!Array.isArray(calls)) continue;
 
-    const toolCalls = (message as { tool_calls?: unknown[] }).tool_calls;
-    return count + (Array.isArray(toolCalls) ? toolCalls.length : 0);
-  }, 0);
+    for (const call of calls) {
+      const record =
+        call && typeof call === "object"
+          ? (call as Record<string, unknown>)
+          : null;
+      if (!record || typeof record.name !== "string") continue;
+      toolCalls.push({ name: record.name, args: record.args ?? {} });
+    }
+  }
+  const toolCallCount = toolCalls.length;
 
   const lastAiMessage = [...resultMessages]
     .reverse()
@@ -181,6 +200,7 @@ function buildAgentResult(
   return {
     content,
     toolCallCount,
+    toolCalls,
     model: typeof metadata?.model_name === "string" ? metadata.model_name : undefined,
     usage: (lastAiMessage as { usage_metadata?: unknown } | undefined)?.usage_metadata,
   };
@@ -192,10 +212,15 @@ function agentFailure(error: unknown, input: RunAgentInput): never {
   }
 
   logger.warn(
-    { err: error, userId: input.userId, conversationId: input.conversationId },
+    {
+      err: error,
+      userId: input.userId,
+      conversationId: input.conversationId,
+      providerError: classifyProviderError(error),
+    },
     "AI agent request failed"
   );
-  throw new Error("AI_PROVIDER_UNAVAILABLE");
+  throw toProviderError(error);
 }
 
 export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {

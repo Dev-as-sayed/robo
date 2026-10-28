@@ -35,6 +35,10 @@ export interface DeviceGatewayOptions {
   onAudioTurn?: DeviceAudioTurnHandler;
   onDisconnect?: (deviceId: string) => Promise<void> | void;
   onHeartbeat?: (deviceId: string) => Promise<void> | void;
+  onDeviceReady?: (
+    userId: string,
+    send: (message: DeviceServerMessage) => void
+  ) => Promise<void> | void;
   heartbeatIntervalMs?: number;
   helloTimeoutMs?: number;
   audioTurnTimeoutMs?: number;
@@ -320,6 +324,7 @@ class DeviceConnection {
         { deviceId: message.deviceId, userId: authenticated.userId },
         "device connected"
       );
+      void this.gateway.deviceReady(authenticated.userId, this.session());
     } catch (error) {
       const code: GatewayErrorCode =
         error instanceof Error && error.message === "DEVICE_REVOKED"
@@ -680,6 +685,18 @@ export class DeviceGateway {
     metadata: { firmwareVersion?: string; locale?: string }
   ): Promise<AuthenticatedDevice> {
     return this.options.authenticateDevice(deviceId, token, metadata);
+  }
+
+  async deviceReady(userId: string, session: DeviceSession): Promise<void> {
+    if (!this.options.onDeviceReady) {
+      return;
+    }
+
+    try {
+      await this.options.onDeviceReady(userId, session.send);
+    } catch (error) {
+      this.log.warn({ err: error, userId }, "device ready handler failed");
+    }
   }
 
   async processAudioTurn(turn: DeviceAudioTurn, session: DeviceSession): Promise<void> {

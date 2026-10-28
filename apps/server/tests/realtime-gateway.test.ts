@@ -215,6 +215,24 @@ describe("device WebSocket gateway", () => {
     await stopGateway(testGateway, client);
   });
 
+  it("flushes queued messages after a device authenticates", async () => {
+    const onDeviceReady = vi.fn(
+      async (_userId: string, send: (message: DeviceServerMessage) => void) => {
+        send({ type: "speak", text: "Queued reminder" });
+      }
+    );
+    const testGateway = await startGateway({ onDeviceReady });
+    const client = await TestClient.connect(testGateway.url);
+
+    await client.hello();
+    const message = await client.next();
+
+    expect(onDeviceReady).toHaveBeenCalledWith("user-1", expect.any(Function));
+    expect(message).toEqual({ type: "speak", text: "Queued reminder" });
+
+    await stopGateway(testGateway, client);
+  });
+
   it("cancels the previous reply when a new turn starts", async () => {
     let release: () => void = () => undefined;
     const blocked = new Promise<void>(resolve => {

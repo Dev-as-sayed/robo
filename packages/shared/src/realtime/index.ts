@@ -134,6 +134,20 @@ export interface ServerClassAlertMessage {
   subject?: string;
 }
 
+export interface ServerDisplayMessage {
+  type: "display";
+  kind: "text" | "timer" | "alarm" | "study" | "exam";
+  title: string;
+  body?: string;
+  durationSeconds?: number;
+  dueAt?: string;
+}
+
+export interface ServerSpeakMessage {
+  type: "speak";
+  text: string;
+}
+
 export type DeviceServerMessage =
   | ServerStateMessage
   | ServerTranscriptMessage
@@ -141,6 +155,8 @@ export type DeviceServerMessage =
   | ServerTtsEndMessage
   | ServerReminderFireMessage
   | ServerClassAlertMessage
+  | ServerDisplayMessage
+  | ServerSpeakMessage
   | ServerErrorMessage;
 
 export type DeviceHello = z.infer<typeof deviceHelloSchema>;

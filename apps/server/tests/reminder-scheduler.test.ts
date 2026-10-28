@@ -185,11 +185,12 @@ describe("ReminderScheduler", () => {
 });
 
 describe("createReminderNotifier", () => {
-  it("reports the device channel when a socket took the reminder", () => {
+  it("reports the device channel when a socket took the reminder", async () => {
     const notifyUser = vi.fn().mockReturnValue(2);
-    const deliver = createReminderNotifier({ notifyUser, logger: silentLogger() });
+    const push = vi.fn().mockResolvedValue({ sent: 0, failed: 0 });
+    const deliver = createReminderNotifier({ notifyUser, push, logger: silentLogger(), record: vi.fn().mockResolvedValue(undefined) });
 
-    expect(deliver(due({ channels: ["device", "push"] }))).toEqual(["device"]);
+    await expect(deliver(due({ channels: ["device", "push"] }))).resolves.toEqual(["device"]);
     expect(notifyUser).toHaveBeenCalledWith(
       "user-1",
       expect.objectContaining({
@@ -201,30 +202,55 @@ describe("createReminderNotifier", () => {
     );
   });
 
-  it("reports nothing when the user has no device connected", () => {
+  it("queues the fire when the user has no device connected", async () => {
+    const queue = vi.fn().mockResolvedValue(undefined);
+    const record = vi.fn().mockResolvedValue(undefined);
     const deliver = createReminderNotifier({
       notifyUser: (): number => 0,
       logger: silentLogger(),
+      record,
+      queue,
     });
 
-    expect(deliver(due({ channels: ["device"] }))).toEqual([]);
+    await expect(deliver(due({ channels: ["device"] }))).resolves.toEqual([]);
+    expect(queue).toHaveBeenCalledWith(
+      "user-1",
+      expect.objectContaining({ type: "reminder.fire", reminderId: "reminder-1" })
+    );
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "device", status: "PENDING" })
+    );
   });
 
-  it("does not claim a push delivery it cannot make", () => {
-    const logger = silentLogger();
+  it("reports push only when Expo accepted a ticket", async () => {
     const notifyUser = vi.fn();
-    const deliver = createReminderNotifier({ notifyUser, logger });
+    const push = vi.fn().mockResolvedValue({ sent: 1, failed: 0 });
+    const deliver = createReminderNotifier({ notifyUser, push, logger: silentLogger(), record: vi.fn().mockResolvedValue(undefined) });
 
-    expect(deliver(due({ channels: ["phone", "push"] }))).toEqual([]);
+    await expect(deliver(due({ channels: ["phone", "push"] }))).resolves.toEqual(["push"]);
     expect(notifyUser).not.toHaveBeenCalled();
-    expect(logger.debug).toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "user-1", reminderId: "reminder-1" })
+    );
   });
 
-  it("includes the rule only for recurring reminders", () => {
-    const notifyUser = vi.fn().mockReturnValue(1);
-    const deliver = createReminderNotifier({ notifyUser, logger: silentLogger() });
+  it("does not claim a push delivery when no token accepted it", async () => {
+    const push = vi.fn().mockResolvedValue({ sent: 0, failed: 0 });
+    const deliver = createReminderNotifier({
+      notifyUser: vi.fn(),
+      push,
+      logger: silentLogger(),
+      record: vi.fn().mockResolvedValue(undefined),
+    });
 
-    deliver(due({ rrule: "FREQ=WEEKLY;BYDAY=MO" }));
+    await expect(deliver(due({ channels: ["phone", "push"] }))).resolves.toEqual([]);
+  });
+
+  it("includes the rule only for recurring reminders", async () => {
+    const notifyUser = vi.fn().mockReturnValue(1);
+    const deliver = createReminderNotifier({ notifyUser, logger: silentLogger(), record: vi.fn().mockResolvedValue(undefined) });
+
+    await deliver(due({ rrule: "FREQ=WEEKLY;BYDAY=MO" }));
 
     expect(notifyUser.mock.calls[0]?.[1]).toMatchObject({ rrule: "FREQ=WEEKLY;BYDAY=MO" });
   });

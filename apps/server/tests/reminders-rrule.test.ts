@@ -143,6 +143,40 @@ describe("occurrences", () => {
     expect(result[3].toISOString()).toBe("2026-10-25T13:30:00.000Z");
   });
 
+  it("keeps the local wall time across spring-forward when a timezone is given", () => {
+    const result = occurrences({
+      rrule: "FREQ=DAILY",
+      dtstart: utc("2026-03-07T14:00:00Z"),
+      offsetMinutes: -300,
+      timezone: "America/New_York",
+      limit: 3,
+    });
+
+    // 09:00 EST on the 7th, then 09:00 EDT on the 8th and 9th.
+    expect(isoList(result)).toEqual([
+      "2026-03-07T14:00:00.000Z",
+      "2026-03-08T13:00:00.000Z",
+      "2026-03-09T13:00:00.000Z",
+    ]);
+  });
+
+  it("keeps the local wall time across fall-back when a timezone is given", () => {
+    const result = occurrences({
+      rrule: "FREQ=DAILY",
+      dtstart: utc("2026-10-31T13:00:00Z"),
+      offsetMinutes: -240,
+      timezone: "America/New_York",
+      limit: 3,
+    });
+
+    // 09:00 EDT on the 31st, then 09:00 EST on Nov 1 and 2.
+    expect(isoList(result)).toEqual([
+      "2026-10-31T13:00:00.000Z",
+      "2026-11-01T14:00:00.000Z",
+      "2026-11-02T14:00:00.000Z",
+    ]);
+  });
+
   it("returns nothing for an unusable rule", () => {
     expect(
       occurrences({
@@ -215,6 +249,16 @@ describe("computeReminderNextAt", () => {
         "Asia/Kolkata"
       )
     ).toEqual(at);
+  });
+
+  it("advances across a DST transition in the user's zone", () => {
+    expect(
+      computeReminderNextAt(
+        { at: utc("2026-03-07T14:00:00Z"), rrule: "FREQ=DAILY" },
+        utc("2026-03-07T15:00:00Z"),
+        "America/New_York"
+      )?.toISOString()
+    ).toBe("2026-03-08T13:00:00.000Z");
   });
 
   it("tolerates an unknown timezone by treating the rule as UTC", () => {

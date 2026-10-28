@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { streamChatMessage } from "../src/modules/ai/chat-service";
 import type { ChatRunnable } from "../src/modules/ai/llm-router";
 import type { ChatMessage, ChatRole } from "@robo/shared/chat";
+import { recordAiTokenUsage } from "@robo/shared/ai-usage";
 
 const { appendMessage } = vi.hoisted(() => ({
   appendMessage: vi.fn(
@@ -16,6 +17,7 @@ const { appendMessage } = vi.hoisted(() => ({
       role,
       content,
       voiceText: voiceText ?? null,
+      displayContent: null,
       createdAt: new Date(0),
     })
   ),
@@ -40,11 +42,35 @@ vi.mock("@robo/shared/chat", () => ({
   })),
   getRecentMessages: vi.fn(async () => []),
   appendMessage,
+  buildDisplayContent: vi.fn((content: string) => ({
+    version: 1,
+    title: null,
+    blocks: [{ type: "text", text: content }],
+  })),
+}));
+
+vi.mock("@robo/shared/documents", () => ({
+  countDocuments: vi.fn(async () => 0),
+}));
+
+vi.mock("@robo/shared/ai-usage", () => ({
+  consumeAiQuota: vi.fn(async () => ({
+    allowed: true,
+    used: 1,
+    limit: 200,
+    remaining: 199,
+  })),
+  recordAiTokenUsage: vi.fn(async () => undefined),
+}));
+
+vi.mock("@robo/shared/action-logs", () => ({
+  getActionLogsForConversationSince: vi.fn(async () => []),
 }));
 
 describe("streaming chat", () => {
   beforeEach(() => {
     appendMessage.mockClear();
+    vi.mocked(recordAiTokenUsage).mockClear();
   });
 
   it("streams model tokens and stores the assistant reply", async () => {
@@ -70,7 +96,13 @@ describe("streaming chat", () => {
       "conversation-1",
       "ASSISTANT",
       "Hello world",
-      "Hello world"
+      "Hello world",
+      {
+        version: 1,
+        title: null,
+        blocks: [{ type: "text", text: "Hello world" }],
+      }
     );
+    expect(recordAiTokenUsage).toHaveBeenCalledTimes(1);
   });
 });

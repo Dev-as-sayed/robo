@@ -85,7 +85,10 @@ export interface RetrievedChunk {
   score: number;
 }
 
-function userIdFilter(userId: string, documentId?: string) {
+export function buildChunkFilter(
+  userId: string,
+  documentId?: string
+): { must: Array<Record<string, unknown>> } {
   const must: Array<Record<string, unknown>> = [
     { key: "userId", match: { value: userId } },
   ];
@@ -95,6 +98,64 @@ function userIdFilter(userId: string, documentId?: string) {
   }
 
   return { must };
+}
+
+function terms(value: string): Set<string> {
+  return new Set(
+    value
+      .toLowerCase()
+      .split(/[^a-z0-9\u00c0-\u024f]+/i)
+      .filter((term) => term.length >= 3)
+  );
+}
+
+export interface RerankOptions {
+  enabled: boolean;
+  candidates: number;
+}
+
+/**
+ * Lexical reranking experiment. It keeps the vector score as the main signal and
+ * breaks ties using query-term coverage, so it needs no extra model or service.
+ */
+export function rerankChunks(
+  query: string,
+  chunks: readonly RetrievedChunk[],
+  limit: number
+): RetrievedChunk[] {
+  const queryTerms = terms(query);
+  if (queryTerms.size === 0) {
+    return chunks.slice(0, limit);
+  }
+
+  return [...chunks]
+    .map((chunk) => {
+      const chunkTerms = terms(chunk.text);
+      let matches = 0;
+      for (const term of queryTerms) {
+        if (chunkTerms.has(term)) {
+          matches += 1;
+        }
+      }
+      const coverage = matches / queryTerms.size;
+      return {
+        chunk,
+        score: chunk.score * 0.7 + coverage * 0.3,
+      };
+    })
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit)
+    .map((entry) => entry.chunk);
+}
+
+export interface RetrievalDependencies {
+  getVectorStore: () => {
+    similaritySearchWithScore: (
+      query: string,
+      limit: number,
+      filter: { must: Array<Record<string, unknown>> }
+    ) => Promise<Array<[Document, number]>>;
+  };
 }
 
 export async function indexDocumentChunks(chunks: DocumentChunkInput[]): Promise<void> {
@@ -124,13 +185,23 @@ export async function indexDocumentChunks(chunks: DocumentChunkInput[]): Promise
 export async function searchDocumentChunks(
   userId: string,
   query: string,
-  options: { limit?: number; documentId?: string } = {}
+  options: { limit?: number; documentId?: string } = {},
+  deps: RetrievalDependencies = { getVectorStore }
 ): Promise<RetrievedChunk[]> {
-  const results = await getVectorStore().similaritySearchWithScore(query, options.limit ?? 6, {
-    must: userIdFilter(userId, options.documentId).must,
-  });
+  const limit = options.limit ?? 6;
+  const rerank: RerankOptions = {
+    enabled: env.QDRANT_RERANK_ENABLED,
+    candidates: Math.max(limit, env.QDRANT_RERANK_CANDIDATES),
+  };
+  const results = await deps
+    .getVectorStore()
+    .similaritySearchWithScore(
+      query,
+      rerank.enabled ? rerank.candidates : limit,
+      buildChunkFilter(userId, options.documentId)
+    );
 
-  return results
+  const chunks = results
     .filter(([, score]) => score >= env.QDRANT_SCORE_THRESHOLD)
     .map(([document, score]) => ({
       documentId: String(document.metadata.documentId ?? ""),
@@ -139,6 +210,8 @@ export async function searchDocumentChunks(
       text: document.pageContent,
       score,
     }));
+
+  return rerank.enabled ? rerankChunks(query, chunks, limit) : chunks.slice(0, limit);
 }
 
 export async function deleteDocumentChunks(
@@ -146,9 +219,13 @@ export async function deleteDocumentChunks(
   documentId: string
 ): Promise<void> {
   await getVectorStore().delete({
-    filter: {
-      must: userIdFilter(userId, documentId).must,
-    },
+    filter: buildChunkFilter(userId, documentId),
+  });
+}
+
+export async function deleteUserChunks(userId: string): Promise<void> {
+  await getVectorStore().delete({
+    filter: buildChunkFilter(userId),
   });
 }
 

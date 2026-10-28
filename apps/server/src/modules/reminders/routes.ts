@@ -3,6 +3,7 @@ import { createReminderSchema, updateReminderSchema } from "@robo/shared/schemas
 import {
   createReminder,
   deleteReminder,
+  getReminderDeliveries,
   getReminders,
   snoozeReminder,
   updateReminder,
@@ -38,6 +39,17 @@ router.get(
       channel: req.query.channel as string | undefined,
     });
     sendSuccess(res, { code: "REMINDERS_FETCHED", data: { reminders } });
+  })
+);
+
+router.get(
+  "/deliveries",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const requested = Number(req.query.limit);
+    const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 100) : 50;
+    const deliveries = await getReminderDeliveries(req.user!.id, limit);
+    sendSuccess(res, { code: "REMINDER_DELIVERIES_FETCHED", data: { deliveries } });
   })
 );
 

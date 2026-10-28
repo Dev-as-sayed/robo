@@ -45,6 +45,34 @@ enum ActionLogStatus {
   CONFIRMATION_REQUIRED
 }
 
+enum PendingActionKind {
+  CALL
+  MESSAGE
+  EMAIL
+  WHATSAPP
+}
+
+enum PendingActionStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  EXPIRED
+}
+
+enum NudgeType {
+  TASK
+  EXAM
+  STUDY
+  REMINDER
+}
+
+enum ConsentKind {
+  MICROPHONE
+  CONTACTS
+  DOCUMENTS
+  CLOUD_AI
+}
+
 model User {
   id                 String              @id @default(uuid())
   email              String              @unique
@@ -80,9 +108,18 @@ model User {
   quizzes            Quiz[]
   quizAttempts       QuizAttempt[]
   contacts           Contact[]
+  subjects           Subject[]
+  topics             Topic[]
   studySessions      StudySession[]
+  dailyStats         DailyStats[]
   actionLogs         ActionLog[]
   pushTokens         PushToken[]
+  pendingActions     PendingAction[]
+  nudges             Nudge[]
+  memories           Memory[]
+  classNotes         ClassNote[]
+  aiUsage            AiUsage[]
+  consents           UserConsent[]
 
   @@index([role])
   @@index([status])
@@ -153,9 +190,51 @@ model Message {
   role           MessageRole
   content        String
   voiceText      String?
+  displayContent Json?
   createdAt      DateTime     @default(now())
 
   @@index([conversationId, createdAt])
+}
+
+enum ReminderChannel {
+  device
+  phone
+  push
+}
+
+enum ReminderDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model ReminderDelivery {
+  id         String                @id @default(uuid())
+  reminderId String
+  userId     String
+  dueAt      DateTime
+  channel    ReminderChannel
+  status        ReminderDeliveryStatus @default(PENDING)
+  attempts      Int                   @default(0)
+  error         String?
+  nextAttemptAt DateTime?
+  sentAt        DateTime?
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  @@unique([reminderId, dueAt, channel])
+  @@index([userId, createdAt])
+  @@index([status, nextAttemptAt])
+}
+
+model DevicePendingEvent {
+  id          String    @id @default(uuid())
+  userId      String
+  message     Json
+  createdAt   DateTime  @default(now())
+  deliveredAt DateTime?
+
+  @@index([userId, deliveredAt, createdAt])
 }
 
 model Todo {
@@ -166,11 +245,14 @@ model Todo {
   notes       String?
   dueAt       DateTime?
   completedAt DateTime?
+  warned24hAt DateTime?
+  warned2hAt  DateTime?
   subject     String?
   priority    String    @default("medium")
   status      String    @default("pending")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  studyTask   DailyTask?
 
   @@unique([id, userId])
   @@index([userId, status])
@@ -227,13 +309,16 @@ model ScheduleEntry {
   alertLeadMinutes Int?
   alertAt          DateTime?
   alertedAt        DateTime?
+  notePromptedAt   DateTime?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   exceptions       ScheduleException[]
+  notes            ClassNote[]
 
   @@unique([id, userId])
   @@index([userId, startAt])
   @@index([alertedAt, alertAt])
+  @@index([notePromptedAt, endAt])
 }
 
 model ScheduleException {
@@ -274,6 +359,8 @@ model StudyPlan {
   userId     String
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   totalDays  Int
+  approvedAt DateTime?
+  reminderId String?
   dailyTasks DailyTask[]
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -286,6 +373,8 @@ model DailyTask {
   id        String    @id @default(uuid())
   planId    String
   plan      StudyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  todoId    String?   @unique
+  todo      Todo?     @relation(fields: [todoId], references: [id], onDelete: SetNull)
   day       Int
   title     String
   completed Boolean   @default(false)
@@ -295,23 +384,33 @@ model DailyTask {
 }
 
 model Document {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   filename     String
   originalName String
   size         Int
   mimeType     String
   s3Key        String?
   s3Url        String?
-  status       String   @default("uploaded")
+  status       String    @default("pending")
   subject      String?
-  chunkCount   Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  checksum     String?
+  pageCount    Int?
+  chunkCount   Int       @default(0)
+  attempts     Int       @default(0)
+  error        String?
+  embeddingModel String?
+  lockedAt     DateTime?
+  nextAttemptAt DateTime?
+  indexedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([id, userId])
   @@index([userId, status])
+  @@index([status, createdAt])
+  @@index([status, nextAttemptAt])
 }
 
 model Quiz {
@@ -369,21 +468,151 @@ model Contact {
   group     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  pendingActions PendingAction[]
 
   @@unique([id, userId])
   @@index([userId])
 }
 
-model StudySession {
+model ClassNote {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduleEntryId String?
+  scheduleEntry   ScheduleEntry? @relation(fields: [scheduleEntryId], references: [id], onDelete: SetNull)
+  subject         String?
+  title           String
+  content         String
+  classAt         DateTime
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([id, userId])
+  @@index([userId, classAt])
+  @@index([scheduleEntryId])
+}
+
+model Memory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  category  String   @default("general")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, userId])
+  @@index([userId, category])
+}
+
+model Nudge {
   id        String    @id @default(uuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  startedAt DateTime
-  endedAt   DateTime?
+  type      NudgeType
+  localDay  String
+  title     String
+  body      String
   createdAt DateTime  @default(now())
+
+  @@unique([userId, type, localDay])
+  @@index([userId, localDay])
+}
+
+model PendingAction {
+  id             String              @id @default(uuid())
+  userId         String
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId      String?
+  contact        Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  kind           PendingActionKind
+  recipientName  String
+  recipientPhone String?
+  recipientEmail String?
+  body           String?
+  status         PendingActionStatus @default(PENDING)
+  expiresAt      DateTime
+  confirmedAt    DateTime?
+  rejectedAt     DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([id, userId])
+  @@index([userId, status, expiresAt])
+  @@index([status, expiresAt])
+}
+
+model Subject {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String?
+  topics    Topic[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, userId])
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Topic {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId    String
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  name         String
+  masteryScore Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([id, userId])
+  @@unique([subjectId, name])
+  @@index([userId])
+  @@index([subjectId])
+}
+
+enum StudySessionStatus {
+  active
+  paused
+  ended
+}
+
+model StudySession {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject         String?
+  status          StudySessionStatus @default(active)
+  plannedMinutes  Int?
+  extendedMinutes Int       @default(0)
+  pausedAt        DateTime?
+  totalPausedMs   Int       @default(0)
+  startedAt       DateTime
+  endedAt         DateTime?
+  createdAt       DateTime  @default(now())
 
   @@unique([id, userId])
   @@index([userId, startedAt])
+}
+
+model DailyStats {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date              DateTime @db.Date
+  studyMinutes      Int      @default(0)
+  completedTasks    Int      @default(0)
+  completedQuizzes  Int      @default(0)
+  quizScoreSum      Int      @default(0)
+  quizScoreCount    Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
 
 model ActionLog {
@@ -401,4 +630,36 @@ model ActionLog {
 
   @@index([userId, createdAt])
   @@index([conversationId, createdAt])
+}
+
+model AiUsage {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day          DateTime @db.Date
+  requests     Int      @default(0)
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, day])
+  @@index([day])
+}
+
+model UserConsent {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind          ConsentKind
+  granted       Boolean
+  policyVersion String      @default("2026-10")
+  source        String?
+  grantedAt     DateTime?
+  revokedAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([userId, kind])
+  @@index([userId, granted])
 }

@@ -1,4 +1,7 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import type { DisplayContent } from "./display";
+export * from "./display";
 
 export type ChatChannel = "app" | "device";
 export type ChatRole = "USER" | "ASSISTANT" | "SYSTEM" | "TOOL";
@@ -8,6 +11,7 @@ export interface ChatMessage {
   role: ChatRole;
   content: string;
   voiceText: string | null;
+  displayContent: DisplayContent | null;
   createdAt: Date;
 }
 
@@ -35,8 +39,18 @@ const messageSelect = {
   role: true,
   content: true,
   voiceText: true,
+  displayContent: true,
   createdAt: true,
 } as const;
+
+type MessageRow = Prisma.MessageGetPayload<{ select: typeof messageSelect }>;
+
+function toChatMessage(row: MessageRow): ChatMessage {
+  return {
+    ...row,
+    displayContent: (row.displayContent as unknown as DisplayContent | null) ?? null,
+  };
+}
 
 const conversationSelect = {
   id: true,
@@ -79,7 +93,9 @@ export async function listConversations(
     channel: fromPrismaChannel(conversation.channel),
     createdAt: conversation.createdAt,
     updatedAt: conversation.updatedAt,
-    lastMessage: conversation.messages[0] ?? null,
+    lastMessage: conversation.messages[0]
+      ? toChatMessage(conversation.messages[0])
+      : null,
     messageCount: conversation._count.messages,
   }));
 }
@@ -111,7 +127,7 @@ export async function getConversation(
     channel: fromPrismaChannel(conversation.channel),
     createdAt: conversation.createdAt,
     updatedAt: conversation.updatedAt,
-    messages: messages.reverse(),
+    messages: messages.reverse().map(toChatMessage),
   };
 }
 
@@ -160,11 +176,21 @@ export async function appendMessage(
   conversationId: string,
   role: ChatRole,
   content: string,
-  voiceText?: string | null
+  voiceText?: string | null,
+  displayContent?: DisplayContent | null
 ): Promise<ChatMessage> {
   const [message] = await prisma.$transaction([
     prisma.message.create({
-      data: { conversationId, role, content, voiceText: voiceText ?? null },
+      data: {
+        conversationId,
+        role,
+        content,
+        voiceText: voiceText ?? null,
+        displayContent:
+          displayContent === null || displayContent === undefined
+            ? Prisma.JsonNull
+            : (displayContent as unknown as Prisma.InputJsonValue),
+      },
       select: messageSelect,
     }),
     prisma.conversation.update({
@@ -173,7 +199,7 @@ export async function appendMessage(
     }),
   ]);
 
-  return message;
+  return toChatMessage(message);
 }
 
 export async function getRecentMessages(
@@ -187,5 +213,5 @@ export async function getRecentMessages(
     select: messageSelect,
   });
 
-  return messages.reverse();
+  return messages.reverse().map(toChatMessage);
 }

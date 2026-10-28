@@ -17,6 +17,7 @@ export interface TickSummary {
 export interface ReminderSchedulerOptions {
   deliver: (due: DueReminder) => Promise<string[]> | string[];
   claim?: (now: Date, limit: number) => Promise<DueReminder[]>;
+  retry?: (now: Date) => Promise<number>;
   intervalMs?: number;
   logger?: RealtimeLogger;
 }
@@ -30,6 +31,7 @@ export interface ReminderSchedulerOptions {
 export class ReminderScheduler {
   private readonly deliver: (due: DueReminder) => Promise<string[]> | string[];
   private readonly claim: (now: Date, limit: number) => Promise<DueReminder[]>;
+  private readonly retry: ((now: Date) => Promise<number>) | null;
   private readonly intervalMs: number;
   private readonly log: RealtimeLogger;
   private timer: NodeJS.Timeout | null = null;
@@ -39,6 +41,7 @@ export class ReminderScheduler {
   constructor(options: ReminderSchedulerOptions) {
     this.deliver = options.deliver;
     this.claim = options.claim ?? claimDueReminders;
+    this.retry = options.retry ?? null;
     this.intervalMs = options.intervalMs ?? 15_000;
     this.log = options.logger ?? logger;
   }
@@ -117,6 +120,17 @@ export class ReminderScheduler {
 
     if (due.length === DUE_REMINDER_BATCH_SIZE) {
       this.log.warn({ batch: due.length }, "due reminders filled the batch; more may be waiting");
+    }
+
+    if (this.retry) {
+      try {
+        const retried = await this.retry(now);
+        if (retried > 0) {
+          this.log.info({ retried }, "failed reminder deliveries retried");
+        }
+      } catch (error) {
+        this.log.warn({ err: error }, "failed delivery retry pass failed");
+      }
     }
 
     return { claimed: due.length, delivered, maxLatencyMs };

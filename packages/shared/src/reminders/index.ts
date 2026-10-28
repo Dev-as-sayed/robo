@@ -1,5 +1,6 @@
 import { tzOffsetMinutes } from "../lib/time";
 import { prisma } from "../lib/prisma";
+export * from "./deliveries";
 import { nextOccurrence } from "./rrule";
 
 export * from "./rrule";
@@ -21,6 +22,7 @@ export function computeReminderNextAt(
       dtstart: reminder.at,
       after: from,
       offsetMinutes: tzOffsetMinutes(timezone, from),
+      ...(timezone ? { timezone } : {}),
     });
     if (next) return next;
   }

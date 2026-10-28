@@ -1,17 +1,24 @@
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import {
   appendMessage,
+  buildDisplayContent,
   getOrCreateConversation,
   getRecentMessages,
   type ChatChannel,
   type ChatMessage,
   type ConversationDetail,
+  type DisplayContent,
 } from "@robo/shared/chat";
+import { getActionLogsForConversationSince } from "@robo/shared/action-logs";
+import { countDocuments } from "@robo/shared/documents";
+import type { AiTokenUsage } from "@robo/shared/ai-usage";
 import { getMe } from "@robo/shared/users";
 import { env } from "../../config/env";
 import logger from "../../lib/logger";
 import { runAgent, runAgentStream } from "./agent";
-import { getChatModels, type ChatRunnable } from "./llm-router";
+import { getChatModels, type ChatRunnable, type ChatTask } from "./llm-router";
+import { toProviderError } from "./provider-errors";
+import { recordUsage, reserveQuota } from "./usage-guard";
 import {
   buildConversationTitle,
   buildHistoryMessages,
@@ -38,11 +45,60 @@ export interface ChatTurnResult {
   toolCallCount: number;
 }
 
+export async function chatTaskForUser(
+  userId: string,
+  cloudAiForDocs: boolean
+): Promise<ChatTask> {
+  if (cloudAiForDocs) {
+    return "agent_tools";
+  }
+
+  try {
+    const count = await countDocuments(userId);
+    return count > 0 ? "private_docs" : "agent_tools";
+  } catch (error) {
+    logger.warn(
+      { err: error, userId },
+      "could not count documents; keeping chat private"
+    );
+    return "private_docs";
+  }
+}
+
+function assertTaskConfigured(task: ChatTask): void {
+  if (task === "private_docs" && getChatModels(task).length === 0) {
+    throw new Error("AI_LOCAL_NOT_CONFIGURED");
+  }
+}
+
 interface ChatTurnContext {
   user: Awaited<ReturnType<typeof getMe>>;
   conversation: Omit<ConversationDetail, "messages">;
   history: ChatMessage[];
   userMessage: ChatMessage;
+}
+
+async function displayContentForTurn(
+  userId: string,
+  conversationId: string,
+  content: string,
+  startedAt: number
+): Promise<DisplayContent> {
+  try {
+    const actions = await getActionLogsForConversationSince(
+      userId,
+      conversationId,
+      new Date(startedAt - 1_000)
+    );
+
+    return buildDisplayContent(
+      content,
+      actions.map((action) => ({ toolName: action.toolName, output: action.output }))
+    );
+  } catch (error) {
+    logger.warn({ err: error, userId, conversationId }, "failed to build display content");
+    return buildDisplayContent(content);
+  }
 }
 
 async function beginChat(
@@ -69,15 +125,20 @@ export async function sendChatMessage(
 ): Promise<ChatTurnResult> {
   const useAgent = !dependencies.model;
 
-  if (useAgent && getChatModels("agent_tools").length === 0) {
-    throw new Error("AI_NOT_CONFIGURED");
-  }
-
+  await reserveQuota(userId);
   const { user, conversation, history, userMessage } = await beginChat(userId, input);
+  const task = useAgent
+    ? await chatTaskForUser(userId, user.cloudAiForDocs)
+    : "voice_chat";
+
+  if (useAgent) {
+    assertTaskConfigured(task);
+  }
 
   const startedAt = Date.now();
   let content: string;
   let toolCallCount = 0;
+  let usage: AiTokenUsage | null = null;
 
   try {
     if (dependencies.model) {
@@ -102,6 +163,7 @@ export async function sendChatMessage(
       const metadata = response.response_metadata as
         | Record<string, unknown>
         | undefined;
+      usage = (response.usage_metadata as AiTokenUsage | undefined) ?? null;
 
       logger.info(
         {
@@ -126,10 +188,12 @@ export async function sendChatMessage(
           timezone: user.timezone,
         },
         now: dependencies.now,
+        task,
       });
 
       content = result.content;
       toolCallCount = result.toolCallCount;
+      usage = (result.usage as AiTokenUsage | undefined) ?? null;
     }
   } catch (error) {
     if (!(error instanceof Error && error.message.startsWith("AI_"))) {
@@ -138,22 +202,24 @@ export async function sendChatMessage(
           err: error,
           userId,
           conversationId: conversation.id,
-          task: useAgent ? "agent_tools" : "voice_chat",
+          task,
         },
         "AI chat request failed"
       );
-      throw new Error("AI_PROVIDER_UNAVAILABLE");
+      throw toProviderError(error);
     }
 
     throw error;
   }
 
+  recordUsage(userId, usage);
   const voiceText = toVoiceText(content);
   const assistantMessage = await appendMessage(
     conversation.id,
     "ASSISTANT",
     content,
-    voiceText
+    voiceText,
+    await displayContentForTurn(userId, conversation.id, content, startedAt)
   );
 
   return {
@@ -173,11 +239,15 @@ export async function streamChatMessage(
 ): Promise<ChatTurnResult> {
   const useAgent = !dependencies.model;
 
-  if (useAgent && getChatModels("agent_tools").length === 0) {
-    throw new Error("AI_NOT_CONFIGURED");
-  }
-
+  await reserveQuota(userId);
   const { user, conversation, history, userMessage } = await beginChat(userId, input);
+  const task = useAgent
+    ? await chatTaskForUser(userId, user.cloudAiForDocs)
+    : "voice_chat";
+
+  if (useAgent) {
+    assertTaskConfigured(task);
+  }
 
   const startedAt = Date.now();
   let firstTokenMs = 0;
@@ -190,6 +260,7 @@ export async function streamChatMessage(
 
   let content: string;
   let toolCallCount = 0;
+  let usage: AiTokenUsage | null = null;
 
   try {
     if (dependencies.model) {
@@ -211,6 +282,12 @@ export async function streamChatMessage(
       );
 
       for await (const chunk of stream) {
+        const chunkUsage = (chunk as { usage_metadata?: AiTokenUsage })
+          .usage_metadata;
+        if (chunkUsage) {
+          usage = chunkUsage;
+        }
+
         const text = chunk.text;
         if (text) {
           streamed += text;
@@ -248,12 +325,14 @@ export async function streamChatMessage(
           },
           now: dependencies.now,
           signal: abortSignal,
+          task,
         },
         emit
       );
 
       content = result.content;
       toolCallCount = result.toolCallCount;
+      usage = (result.usage as AiTokenUsage | undefined) ?? null;
     }
   } catch (error) {
     if (abortSignal?.aborted) {
@@ -266,7 +345,7 @@ export async function streamChatMessage(
           err: error,
           userId,
           conversationId: conversation.id,
-          task: useAgent ? "agent_tools" : "voice_chat",
+          task,
         },
         "AI chat stream failed"
       );
@@ -276,12 +355,14 @@ export async function streamChatMessage(
     throw error;
   }
 
+  recordUsage(userId, usage);
   const voiceText = toVoiceText(content);
   const assistantMessage = await appendMessage(
     conversation.id,
     "ASSISTANT",
     content,
-    voiceText
+    voiceText,
+    await displayContentForTurn(userId, conversation.id, content, startedAt)
   );
 
   return {

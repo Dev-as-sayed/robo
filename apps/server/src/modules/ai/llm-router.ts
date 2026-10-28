@@ -75,6 +75,49 @@ function providerApiKey(provider: LlmProvider): string | undefined {
   }
 }
 
+export function parseRegressionScores(
+  value: string | undefined
+): Record<string, number> {
+  if (!value) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        (entry): entry is [string, number] =>
+          typeof entry[1] === "number" && Number.isFinite(entry[1])
+      )
+    );
+  } catch {
+    logger.warn("LLM_MODEL_REGRESSION_SCORES is not valid JSON; model gating disabled");
+    return {};
+  }
+}
+
+/**
+ * Drops models whose latest regression score is below the configured floor.
+ * Models without a recorded score stay in the chain so a new provider is usable
+ * before it has been benchmarked.
+ */
+export function gateModelsByRegression(
+  specs: readonly ModelSpec[],
+  scores: Record<string, number>,
+  minimum: number
+): ModelSpec[] {
+  if (minimum <= 0) {
+    return [...specs];
+  }
+
+  const gated = specs.filter((spec) => {
+    const score = scores[`${spec.provider}:${spec.model}`];
+    return score === undefined || score >= minimum;
+  });
+
+  return gated.length > 0 ? gated : [...specs];
+}
+
 function createModel(spec: ModelSpec): BaseChatModel | null {
   const apiKey = providerApiKey(spec.provider);
 
@@ -123,7 +166,11 @@ export function getChatModel(task: ChatTask): ChatRunnable {
     return cached;
   }
 
-  const specs = parseModelChain(TASK_CHAINS[task]);
+  const specs = gateModelsByRegression(
+    parseModelChain(TASK_CHAINS[task]),
+    parseRegressionScores(env.LLM_MODEL_REGRESSION_SCORES),
+    env.LLM_MIN_MODEL_REGRESSION_SCORE
+  );
   const models = specs
     .map(createModel)
     .filter((model): model is BaseChatModel => model !== null);
@@ -153,7 +200,11 @@ export function clearChatModelCache(): void {
 }
 
 export function getChatModels(task: ChatTask): BaseChatModel[] {
-  const specs = parseModelChain(TASK_CHAINS[task]);
+  const specs = gateModelsByRegression(
+    parseModelChain(TASK_CHAINS[task]),
+    parseRegressionScores(env.LLM_MODEL_REGRESSION_SCORES),
+    env.LLM_MIN_MODEL_REGRESSION_SCORE
+  );
   return specs
     .map(createModel)
     .filter((model): model is BaseChatModel => model !== null);

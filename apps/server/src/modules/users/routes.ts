@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { registerPushTokenSchema, updateMeSchema } from "@robo/shared/schemas";
+import {
+  registerPushTokenSchema,
+  updateConsentSchema,
+  updateMeSchema,
+} from "@robo/shared/schemas";
+import { isConsentKind, listConsentRecords, recordConsent } from "@robo/shared/consents";
 import {
   deleteMe,
   exportUserData,
@@ -9,10 +14,12 @@ import {
   revokePushToken,
   updateMe,
 } from "@robo/shared/users";
+import { deleteAccountData } from "./account-deletion";
 import { asyncHandler } from "../../http/async-handler";
 import { sendSuccess } from "../../http/response";
 import { authenticate } from "../../middleware/authenticate";
 import { validate } from "../../middleware/validate";
+import { BadRequestError } from "../../errors/app-error";
 
 const router = Router();
 
@@ -75,6 +82,35 @@ router.delete(
   })
 );
 
+router.get(
+  "/me/consents",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const consents = await listConsentRecords(req.user!.id);
+    sendSuccess(res, { code: "CONSENTS_FETCHED", data: { consents } });
+  })
+);
+
+router.put(
+  "/me/consents/:kind",
+  authenticate,
+  validate({ body: updateConsentSchema }),
+  asyncHandler(async (req, res) => {
+    const kind = req.params.kind?.toUpperCase() ?? "";
+
+    if (!isConsentKind(kind)) {
+      throw new BadRequestError("Unknown consent kind", "CONSENT_KIND_INVALID");
+    }
+
+    const consent = await recordConsent(req.user!.id, kind, req.body);
+    sendSuccess(res, {
+      code: "CONSENT_UPDATED",
+      message: "Consent preference saved",
+      data: { consent },
+    });
+  })
+);
+
 router.post(
   "/me/export",
   authenticate,
@@ -92,7 +128,7 @@ router.delete(
   "/me",
   authenticate,
   asyncHandler(async (req, res) => {
-    const result = await deleteMe(req.user!.id);
+    const result = await deleteAccountData(req.user!.id);
     sendSuccess(res, {
       code: "USER_DELETED",
       message: "User account deleted successfully",

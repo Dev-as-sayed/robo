@@ -10,6 +10,17 @@ export * from "./todos";
 export * from "./reminders";
 export * from "./exams";
 export * from "./documents";
+export * from "./consents";
 export * from "./quizzes";
 export * from "./contacts";
+export * from "./subjects";
 export * from "./analytics";
+export * from "./sessions";
+
+export * from "./pending-actions/index";
+export * from "./nudges/index";
+export * from "./planner/index";
+export * from "./ai-usage/index";
+export * from "./memories/index";
+export * from "./class-notes/index";
+export * from "./maintenance/index";

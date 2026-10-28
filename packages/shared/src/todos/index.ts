@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma";
+export * from "./deadlines";
 
 export interface Todo {
   id: string;
@@ -9,6 +10,7 @@ export interface Todo {
   subject: string | null;
   priority: "low" | "medium" | "high" | "urgent";
   status: "pending" | "completed" | "snoozed";
+  completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +41,7 @@ export async function createTodo(userId: string, data: {
       subject: true,
       priority: true,
       status: true,
+      completedAt: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -74,15 +77,27 @@ export async function getTodos(userId: string, filters: {
       subject: true,
       priority: true,
       status: true,
+      completedAt: true,
       createdAt: true,
     },
   });
 }
 
 export async function updateTodo(userId: string, todoId: string, data: any) {
+  const patch = { ...data };
+  if (data.status === "completed") {
+    patch.completedAt = new Date();
+  } else if (data.status) {
+    patch.completedAt = null;
+  }
+  if (data.dueAt !== undefined) {
+    patch.warned24hAt = null;
+    patch.warned2hAt = null;
+  }
+
   return await prisma.todo.update({
     where: { id: todoId, userId },
-    data,
+    data: patch,
     select: {
       id: true,
       userId: true,
@@ -92,6 +107,7 @@ export async function updateTodo(userId: string, todoId: string, data: any) {
       subject: true,
       priority: true,
       status: true,
+      completedAt: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -107,7 +123,7 @@ export async function deleteTodo(userId: string, todoId: string) {
 export async function completeTodo(userId: string, todoId: string) {
   return await prisma.todo.update({
     where: { id: todoId, userId },
-    data: { status: "completed" },
+    data: { status: "completed", completedAt: new Date() },
     select: {
       id: true,
       userId: true,
@@ -117,6 +133,7 @@ export async function completeTodo(userId: string, todoId: string) {
       subject: true,
       priority: true,
       status: true,
+      completedAt: true,
       createdAt: true,
       updatedAt: true,
     },

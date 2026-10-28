@@ -72,3 +72,10 @@ export async function listPushTokenStrings(userId: string): Promise<string[]> {
 
   return tokens.map(row => row.token);
 }
+
+/** Removes a token Expo reports as no longer installed. */
+export async function revokePushTokenById(userId: string, token: string): Promise<void> {
+  await prisma.pushToken.deleteMany({
+    where: { userId, token },
+  });
+}

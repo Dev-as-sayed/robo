@@ -118,6 +118,7 @@ export async function exportUserData(userId: string) {
     studySessions,
     conversations,
     actionLogs,
+    consents,
   ] = await prisma.$transaction([
     prisma.user.findUnique({ where: { id: userId } }),
     prisma.device.findMany({
@@ -200,6 +201,10 @@ export async function exportUserData(userId: string) {
       where: { userId },
       orderBy: { createdAt: "asc" },
     }),
+    prisma.userConsent.findMany({
+      where: { userId },
+      orderBy: { kind: "asc" },
+    }),
   ]);
 
   if (!user) {
@@ -222,6 +227,7 @@ export async function exportUserData(userId: string) {
     studySessions,
     conversations,
     actionLogs,
+    consents,
   };
 }
 

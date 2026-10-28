@@ -6,6 +6,8 @@ import {
 } from "@robo/shared/schemas";
 import {
   approvePlan,
+  recalculatePlan,
+  getRevisionSummary,
   createExam,
   deleteExam,
   generatePlan,
@@ -112,6 +114,28 @@ router.post(
       message: "Study plan approved successfully",
       data: { result },
     });
+  })
+);
+
+router.post(
+  "/:id/plan/recalculate",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const result = await recalculatePlan(req.user!.id, req.params.id);
+    sendSuccess(res, {
+      code: "PLAN_RECALCULATED",
+      message: "Remaining study tasks were rescheduled",
+      data: { result },
+    });
+  })
+);
+
+router.get(
+  "/:id/revision",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const summary = await getRevisionSummary(req.user!.id, req.params.id);
+    sendSuccess(res, { code: "REVISION_SUMMARY_FETCHED", data: { summary } });
   })
 );
 

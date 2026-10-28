@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "description": "Small labelled corpus for comparing embedding models without a database.",
+  "documents": [
+    {
+      "id": "d1",
+      "text": "Photosynthesis uses chlorophyll in chloroplasts to convert light, water and carbon dioxide into glucose and oxygen."
+    },
+    {
+      "id": "d2",
+      "text": "Cellular respiration breaks down glucose in the cytoplasm and mitochondria to produce ATP."
+    },
+    {
+      "id": "d3",
+      "text": "Enzymes are proteins that lower activation energy and speed up biochemical reactions."
+    },
+    {
+      "id": "d4",
+      "text": "Osmosis is the movement of water across a membrane from low to high solute concentration."
+    },
+    {
+      "id": "d5",
+      "text": "An ionic bond forms when electrons are transferred, while a covalent bond shares electrons."
+    },
+    {
+      "id": "d6",
+      "text": "The mole is Avogadro's number of particles and is used to count atoms and molecules."
+    },
+    {
+      "id": "d7",
+      "text": "pH measures hydrogen ion concentration; values below seven are acidic and above seven are basic."
+    },
+    {
+      "id": "d8",
+      "text": "Oxidation loses electrons and reduction gains electrons in a redox reaction."
+    },
+    {
+      "id": "d9",
+      "text": "Newton's second law says force equals mass times acceleration."
+    },
+    {
+      "id": "d10",
+      "text": "Kinetic energy is one half mass times velocity squared, while potential energy depends on position."
+    },
+    {
+      "id": "d11",
+      "text": "Ohm's law relates voltage, current and resistance as V equals I times R."
+    },
+    {
+      "id": "d12",
+      "text": "Momentum is mass times velocity and is conserved in a closed system."
+    },
+    {
+      "id": "d13",
+      "text": "The derivative measures the instantaneous rate of change of a function."
+    },
+    {
+      "id": "d14",
+      "text": "The chain rule differentiates composite functions by multiplying outer and inner derivatives."
+    },
+    {
+      "id": "d15",
+      "text": "A definite integral computes the area under a curve between two bounds."
+    },
+    {
+      "id": "d16",
+      "text": "The fundamental theorem of calculus links differentiation and integration."
+    },
+    {
+      "id": "d17",
+      "text": "World War II began in 1939 and ended in 1945."
+    },
+    {
+      "id": "d18",
+      "text": "D-Day was the Allied invasion of Normandy in 1944."
+    },
+    {
+      "id": "d19",
+      "text": "The Marshall Plan provided economic aid to rebuild Western Europe after the war."
+    },
+    {
+      "id": "d20",
+      "text": "The Cold War was a prolonged geopolitical rivalry between the United States and the Soviet Union."
+    }
+  ],
+  "queries": [
+    {
+      "id": "q1",
+      "question": "What pigment absorbs light during photosynthesis?",
+      "expectedDocumentId": "d1",
+      "expectedTerms": [
+        "chlorophyll"
+      ]
+    },
+    {
+      "id": "q2",
+      "question": "Where is ATP produced in the cell?",
+      "expectedDocumentId": "d2",
+      "expectedTerms": [
+        "mitochondria"
+      ]
+    },
+    {
+      "id": "q3",
+      "question": "How do enzymes speed up reactions?",
+      "expectedDocumentId": "d3",
+      "expectedTerms": [
+        "activation energy"
+      ]
+    },
+    {
+      "id": "q4",
+      "question": "What is osmosis?",
+      "expectedDocumentId": "d4",
+      "expectedTerms": [
+        "water",
+        "membrane"
+      ]
+    },
+    {
+      "id": "q5",
+      "question": "Difference between ionic and covalent bonds",
+      "expectedDocumentId": "d5",
+      "expectedTerms": [
+        "electrons",
+        "covalent"
+      ]
+    },
+    {
+      "id": "q6",
+      "question": "What is the mole in chemistry?",
+      "expectedDocumentId": "d6",
+      "expectedTerms": [
+        "Avogadro"
+      ]
+    },
+    {
+      "id": "q7",
+      "question": "How is pH defined?",
+      "expectedDocumentId": "d7",
+      "expectedTerms": [
+        "hydrogen"
+      ]
+    },
+    {
+      "id": "q8",
+      "question": "What happens during oxidation?",
+      "expectedDocumentId": "d8",
+      "expectedTerms": [
+        "electrons"
+      ]
+    },
+    {
+      "id": "q9",
+      "question": "Formula for force",
+      "expectedDocumentId": "d9",
+      "expectedTerms": [
+        "mass",
+        "acceleration"
+      ]
+    },
+    {
+      "id": "q10",
+      "question": "Kinetic energy equation",
+      "expectedDocumentId": "d10",
+      "expectedTerms": [
+        "velocity"
+      ]
+    }
+  ]
+}

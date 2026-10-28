@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { getChatModels } from "./llm-router";
+import { toProviderError } from "./provider-errors";
 
 export async function generateStructured<T>(
   schema: z.ZodType<T>,
@@ -21,5 +22,5 @@ export async function generateStructured<T>(
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error("AI_PROVIDER_UNAVAILABLE");
+  throw toProviderError(lastError);
 }

@@ -37,33 +37,44 @@ export interface QuizAttemptResult {
   isCorrect: boolean;
 }
 
-export async function generateQuiz(userId: string, data: {
-  subject: string;
-  topic: string;
-  questionCount: number;
-  difficulty?: "easy" | "medium" | "hard";
-}) {
-  // For now, create a basic quiz structure
-  // In production, this would call an LLM to generate questions
+export interface GeneratedQuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: string;
+  explanation?: string | null;
+}
+
+export async function createQuiz(
+  userId: string,
+  data: {
+    subject: string;
+    topic: string;
+    questionCount: number;
+    title?: string;
+    description?: string;
+  },
+  questions: GeneratedQuizQuestion[]
+) {
+  if (questions.length !== data.questionCount) {
+    throw new Error("QUIZ_QUESTION_COUNT_MISMATCH");
+  }
+
   const quiz = await prisma.quiz.create({
     data: {
       userId,
-      title: `${data.topic} Quiz`,
-      description: `Generated ${data.questionCount} questions about ${data.topic}`,
+      title: data.title?.trim() || `${data.topic} Quiz`,
+      description:
+        data.description?.trim() ||
+        `Generated ${data.questionCount} questions about ${data.topic}`,
       subject: data.subject,
       topic: data.topic,
       questionCount: data.questionCount,
       questions: {
-        create: Array.from({ length: data.questionCount }).map((_, i) => ({
-          question: `Question ${i + 1} about ${data.topic}`,
-          options: [
-            `Option A for question ${i + 1}`,
-            `Option B for question ${i + 1}`,
-            `Option C for question ${i + 1}`,
-            `Option D for question ${i + 1}`,
-          ],
-          correctAnswer: `Option A`,
-          explanation: `Explanation for question ${i + 1}`,
+        create: questions.map(item => ({
+          question: item.question,
+          options: item.options,
+          correctAnswer: item.correctAnswer,
+          explanation: item.explanation ?? null,
         })),
       },
     },
@@ -88,10 +99,7 @@ export async function generateQuiz(userId: string, data: {
     },
   });
 
-  return {
-    quiz,
-    generatedAt: new Date(),
-  };
+  return { quiz, generatedAt: new Date() };
 }
 
 export async function getQuizzes(userId: string) {
@@ -137,6 +145,17 @@ export async function submitAttempt(userId: string, quizId: string, data: {
     throw new Error("QUIZ_NOT_FOUND");
   }
 
+  const seen = new Set<string>();
+  for (const answer of data.answers) {
+    if (seen.has(answer.questionId)) {
+      throw new Error("QUIZ_DUPLICATE_ANSWER");
+    }
+    seen.add(answer.questionId);
+    if (!quiz.questions.some(question => question.id === answer.questionId)) {
+      throw new Error("QUIZ_QUESTION_NOT_FOUND");
+    }
+  }
+
   const results = data.answers.map((answer) => {
     const question = quiz.questions.find((q: any) => q.id === answer.questionId);
     if (!question) {
@@ -164,6 +183,29 @@ export async function submitAttempt(userId: string, quizId: string, data: {
       score: true,
       answeredAt: true,
       results: true,
+    },
+  });
+}
+export async function getQuizAttempts(
+  userId: string,
+  quizId?: string,
+  limit = 20
+) {
+  return prisma.quizAttempt.findMany({
+    where: {
+      userId,
+      ...(quizId ? { quizId } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: Math.min(100, Math.max(1, limit)),
+    select: {
+      id: true,
+      userId: true,
+      quizId: true,
+      score: true,
+      answeredAt: true,
+      results: true,
+      createdAt: true,
     },
   });
 }

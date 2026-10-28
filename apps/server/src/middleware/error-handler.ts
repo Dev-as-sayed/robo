@@ -74,6 +74,31 @@ const DOMAIN_ERRORS: Record<string, { statusCode: number; message: string }> = {
     statusCode: 500,
     message: "AI model routing configuration is invalid",
   },
+  AI_LOCAL_NOT_CONFIGURED: {
+    statusCode: 503,
+    message:
+      "Documents are set to local-only, but no local model is configured. Enable cloud AI for documents in Settings or ask the operator to configure Ollama.",
+  },
+  AI_QUOTA_EXCEEDED: {
+    statusCode: 429,
+    message: "You have reached today's AI limit. Try again tomorrow.",
+  },
+  AI_RATE_LIMITED: {
+    statusCode: 429,
+    message: "The AI provider is rate limiting requests. Try again shortly.",
+  },
+  AI_AUTH_FAILED: {
+    statusCode: 503,
+    message: "The AI provider rejected its credentials; check the server configuration.",
+  },
+  AI_CONTEXT_TOO_LONG: {
+    statusCode: 400,
+    message: "The conversation is too long for the AI model. Start a new chat or shorten the request.",
+  },
+  AI_CONTENT_BLOCKED: {
+    statusCode: 422,
+    message: "The AI provider blocked that request.",
+  },
   AI_PROVIDER_UNAVAILABLE: {
     statusCode: 502,
     message: "The AI provider is temporarily unavailable",
@@ -96,8 +121,32 @@ const DOMAIN_ERRORS: Record<string, { statusCode: number; message: string }> = {
   EXAM_NOT_FOUND: { statusCode: 404, message: "Exam not found" },
   PLAN_NOT_FOUND: { statusCode: 404, message: "Study plan not found" },
   DOCUMENT_NOT_FOUND: { statusCode: 404, message: "Document not found" },
+  QUIZ_DUPLICATE_ANSWER: { statusCode: 400, message: "Each question can be answered once" },
+  QUIZ_QUESTION_NOT_FOUND: { statusCode: 400, message: "One or more questions do not belong to this quiz" },
+  QUIZ_QUESTION_COUNT_MISMATCH: { statusCode: 502, message: "The quiz generator returned the wrong number of questions" },
   QUIZ_NOT_FOUND: { statusCode: 404, message: "Quiz not found" },
   CONTACT_NOT_FOUND: { statusCode: 404, message: "Contact not found" },
+  SUBJECT_NOT_FOUND: { statusCode: 404, message: "Subject not found" },
+  SESSION_ALREADY_ACTIVE: { statusCode: 409, message: "A study session is already running" },
+  SESSION_NOT_ACTIVE: { statusCode: 409, message: "No active study session to update" },
+  SESSION_NOT_PAUSED: { statusCode: 409, message: "The study session is not paused" },
+  PLAN_NOT_APPROVED: { statusCode: 409, message: "Approve the study plan before recalculating it" },
+  CLASS_NOTE_NOT_FOUND: { statusCode: 404, message: "Class note not found" },
+  CLASS_NOTE_CONTENT_REQUIRED: { statusCode: 400, message: "Class note content is required" },
+  CLASS_NOTE_TITLE_REQUIRED: { statusCode: 400, message: "Class note title is required" },
+  CLASS_NOTE_TOO_LONG: { statusCode: 400, message: "Class note content must be at most 10000 characters" },
+  CLASS_NOTE_SCHEDULE_NOT_FOUND: { statusCode: 404, message: "Class entry not found" },
+  MEMORY_NOT_FOUND: { statusCode: 404, message: "Memory not found" },
+  MEMORY_CONTENT_REQUIRED: { statusCode: 400, message: "Memory content is required" },
+  MEMORY_TOO_LONG: { statusCode: 400, message: "Memory content must be at most 1000 characters" },
+  PENDING_ACTION_NOT_FOUND: { statusCode: 404, message: "Pending action not found" },
+  PENDING_ACTION_EXPIRED: { statusCode: 410, message: "This confirmation expired; prepare the action again" },
+  PENDING_ACTION_ALREADY_RESOLVED: { statusCode: 409, message: "This action was already confirmed or rejected" },
+  PENDING_ACTION_RECIPIENT_REQUIRED: { statusCode: 400, message: "A recipient is required" },
+  PENDING_ACTION_MISSING_PHONE: { statusCode: 400, message: "This contact has no phone number" },
+  PENDING_ACTION_MISSING_EMAIL: { statusCode: 400, message: "This contact has no email address" },
+  PENDING_ACTION_BODY_REQUIRED: { statusCode: 400, message: "A message body is required" },
+  TOPIC_NOT_FOUND: { statusCode: 404, message: "Topic not found" },
 };
 
 const PRISMA_ERRORS: Record<string, { statusCode: number; code: string; message: string }> = {
