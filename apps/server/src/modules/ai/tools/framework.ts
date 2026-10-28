@@ -1,5 +1,6 @@
 import { tool } from "@langchain/core/tools";
 import type { StructuredToolInterface } from "@langchain/core/tools";
+import { isGraphInterrupt } from "@langchain/langgraph";
 import { z } from "zod";
 import { logAction, type ActionLogStatus } from "@robo/shared/action-logs";
 import logger from "../../../lib/logger";
@@ -27,6 +28,14 @@ export interface ToolSuccessPayload<T = unknown> {
   data: T;
   requiresConfirmation?: boolean;
   message?: string;
+}
+
+export interface AgentConfirmationRequest {
+  type: "confirmation";
+  action: "delete_todo" | "cancel_reminder";
+  targetId: string;
+  title: string;
+  prompt: string;
 }
 
 export type ToolPayload<T = unknown> = ToolSuccessPayload<T> | ToolErrorPayload;
@@ -188,6 +197,9 @@ export function createRoboTool<Schema extends z.ZodObject<z.ZodRawShape>>(
       try {
         payload = await options.invoke(input, context);
       } catch (error) {
+        if (isGraphInterrupt(error)) {
+          throw error;
+        }
         payload = describeError(error);
       }
 

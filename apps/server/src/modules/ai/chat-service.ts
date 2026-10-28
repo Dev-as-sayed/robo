@@ -189,6 +189,7 @@ export async function sendChatMessage(
         },
         now: dependencies.now,
         task,
+        confirmationText: input.content,
       });
 
       content = result.content;
@@ -326,6 +327,7 @@ export async function streamChatMessage(
           now: dependencies.now,
           signal: abortSignal,
           task,
+          confirmationText: input.content,
         },
         emit
       );

@@ -1,3 +1,4 @@
+import { interrupt } from "@langchain/langgraph";
 import { z } from "zod";
 import { getAnalyticsSummary } from "@robo/shared/analytics";
 import { getContacts, matchContacts, nextClassEnd } from "@robo/shared/contacts";
@@ -63,6 +64,7 @@ import {
   createRoboTool,
   parseDateTime,
   serializeDate,
+  type AgentConfirmationRequest,
   type ToolContext,
 } from "./framework";
 
@@ -252,32 +254,38 @@ export function buildTools(context: ToolContext) {
     {
       name: "delete_todo",
       description:
-        "Delete one of the student's tasks. The first call must omit confirm so the student can approve it. Only call again with confirm=true after the student explicitly says yes.",
+        "Delete one of the student's tasks. The tool pauses for an explicit yes/no confirmation before deleting.",
       schema: z.object({
         todoId: z.string().uuid(),
-        confirm: z
-          .boolean()
-          .default(false)
-          .describe("True only after the student explicitly confirmed deletion."),
       }),
-      invoke: async ({ todoId, confirm }) => {
-        if (!confirm) {
-          const todos = await getTodos(context.userId, {});
-          const todo = todos.find((entry) => entry.id === todoId);
-          if (!todo) {
-            throw new Error("TODO_NOT_FOUND");
-          }
+      invoke: async ({ todoId }) => {
+        const todos = await getTodos(context.userId, {});
+        const todo = todos.find((entry) => entry.id === todoId);
+        if (!todo) {
+          throw new Error("TODO_NOT_FOUND");
+        }
 
+        const decision = interrupt<
+          AgentConfirmationRequest,
+          "approve" | "reject"
+        >({
+          type: "confirmation",
+          action: "delete_todo",
+          targetId: todoId,
+          title: todo.title,
+          prompt: `Delete "${todo.title}"?`,
+        });
+
+        if (decision !== "approve") {
           return {
             ok: true,
-            requiresConfirmation: true,
-            data: { todoId, title: todo.title },
-            message: `Deleting "${todo.title}" needs confirmation. Ask the student to confirm.`,
+            data: { todoId, title: todo.title, cancelled: true },
+            message: "The student declined; the task was not deleted.",
           };
         }
 
-        const todo = await deleteTodo(context.userId, todoId);
-        return { ok: true, data: { deletedTodoId: todo.id } };
+        const deleted = await deleteTodo(context.userId, todoId);
+        return { ok: true, data: { deletedTodoId: deleted.id } };
       },
     },
     context
@@ -357,32 +365,42 @@ export function buildTools(context: ToolContext) {
     {
       name: "cancel_reminder",
       description:
-        "Cancel one of the student's reminders. The first call must omit confirm so the student can approve it. Only call again with confirm=true after the student explicitly says yes.",
+        "Cancel one of the student's reminders. The tool pauses for an explicit yes/no confirmation before cancelling.",
       schema: z.object({
         reminderId: z.string().uuid(),
-        confirm: z
-          .boolean()
-          .default(false)
-          .describe("True only after the student explicitly confirmed cancellation."),
       }),
-      invoke: async ({ reminderId, confirm }) => {
-        if (!confirm) {
-          const reminders = await getReminders(context.userId, {});
-          const reminder = reminders.find((entry) => entry.id === reminderId);
-          if (!reminder) {
-            throw new Error("REMINDER_NOT_FOUND");
-          }
+      invoke: async ({ reminderId }) => {
+        const reminders = await getReminders(context.userId, {});
+        const reminder = reminders.find((entry) => entry.id === reminderId);
+        if (!reminder) {
+          throw new Error("REMINDER_NOT_FOUND");
+        }
 
+        const decision = interrupt<
+          AgentConfirmationRequest,
+          "approve" | "reject"
+        >({
+          type: "confirmation",
+          action: "cancel_reminder",
+          targetId: reminderId,
+          title: reminder.text,
+          prompt: `Cancel "${reminder.text}"?`,
+        });
+
+        if (decision !== "approve") {
           return {
             ok: true,
-            requiresConfirmation: true,
-            data: { reminderId, text: reminder.text },
-            message: `Cancelling "${reminder.text}" needs confirmation. Ask the student to confirm.`,
+            data: {
+              reminderId,
+              text: reminder.text,
+              cancelled: true,
+            },
+            message: "The student declined; the reminder was not cancelled.",
           };
         }
 
-        const reminder = await deleteReminder(context.userId, reminderId);
-        return { ok: true, data: { cancelledReminderId: reminder.id } };
+        const cancelled = await deleteReminder(context.userId, reminderId);
+        return { ok: true, data: { cancelledReminderId: cancelled.id } };
       },
     },
     context

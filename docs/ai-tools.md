@@ -7,8 +7,8 @@ Robo is a student assistant. The agent reads and changes the student's own data 
 - Every tool uses a Zod schema shared by validation and the model tool definition.
 - `userId` comes from the authenticated request context and is never a model argument.
 - Every call writes an `ActionLog` row with input, output, status, error, and duration.
-- Delete and cancel tools use a two-step confirmation flag. The first call returns `requiresConfirmation: true`; the model may only send `confirm: true` after the student explicitly agrees.
-- Tools return JSON with `ok`, `data` or `error`, and optional `requiresConfirmation`.
+- Delete and cancel tools call LangGraph `interrupt()` and pause the run until the student replies yes or no. A rejection returns `data.cancelled: true` without changing data.
+- Tools return JSON with `ok`, `data` or `error`.
 - The agent loop is capped by `AI_AGENT_STEP_LIMIT` (default 8).
 
 ## Implemented tools
@@ -110,4 +110,4 @@ Tracing is disabled unless both Langfuse keys are set.
 - Long-term memory tools are not implemented.
 - Device audio turns stream agent tokens through the sentence splitter into TTS; hardware playback and barge-in are still untested.
 - Device tools still need server-initiated event routing; see `docs/device-gateway.md`.
-- The confirmation flag is a basic model-facing safeguard; a server-enforced pending-action flow is still needed for production.
+- Destructive todo/reminder actions are server-enforced through LangGraph interrupts. Calls and messages still use the app pending-action approval flow.

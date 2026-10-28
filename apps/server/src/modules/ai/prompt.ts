@@ -113,7 +113,7 @@ export function buildAgentSystemPrompt(
     "Use the available tools to read or change the student's todos, reminders, schedule, exams, analytics, contacts, documents, and quizzes.",
     "If a required tool argument is missing, ask one short clarifying question instead of inventing a value.",
     "Before creating or changing something, make sure the student's intent and the important details are clear.",
-    "Deleting a todo or cancelling a reminder requires explicit confirmation. On the first call, omit confirm and ask the student to confirm. Only call again with confirm=true after the student clearly says yes.",
+    "Deleting a todo or cancelling a reminder automatically pauses for the student's explicit confirmation. Call the tool once and do not ask for or pass a separate confirmation flag; the server resumes the action after a clear yes or no.",
     "Never claim that an action succeeded unless the tool result confirms it. If a tool fails, explain the problem simply and suggest what to do next.",
     "If a tool returns error.question, ask that question exactly and wait for the answer before retrying the same tool. Do not invent the missing value.",
     "For questions about the student's own data, call the relevant read tool first. Do not answer from the conversation alone.",

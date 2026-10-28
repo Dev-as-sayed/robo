@@ -6,6 +6,7 @@ import {
 } from "@langchain/core/messages";
 import { RunnableBinding, type RunnableConfig } from "@langchain/core/runnables";
 import type { StructuredToolInterface } from "@langchain/core/tools";
+import { Command } from "@langchain/langgraph";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import type { ChatMessage } from "@robo/shared/chat";
@@ -16,7 +17,7 @@ import { classifyProviderError, toProviderError } from "./provider-errors";
 import { getTraceCallbacks } from "./observability";
 import { buildAgentSystemPrompt, buildHistoryMessages, extractAssistantText } from "./prompt";
 import { buildTools } from "./tools";
-import type { ToolContext } from "./tools/framework";
+import type { AgentConfirmationRequest } from "./tools/framework";
 
 export interface RunAgentInput {
   userId: string;
@@ -31,6 +32,7 @@ export interface RunAgentInput {
   now?: Date;
   signal?: AbortSignal;
   task?: ChatTask;
+  confirmationText?: string;
 }
 
 export interface AgentToolCall {
@@ -44,6 +46,85 @@ export interface RunAgentResult {
   toolCalls: AgentToolCall[];
   model?: string;
   usage?: unknown;
+  interrupted?: boolean;
+}
+
+export type ConfirmationReply = "approve" | "reject" | "ambiguous";
+
+const AFFIRMATIVE_REPLY =
+  /^(yes|yeah|yep|yup|sure|ok|okay|confirm|confirmed|do it|go ahead|proceed|please do|absolutely|definitely)\b/;
+const NEGATIVE_REPLY =
+  /^(no|nope|nah|don't|do not|stop|reject|never ?mind|not now|keep it)\b/;
+
+export function classifyConfirmationReply(text: string): ConfirmationReply {
+  const normalized = text
+    .trim()
+    .toLowerCase()
+    .replace(/[’']/g, "'")
+    .replace(/\s+/g, " ")
+    .replace(/[.!?,;]+$/, "");
+
+  if (NEGATIVE_REPLY.test(normalized)) {
+    return "reject";
+  }
+  if (AFFIRMATIVE_REPLY.test(normalized)) {
+    return "approve";
+  }
+
+  return "ambiguous";
+}
+
+function pendingConfirmation(
+  snapshot:
+    | {
+        tasks?: Array<{ interrupts?: Array<{ value?: unknown }> }>;
+      }
+    | null
+    | undefined
+): AgentConfirmationRequest | null {
+  for (const task of snapshot?.tasks ?? []) {
+    for (const pending of task.interrupts ?? []) {
+      const value = pending.value;
+      if (
+        value &&
+        typeof value === "object" &&
+        (value as { type?: unknown }).type === "confirmation"
+      ) {
+        return value as AgentConfirmationRequest;
+      }
+    }
+  }
+
+  return null;
+}
+
+function interruptResult(
+  input: RunAgentInput,
+  confirmation: AgentConfirmationRequest,
+  startedAt: number,
+  ambiguous: boolean
+): RunAgentResult {
+  const content = ambiguous
+    ? `${confirmation.prompt} Please reply yes or no.`
+    : confirmation.prompt;
+
+  logger.info(
+    {
+      userId: input.userId,
+      conversationId: input.conversationId,
+      action: confirmation.action,
+      targetId: confirmation.targetId,
+      latencyMs: Date.now() - startedAt,
+    },
+    "AI agent paused for confirmation"
+  );
+
+  return {
+    content,
+    toolCallCount: 0,
+    toolCalls: [],
+    interrupted: true,
+  };
 }
 
 let checkpointerSetup: Promise<PostgresSaver> | null = null;
@@ -146,8 +227,20 @@ async function prepareAgent(input: RunAgentInput) {
     existingMessages.length > 0
       ? [new HumanMessage(input.content)]
       : [...buildHistoryMessages(input.history), new HumanMessage(input.content)];
+  const pending = pendingConfirmation(snapshot);
+  const reply =
+    pending && input.confirmationText !== undefined
+      ? classifyConfirmationReply(input.confirmationText)
+      : "ambiguous";
 
-  return { agent, config, messages, startedAt: Date.now() };
+  return {
+    agent,
+    config,
+    messages,
+    startedAt: Date.now(),
+    pending,
+    resumeDecision: reply === "ambiguous" ? undefined : reply,
+  };
 }
 
 function buildAgentResult(
@@ -224,10 +317,35 @@ function agentFailure(error: unknown, input: RunAgentInput): never {
 }
 
 export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
-  const { agent, config, messages, startedAt } = await prepareAgent(input);
+  const { agent, config, messages, startedAt, pending, resumeDecision } =
+    await prepareAgent(input);
 
   try {
+    if (pending) {
+      if (resumeDecision === undefined) {
+        return interruptResult(input, pending, startedAt, true);
+      }
+
+      const result = await agent.invoke(
+        new Command({ resume: resumeDecision }),
+        config
+      );
+      const snapshot = await agent.getState(config);
+      const waiting = pendingConfirmation(snapshot);
+      if (waiting) {
+        return interruptResult(input, waiting, startedAt, false);
+      }
+
+      return buildAgentResult(input, result.messages as BaseMessage[], startedAt);
+    }
+
     const result = await agent.invoke({ messages }, config);
+    const snapshot = await agent.getState(config);
+    const waiting = pendingConfirmation(snapshot);
+    if (waiting) {
+      return interruptResult(input, waiting, startedAt, false);
+    }
+
     return buildAgentResult(input, result.messages as BaseMessage[], startedAt);
   } catch (error) {
     agentFailure(error, input);
@@ -238,11 +356,19 @@ export async function runAgentStream(
   input: RunAgentInput,
   onToken: (token: string) => void
 ): Promise<RunAgentResult> {
-  const { agent, config, messages, startedAt } = await prepareAgent(input);
+  const { agent, config, messages, startedAt, pending, resumeDecision } =
+    await prepareAgent(input);
 
   try {
+    if (pending && resumeDecision === undefined) {
+      const result = interruptResult(input, pending, startedAt, true);
+      onToken(result.content);
+      return result;
+    }
+
+    const resume = pending ? resumeDecision : undefined;
     const stream = await agent.stream(
-      { messages },
+      resume !== undefined ? new Command({ resume }) : { messages },
       { ...config, streamMode: "messages" }
     );
 
@@ -259,6 +385,13 @@ export async function runAgentStream(
     }
 
     const snapshot = await agent.getState(config);
+    const waiting = pendingConfirmation(snapshot);
+    if (waiting) {
+      const result = interruptResult(input, waiting, startedAt, false);
+      onToken(result.content);
+      return result;
+    }
+
     const resultMessages = (snapshot?.values?.messages ?? []) as BaseMessage[];
     return buildAgentResult(input, resultMessages, startedAt);
   } catch (error) {
