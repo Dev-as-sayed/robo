@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  aiFeedbackSchema,
   chatConversationParamSchema,
   chatConversationQuerySchema,
   chatMessageQuerySchema,
@@ -7,6 +8,7 @@ import {
 } from "@robo/shared/schemas";
 import { getConversation, listConversations } from "@robo/shared/chat";
 import { sendChatMessage, streamChatMessage } from "../ai/chat-service";
+import { createAiFeedback } from "./feedback";
 import { asyncHandler } from "../../http/async-handler";
 import { sendSuccess } from "../../http/response";
 import { formatSseEvent, openSse } from "../../http/sse";
@@ -81,6 +83,22 @@ router.post(
         res.end();
       }
     }
+  })
+);
+
+router.post(
+  "/feedback",
+  authenticate,
+  aiMessageLimiter,
+  validate({ body: aiFeedbackSchema }),
+  asyncHandler(async (req, res) => {
+    const feedback = await createAiFeedback(req.user!.id, req.body);
+    sendSuccess(res, {
+      status: 201,
+      code: "AI_FEEDBACK_RECORDED",
+      message: "Feedback recorded",
+      data: { feedback },
+    });
   })
 );
 

@@ -2,10 +2,14 @@ import { Router } from "express";
 import {
   adminUserParamSchema,
   adminUserQuerySchema,
+  aiFeedbackParamSchema,
+  aiFeedbackQuerySchema,
+  updateAiFeedbackSchema,
   updateUserRoleSchema,
   updateUserScopeSchema,
   updateUserStatusSchema,
   type AdminUserQueryInput,
+  type AiFeedbackQueryInput,
 } from "@robo/shared/schemas";
 import {
   deleteUser,
@@ -16,6 +20,7 @@ import {
   updateUserScope,
   updateUserStatus,
 } from "@robo/shared/users";
+import { listAiFeedback, reviewAiFeedback } from "../chat/feedback";
 import { asyncHandler } from "../../http/async-handler";
 import { sendSuccess } from "../../http/response";
 import { authenticate } from "../../middleware/authenticate";
@@ -26,6 +31,33 @@ const router = Router();
 
 router.use(authenticate);
 router.use(requireMinimumRole("MODERATOR"));
+
+router.get(
+  "/ai-feedback",
+  validate({ query: aiFeedbackQuerySchema }),
+  asyncHandler(async (req, res) => {
+    const feedback = await listAiFeedback(
+      req.query as unknown as AiFeedbackQueryInput
+    );
+    sendSuccess(res, {
+      code: "AI_FEEDBACK_FETCHED",
+      data: { feedback },
+    });
+  })
+);
+
+router.patch(
+  "/ai-feedback/:id",
+  validate({ params: aiFeedbackParamSchema, body: updateAiFeedbackSchema }),
+  asyncHandler(async (req, res) => {
+    const feedback = await reviewAiFeedback(req.params.id, req.body);
+    sendSuccess(res, {
+      code: "AI_FEEDBACK_UPDATED",
+      message: "Feedback updated",
+      data: { feedback },
+    });
+  })
+);
 
 router.get(
   "/users/stats",

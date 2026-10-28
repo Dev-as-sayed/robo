@@ -374,7 +374,7 @@ over the existing device WebSocket plus Expo push when the user has registered t
 ### X.4 Launch
 
 - [ ] 🔴 Upgrade mobile to target Android 16 (API 36) — Expo 51 currently targets API 34, which blocks new submissions since 2026-08-31
-- [ ] 🔴 In-app AI answer reporting/flagging for chat and vision, plus moderation triage — required by Play's AI-Generated Content policy
+- [x] 🔴 In-app AI answer reporting/flagging for chat and vision, plus moderation triage — required by Play's AI-Generated Content policy — `Report` actions on chat/vision answers call `POST /chat/feedback`; `AiFeedback` records the reason, optional details, message ID or vision answer text, and is included in data export/cascade deletion. Moderators triage via `GET/PATCH /admin/ai-feedback`; production-build verification remains
 - [ ] 🔴 Public account-deletion web resource, linked from Play Console and the in-app deletion flow
 - [ ] 🔴 Beta program (20–50 students), feedback loop, bug triage
 - [ ] 🔴 Play Store listing, data-safety form, privacy policy URL

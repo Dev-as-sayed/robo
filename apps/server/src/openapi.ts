@@ -1,6 +1,7 @@
 import { zodToJsonSchema } from "zod-to-json-schema";
 import type { z } from "zod";
 import {
+  aiFeedbackSchema,
   analyticsQuerySchema,
   chatMessageSchema,
   classNoteQuerySchema,
@@ -67,6 +68,7 @@ const registry: Record<string, z.ZodTypeAny> = {
   DocumentUploadUrl: documentUploadUrlSchema,
   CompleteDocumentUpload: completeDocumentUploadSchema,
   ChatMessage: chatMessageSchema,
+  AiFeedback: aiFeedbackSchema,
   ExplainImage: explainImageSchema,
   StartStudySession: startStudySessionSchema,
   ExtendStudySession: extendStudySessionSchema,
@@ -336,6 +338,14 @@ export function getOpenApiDocument() {
     "/api/v1/chat/conversations": pathItem(
       "get",
       operation({ summary: "List conversations", tag: "Chat" })
+    ),
+    "/api/v1/chat/feedback": pathItem(
+      "post",
+      operation({
+        summary: "Report an AI-generated answer",
+        tag: "Chat",
+        body: "AiFeedback",
+      })
     ),
     "/api/v1/ai/vision": pathItem(
       "post",

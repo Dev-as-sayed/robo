@@ -120,6 +120,7 @@ model User {
   classNotes         ClassNote[]
   aiUsage            AiUsage[]
   consents           UserConsent[]
+  aiFeedback         AiFeedback[]
 
   @@index([role])
   @@index([status])
@@ -192,8 +193,45 @@ model Message {
   voiceText      String?
   displayContent Json?
   createdAt      DateTime     @default(now())
+  aiFeedback     AiFeedback[]
 
   @@index([conversationId, createdAt])
+}
+
+enum AiFeedbackSurface {
+  CHAT
+  VISION
+}
+
+enum AiFeedbackReason {
+  OFFENSIVE
+  UNSAFE
+  INCORRECT
+  OTHER
+}
+
+enum AiFeedbackStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+}
+
+model AiFeedback {
+  id           String            @id @default(uuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  surface      AiFeedbackSurface
+  messageId    String?
+  message      Message?          @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  responseText String?
+  reason       AiFeedbackReason
+  details      String?
+  status       AiFeedbackStatus  @default(OPEN)
+  createdAt    DateTime          @default(now())
+
+  @@index([messageId])
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }
 
 enum ReminderChannel {

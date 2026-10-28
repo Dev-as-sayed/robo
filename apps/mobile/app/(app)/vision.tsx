@@ -8,6 +8,7 @@ import { useExplainImageMutation } from "@/api/vision-api";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { ReportAnswerButton } from "@/components/ReportAnswerButton";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TextField } from "@/components/TextField";
@@ -122,6 +123,7 @@ export default function VisionScreen() {
       {answer ? (
         <Card title="ROBO'S EXPLANATION" tone="accent">
           <Text style={styles.answer}>{answer}</Text>
+          <ReportAnswerButton surface="VISION" responseText={answer} />
         </Card>
       ) : (
         <View style={styles.tip}>

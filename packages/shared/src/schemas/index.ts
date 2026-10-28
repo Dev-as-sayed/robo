@@ -154,8 +154,47 @@ export const chatConversationQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
+export const aiFeedbackSchema = z
+  .object({
+    surface: z.enum(["CHAT", "VISION"]).default("CHAT"),
+    messageId: z.string().uuid().optional(),
+    responseText: z.string().trim().min(1).max(4000).optional(),
+    reason: z.enum(["OFFENSIVE", "UNSAFE", "INCORRECT", "OTHER"]),
+    details: z.string().trim().max(1000).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.surface === "CHAT" && !value.messageId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["messageId"],
+        message: "A chat report needs the assistant message ID",
+      });
+    }
+
+    if (value.surface === "VISION" && !value.responseText) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["responseText"],
+        message: "A vision report needs the answer text",
+      });
+    }
+  });
+
 export const chatMessageQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+export const aiFeedbackQuerySchema = z.object({
+  status: z.enum(["OPEN", "REVIEWED", "DISMISSED"]).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+export const updateAiFeedbackSchema = z.object({
+  status: z.enum(["REVIEWED", "DISMISSED"]),
+});
+
+export const aiFeedbackParamSchema = z.object({
+  id: z.string().uuid(),
 });
 
 export const actionLogQuerySchema = z.object({
@@ -424,6 +463,9 @@ export const explainImageSchema = z.object({
 export type ExplainImageInput = z.infer<typeof explainImageSchema>;
 
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
+export type AiFeedbackInput = z.infer<typeof aiFeedbackSchema>;
+export type AiFeedbackQueryInput = z.infer<typeof aiFeedbackQuerySchema>;
+export type UpdateAiFeedbackInput = z.infer<typeof updateAiFeedbackSchema>;
 export type ChatConversationParamInput = z.infer<typeof chatConversationParamSchema>;
 export type ChatConversationQueryInput = z.infer<typeof chatConversationQuerySchema>;
 export type ChatMessageQueryInput = z.infer<typeof chatMessageQuerySchema>;

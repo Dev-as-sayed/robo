@@ -54,16 +54,23 @@ Action: upgrade the Expo SDK to a release that targets API 36, rebuild, and test
 notifications, edge-to-edge layout, photo picking, contacts, and WebSocket
 reconnect behavior before submitting.
 
-### 2. In-app reporting for AI-generated answers
+### 2. In-app reporting for AI-generated answers (implemented)
 
 Chat and vision answers are generated with a third-party model. Google Play's
 AI-Generated Content policy requires apps that generate AI content to provide
 in-app reporting or flagging for offensive content, without sending the user out
 of the app.
 
-Action: add a "Report answer" action to chat and vision answers, a server-side
-feedback endpoint with rate limits and ownership checks, and a moderation/triage
-runbook. Do not ship the AI chat without this control.
+The app now shows a "Report" action under chat answers and vision explanations.
+`POST /api/v1/chat/feedback` validates ownership, stores chat reports against the
+assistant message ID, stores vision report text without a message, and reopens an
+existing report instead of creating duplicates. Moderators can list and triage
+reports through `GET /api/v1/admin/ai-feedback?status=OPEN` and
+`PATCH /api/v1/admin/ai-feedback/:id`.
+
+Action before release: verify the flow in a production build and define who
+triages open reports. Reports are included in user data export and cascade-delete
+with the account.
 
 ### 3. Account-deletion web resource
 
@@ -164,6 +171,7 @@ deployed build and provider contracts.
 | Study activity (tasks, sessions, quiz results) | Yes | App functionality, insights | Hosting provider | Not used for ads |
 | Push token and device identifiers | Yes | Notifications, device pairing | Expo push, hosting provider | Delete on sign-out/account deletion |
 | Crash and diagnostic data | Optional | Security, reliability | Sentry if configured | `sendDefaultPii` is false; do not send content |
+| AI answer reports | Optional | Safety and quality review | Hosting provider | Stores reason, optional details, message ID or vision answer text |
 
 The app does not sell data or use it for advertising. Data is encrypted in
 transit; account deletion is available in the app. Complete the deletion web
@@ -185,7 +193,8 @@ resource before declaring deletion support in Play Console.
 ## Action checklist
 
 - [ ] Upgrade Expo/target SDK to Android 16 (API 36) and re-test the release.
-- [ ] Add in-app AI answer reporting and a moderation triage path.
+- [x] Add in-app AI answer reporting and a moderation triage path.
+- [ ] Verify AI feedback reporting on a production build and assign triage.
 - [ ] Publish the account-deletion web resource and enter it in Play Console.
 - [ ] Finalize and host the privacy policy; complete the Data safety form.
 - [ ] Decide between Contact Picker and a broad-contacts declaration.

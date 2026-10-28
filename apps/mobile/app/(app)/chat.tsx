@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useConversationQuery } from "@/api/chat-api";
 import { startChatStream, type ChatStreamHandle } from "@/api/chat-stream";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { ReportAnswerButton } from "@/components/ReportAnswerButton";
 import {
   setConversationId,
   startNewConversation,
@@ -271,6 +272,10 @@ export default function ChatScreen() {
                     </Pressable>
                   ) : null
                 )}
+
+              {message.role === "ASSISTANT" ? (
+                <ReportAnswerButton surface="CHAT" messageId={message.id} />
+              ) : null}
             </View>
           ))}
 
