@@ -121,6 +121,7 @@ model User {
   aiUsage            AiUsage[]
   consents           UserConsent[]
   aiFeedback         AiFeedback[]
+  deletionRequests   AccountDeletionRequest[]
 
   @@index([role])
   @@index([status])
@@ -232,6 +233,27 @@ model AiFeedback {
   @@index([messageId])
   @@index([status, createdAt])
   @@index([userId, createdAt])
+}
+
+enum DeletionRequestStatus {
+  PENDING
+  COMPLETED
+  DISMISSED
+}
+
+model AccountDeletionRequest {
+  id          String                @id @default(uuid())
+  email       String                @unique
+  userId      String?
+  user        User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason      String?
+  status      DeletionRequestStatus @default(PENDING)
+  note        String?
+  requestedAt DateTime              @default(now())
+  processedAt DateTime?
+  updatedAt   DateTime              @updatedAt
+
+  @@index([status, requestedAt])
 }
 
 enum ReminderChannel {

@@ -9,6 +9,7 @@ export interface CleanupCounts {
   pendingActions: number;
   refreshTokens: number;
   deviceEvents: number;
+  deletionRequests: number;
   orphanFiles: number;
   orphanVectors: number;
 }
@@ -66,6 +67,18 @@ export async function runDataCleanup(
     },
   });
 
+  const deletionRequests = await prisma.accountDeletionRequest.deleteMany({
+    where: {
+      OR: [
+        {
+          status: { in: ["COMPLETED", "DISMISSED"] },
+          updatedAt: { lt: cutoff },
+        },
+        { status: "PENDING", requestedAt: { lt: cutoff } },
+      ],
+    },
+  });
+
   const orphans = options.removeOrphans
     ? await options.removeOrphans()
     : { files: 0, vectors: 0 };
@@ -79,6 +92,7 @@ export async function runDataCleanup(
     pendingActions: pendingActions.count,
     refreshTokens: refreshTokens.count,
     deviceEvents: deviceEvents.count,
+    deletionRequests: deletionRequests.count,
     orphanFiles: orphans.files,
     orphanVectors: orphans.vectors,
   };

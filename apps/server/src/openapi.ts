@@ -1,6 +1,7 @@
 import { zodToJsonSchema } from "zod-to-json-schema";
 import type { z } from "zod";
 import {
+  accountDeletionRequestSchema,
   aiFeedbackSchema,
   analyticsQuerySchema,
   chatMessageSchema,
@@ -69,6 +70,7 @@ const registry: Record<string, z.ZodTypeAny> = {
   CompleteDocumentUpload: completeDocumentUploadSchema,
   ChatMessage: chatMessageSchema,
   AiFeedback: aiFeedbackSchema,
+  AccountDeletionRequest: accountDeletionRequestSchema,
   ExplainImage: explainImageSchema,
   StartStudySession: startStudySessionSchema,
   ExtendStudySession: extendStudySessionSchema,
@@ -290,6 +292,15 @@ export function getOpenApiDocument() {
         summary: "Revoke the current session",
         tag: "Auth",
         body: "Logout",
+        auth: false,
+      })
+    ),
+    "/api/v1/account/deletion-request": pathItem(
+      "post",
+      operation({
+        summary: "Request account deletion from the public web page",
+        tag: "Account",
+        body: "AccountDeletionRequest",
         auth: false,
       })
     ),

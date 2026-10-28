@@ -72,17 +72,23 @@ Action before release: verify the flow in a production build and define who
 triages open reports. Reports are included in user data export and cascade-delete
 with the account.
 
-### 3. Account-deletion web resource
+### 3. Account-deletion web resource (implemented, needs deployment)
 
 The app has an in-app account deletion path and the server exposes
 `DELETE /users/me`, which removes PostgreSQL rows, files, vectors and consent
 records. Google Play also requires a functional web resource where users can
 request deletion of their account and associated data.
 
-Action: publish a public deletion page that names Robo, explains what is deleted,
-and provides a request path. Enter the URL in the Data safety form. Verify that
-the deployed job also removes Qdrant points, S3 objects, Redis state, push tokens
-and backups according to the retention policy.
+The server now serves `GET /account/delete` and its script, backed by
+`POST /api/v1/account/deletion-request`. The page names Robo, explains what is
+deleted, and accepts a request without requiring the app. Requests are stored only
+for existing accounts, rate-limited, and always receive the same `202` response.
+A moderator verifies ownership by email before completing the request; completing
+it runs the same cleanup as the in-app flow and cascades the request row.
+
+Action before release: deploy the page on the public API domain, verify the flow
+on a phone, enter the URL in Play Console, and assign the moderator who checks
+pending requests. See [`account-deletion.md`](account-deletion.md).
 
 ### 4. Privacy policy and Data safety form
 
@@ -172,10 +178,12 @@ deployed build and provider contracts.
 | Push token and device identifiers | Yes | Notifications, device pairing | Expo push, hosting provider | Delete on sign-out/account deletion |
 | Crash and diagnostic data | Optional | Security, reliability | Sentry if configured | `sendDefaultPii` is false; do not send content |
 | AI answer reports | Optional | Safety and quality review | Hosting provider | Stores reason, optional details, message ID or vision answer text |
+| Web deletion request | Optional | Account deletion | Hosting provider | Email and optional reason for existing accounts; removed on deletion or cleanup |
 
 The app does not sell data or use it for advertising. Data is encrypted in
-transit; account deletion is available in the app. Complete the deletion web
-resource before declaring deletion support in Play Console.
+transit; account deletion is available in the app and through the public web
+page. Deploy the page and enter its URL in Play Console before declaring deletion
+support.
 
 ## Store listing and app-content checks
 
@@ -198,7 +206,8 @@ resource before declaring deletion support in Play Console.
 - [ ] Upgrade Expo/target SDK to Android 16 (API 36) and re-test the release.
 - [x] Add in-app AI answer reporting and a moderation triage path.
 - [ ] Verify AI feedback reporting on a production build and assign triage.
-- [ ] Publish the account-deletion web resource and enter it in Play Console.
+- [x] Implement the account-deletion web page and moderator processing path.
+- [ ] Deploy the deletion page on the public API domain and enter it in Play Console.
 - [ ] Finalize and host the privacy policy; complete the Data safety form.
 - [ ] Decide between Contact Picker and a broad-contacts declaration.
 - [ ] Set the adult target audience and complete the content rating.

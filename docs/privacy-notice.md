@@ -61,8 +61,9 @@ We do not sell personal data or use it for advertising.
 
 You can access, export, correct or delete your data in the app. Data export is
 available under Settings → Data. Account deletion removes database rows, document
-bytes and vectors. You may also contact **{{PRIVACY_EMAIL}}** or the relevant
-data-protection authority.
+bytes and vectors. If you cannot sign in, request deletion at
+**{{DELETION_URL}}**; we verify ownership before deleting. You may also contact
+**{{PRIVACY_EMAIL}}** or the relevant data-protection authority.
 
 ## Children
 

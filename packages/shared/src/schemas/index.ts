@@ -197,6 +197,26 @@ export const aiFeedbackParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+export const accountDeletionRequestSchema = z.object({
+  email: emailSchema,
+  reason: z.string().trim().max(500).optional(),
+  confirm: z.literal(true),
+});
+
+export const adminDeletionRequestQuerySchema = z.object({
+  status: z.enum(["PENDING", "COMPLETED", "DISMISSED"]).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+export const updateDeletionRequestSchema = z.object({
+  status: z.enum(["COMPLETED", "DISMISSED"]),
+  note: z.string().trim().max(500).optional(),
+});
+
+export const deletionRequestParamSchema = z.object({
+  id: z.string().uuid(),
+});
+
 export const actionLogQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
@@ -466,6 +486,15 @@ export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
 export type AiFeedbackInput = z.infer<typeof aiFeedbackSchema>;
 export type AiFeedbackQueryInput = z.infer<typeof aiFeedbackQuerySchema>;
 export type UpdateAiFeedbackInput = z.infer<typeof updateAiFeedbackSchema>;
+export type AccountDeletionRequestInput = z.infer<
+  typeof accountDeletionRequestSchema
+>;
+export type AdminDeletionRequestQueryInput = z.infer<
+  typeof adminDeletionRequestQuerySchema
+>;
+export type UpdateDeletionRequestInput = z.infer<
+  typeof updateDeletionRequestSchema
+>;
 export type ChatConversationParamInput = z.infer<typeof chatConversationParamSchema>;
 export type ChatConversationQueryInput = z.infer<typeof chatConversationQuerySchema>;
 export type ChatMessageQueryInput = z.infer<typeof chatMessageQuerySchema>;

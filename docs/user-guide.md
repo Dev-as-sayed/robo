@@ -87,7 +87,9 @@ device, the phone app fallback is noted.
 - Cloud AI is used only when you enable it for document questions. Private
   document mode stays on the local Ollama model.
 - You can export your data or delete your account from Settings. Deletion
-  removes database rows, uploaded files and document vectors.
+  removes database rows, uploaded files and document vectors. If you cannot
+  sign in, use the public deletion page linked from the store listing; ownership
+  is verified before deletion.
 - Microphone audio is deleted after transcription. Transcripts and action logs
   are retained for 90 days by default.
 - **Settings → Help & FAQ** has short answers and opens the configured support

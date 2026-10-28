@@ -14,6 +14,8 @@ import { HybridRateLimitStore } from "./lib/rate-limit-store";
 import { getOpenApiDocument } from "./openapi";
 import authRoutes from "./modules/auth/routes";
 import userRoutes from "./modules/users/routes";
+import accountRoutes from "./modules/account/routes";
+import accountPageRoutes from "./modules/account/page-routes";
 import adminRoutes from "./modules/admin/routes";
 import deviceRoutes from "./modules/devices/routes";
 import chatRoutes from "./modules/chat/routes";
@@ -99,6 +101,7 @@ export function createApp(): express.Express {
   app.use("/api/v1/auth/register", authLimiter);
   app.use("/api/v1/auth/google", authLimiter);
   app.use("/api/v1/auth/refresh", authLimiter);
+  app.use("/api/v1/account/deletion-request", authLimiter);
 
   const pairingLimiter = rateLimit({
     windowMs: env.RATE_LIMIT_WINDOW_MS,
@@ -131,7 +134,9 @@ export function createApp(): express.Express {
     });
   });
 
+  app.use("/account", accountPageRoutes);
   app.use("/api/v1/auth", authRoutes);
+  app.use("/api/v1/account", accountRoutes);
   app.use("/api/v1/users", userRoutes);
   app.use("/api/v1/admin", adminRoutes);
   app.use("/api/v1/devices", deviceRoutes);

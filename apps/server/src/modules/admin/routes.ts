@@ -1,13 +1,17 @@
 import { Router } from "express";
 import {
+  adminDeletionRequestQuerySchema,
   adminUserParamSchema,
   adminUserQuerySchema,
   aiFeedbackParamSchema,
   aiFeedbackQuerySchema,
+  deletionRequestParamSchema,
   updateAiFeedbackSchema,
+  updateDeletionRequestSchema,
   updateUserRoleSchema,
   updateUserScopeSchema,
   updateUserStatusSchema,
+  type AdminDeletionRequestQueryInput,
   type AdminUserQueryInput,
   type AiFeedbackQueryInput,
 } from "@robo/shared/schemas";
@@ -21,6 +25,10 @@ import {
   updateUserStatus,
 } from "@robo/shared/users";
 import { listAiFeedback, reviewAiFeedback } from "../chat/feedback";
+import {
+  listDeletionRequests,
+  processDeletionRequest,
+} from "../users/deletion-requests";
 import { asyncHandler } from "../../http/async-handler";
 import { sendSuccess } from "../../http/response";
 import { authenticate } from "../../middleware/authenticate";
@@ -31,6 +39,38 @@ const router = Router();
 
 router.use(authenticate);
 router.use(requireMinimumRole("MODERATOR"));
+
+router.get(
+  "/deletion-requests",
+  validate({ query: adminDeletionRequestQuerySchema }),
+  asyncHandler(async (req, res) => {
+    const requests = await listDeletionRequests(
+      req.query as unknown as AdminDeletionRequestQueryInput
+    );
+    sendSuccess(res, {
+      code: "DELETION_REQUESTS_FETCHED",
+      data: { requests },
+    });
+  })
+);
+
+router.patch(
+  "/deletion-requests/:id",
+  validate({
+    params: deletionRequestParamSchema,
+    body: updateDeletionRequestSchema,
+  }),
+  asyncHandler(async (req, res) => {
+    const result = await processDeletionRequest(req.params.id, req.body);
+    sendSuccess(res, {
+      code: "DELETION_REQUEST_PROCESSED",
+      message: result.deleted
+        ? "Account deleted and request completed"
+        : "Deletion request updated",
+      data: result,
+    });
+  })
+);
 
 router.get(
   "/ai-feedback",

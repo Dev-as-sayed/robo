@@ -126,6 +126,7 @@ pnpm --dir apps/mobile lint
 - [`docs/voice-pipeline.md`](docs/voice-pipeline.md) — STT/TTS contracts and voice turn behavior
 - [`docs/user-guide.md`](docs/user-guide.md) — end-user guide for the mobile app
 - [`docs/support-faq.md`](docs/support-faq.md) — in-app FAQ, support channel and triage workflow
+- [`docs/account-deletion.md`](docs/account-deletion.md) — public deletion page, moderator flow and retention
 - [`docs/device-quick-start.md`](docs/device-quick-start.md) — draft device setup card
 - [`docs/ai-evaluation.md`](docs/ai-evaluation.md) — AI regression, retrieval and embedding evaluation
 - [`docs/production-operations.md`](docs/production-operations.md) — deploy, TLS, backup, restore and incident runbook

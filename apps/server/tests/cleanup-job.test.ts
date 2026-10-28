@@ -9,6 +9,7 @@ const db = vi.hoisted(() => ({
   pendingAction: { deleteMany: vi.fn() },
   refreshToken: { deleteMany: vi.fn() },
   devicePendingEvent: { deleteMany: vi.fn() },
+  accountDeletionRequest: { deleteMany: vi.fn() },
 }));
 
 vi.mock("@robo/shared/lib/prisma", () => ({ prisma: db }));
@@ -51,6 +52,17 @@ describe("runDataCleanup", () => {
         status: { in: ["CONFIRMED", "REJECTED", "EXPIRED"] },
       },
     });
+    expect(db.accountDeletionRequest.deleteMany).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          {
+            status: { in: ["COMPLETED", "DISMISSED"] },
+            updatedAt: { lt: CUTOFF },
+          },
+          { status: "PENDING", requestedAt: { lt: CUTOFF } },
+        ],
+      },
+    });
     expect(counts).toEqual({
       actionLogs: 1,
       messages: 1,
@@ -60,6 +72,7 @@ describe("runDataCleanup", () => {
       pendingActions: 1,
       refreshTokens: 1,
       deviceEvents: 1,
+      deletionRequests: 1,
       orphanFiles: 2,
       orphanVectors: 3,
     });
