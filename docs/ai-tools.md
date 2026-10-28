@@ -26,27 +26,42 @@ Robo is a student assistant. The agent reads and changes the student's own data 
 | `create_reminder` | Create a one-off or recurring reminder | Yes | No | R2.3, FR-PRD-03 |
 | `cancel_reminder` | Delete a reminder | Yes | Yes | R2.3 |
 | `snooze_reminder` | Snooze a reminder | Yes | No | R2.1, FR-PRD-05 |
+| `start_timer` | Start a speaker timer and create its backing reminder | Yes | No | R2.3, R2.4 |
+| `create_alarm` | Create a speaker alarm at a local date/time | Yes | No | R2.3, R2.4 |
+| `device_show` | Show a text/timer/study/exam card on the speaker | No | No | R2.3, FW-06 |
+| `device_speak` | Make the speaker say a short message | No | No | R2.3, FW-05 |
 | `list_exams` | List exams ordered by date | No | No | R2.3, FR-EXM-01 |
 | `create_exam` | Create an exam with topics and weight | Yes | No | R2.3 |
 | `get_exam` | Get one exam | No | No | R2.3 |
 | `get_exam_readiness` | Preparation percentage for an exam | No | No | R3.3, FR-EXM-05 |
+| `get_revision_summary` | Tasks left, weak topics and next revision step | No | No | R3.3, FR-EXM-07 |
 | `create_study_plan` | Create a draft study plan for an exam | Yes | Approval later | R3.3, FR-EXM-02 |
+| `approve_study_plan` | Create tasks and a daily reminder from a plan | Yes | No | R3.3, FR-EXM-03 |
+| `plan_today` | Rank today's tasks with class, exams and reminders | No | No | R5, FR-ANL-06 |
+| `list_subjects` | List subjects with topic counts | No | No | R3.3, FR-EXM-04 |
+| `get_subject_topics` | Get topics and mastery for a subject | No | No | R3.3, FR-EXM-04 |
+| `get_existing_tasks` | List pending tasks before planning | No | No | R3.3, FR-EXM-04 |
+| `save_class_note` | Save a note linked to a class | No | No | R3.3, FR-CLS-04 |
+| `query_class_notes` | Search class notes by subject, date or text | No | No | R3.3, FR-CLS-05 |
+| `save_memory` | Save a durable preference, fact, goal or study detail | No | No | R3.10, FR-AI-05, AGT-11 |
+| `list_memories` | List saved long-term memories | No | No | R3.10, FR-AI-05, AGT-11 |
+| `forget_memory` | Delete one saved memory | No | No | R3.10, FR-AI-05, AGT-11 |
 | `get_analytics_summary` | Study activity summary for a range | No | No | R5, FR-STM-08 |
 | `find_contact` | Find a contact by name, phone, or email | No | No | R4, FR-COM-01 |
 | `list_documents` | List uploaded study documents | No | No | R3.1, FR-DOC-01 |
 | `search_documents` | Search the student's indexed chunks with a mandatory `userId` filter | No | No | R3.2, RAG-06 |
-| `generate_quiz` | Generate a practice quiz | Yes | No | R3.3, FR-DOC-06 |
+| `generate_quiz` | Generate a validated practice quiz | Yes | No | R3.3, FR-DOC-06 |
+| `record_quiz_result` | Record quiz answers and return the score | Yes | No | R3.3, FR-DOC-10 |
+| `start_study_session` | Start a timed study session and show it on the speaker | Yes | No | R5, FR-STM-01 |
+| `end_study_session` | End the current/specific session and report study minutes | Yes | No | R5, FR-STM-01 |
 
 ## Tools still needing backend work
 
 | Tool | Blocker |
 | --- | --- |
-| `start_timer`, `create_alarm` | Needs timer/alarm models and BullMQ jobs |
-| `device_show`, `device_speak` | The `/ws/device` gateway now exists; needs server-initiated event routing and offline queueing (GW-06) |
 | `save_class_note`, `query_class_notes` | Needs class-note models and API |
-| `get_subject_topics` | Needs `Subject` and `Topic` models |
+| `get_subject_topics` | `Subject` and `Topic` models/API exist; tool wiring is still pending |
 | `record_quiz_result` | Can use the existing attempt endpoint once quiz answers are exposed |
-| `approve_study_plan` | Needs a real approval flow that creates todos and reminders |
 | `prepare_call`, `prepare_message` | Needs an app action/intent channel and explicit confirmation |
 | `start_study_session`, `end_study_session` | Needs study session routes and services |
 

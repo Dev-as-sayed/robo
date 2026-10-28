@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+if printf '%s\n' "$staged" | grep -q '^apps/server/'; then
+  pnpm --dir "$root/apps/server" lint
+fi
+
+if printf '%s\n' "$staged" | grep -q '^apps/mobile/'; then
+  pnpm --dir "$root/apps/mobile" lint
+fi
+
+if printf '%s\n' "$staged" | grep -q '^packages/shared/'; then
+  pnpm --dir "$root/apps/server" typecheck
+fi

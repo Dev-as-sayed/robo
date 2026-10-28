@@ -14,6 +14,7 @@
     ]
   },
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "dev": "pnpm --dir apps/server dev",
     "lint": "pnpm --dir apps/server lint",
     "typecheck": "pnpm --dir apps/server typecheck",

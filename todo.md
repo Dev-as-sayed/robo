@@ -15,10 +15,10 @@
 | ----- | --------------------------------------- | ---------- | ------------- |
 | P0    | Decisions, setup, hardware ordered      | 10–15 d    | Partial (code setup in place; decisions/hardware pending) |
 | R1    | Voice foundation                        | 30–40 d    | In progress (R1.3 gateway + voice pipeline now stream agent tokens through sentence-level TTS; mobile auth/chat in place — firmware, pairing and BLE setup pending) |
-| R2    | Productivity (MVP complete)             | 30–40 d    | In progress (all R2 mobile screens built — Today, Tasks, Reminders incl. recurrence, Schedule, Settings; reminders now fire through an in-process scheduler tick over the device WebSocket — class-alert/ deadline jobs, offline queueing and mobile push delivery still missing) |
-| R3    | Study Brain (documents, quizzes, plans) | 40–50 d    | In progress (Documents + Exams/plan screens built and typechecking; quiz generator still returns placeholder questions, and document upload stores metadata only — no object storage, no chunk indexing) |
-| R4    | Communication (calls, messages)         | 25–30 d    | ☐ (contacts screen + `tel:`/`sms:`/`mailto:` done; `PendingAction` model missing, so nothing can be confirmed before it dials) |
-| R5    | Proactive (study mode, analytics)       | 35–40 d    | ☐ (Insights + Activity screens built, but 4 of 6 summary metrics are server-side stubs that always read 0) |
+| R2    | Productivity (MVP complete)             | 30–40 d    | In progress (all R2 mobile screens built — Today, Tasks, Reminders incl. recurrence, Schedule, Settings; reminders now fire through an in-process scheduler tick over the device WebSocket and Expo push, with persisted delivery status, retry/backoff and an offline reconnect queue; pre-class and 24 h/2 h deadline jobs are now wired — mobile push registration still missing) |
+| R3    | Study Brain (documents, quizzes, plans) | 40–50 d    | In progress (exams, plans/approval, quizzes, class notes and memory are real; documents now upload to MinIO/S3 with signed URLs and quotas, but parsing/chunking/embedding and indexing are still pending) |
+| R4    | Communication (calls, messages)         | 25–30 d    | ◐ (contacts + pending-action confirmations done; device voice confirmation, app WebSocket push and contact import remain) |
+| R5    | Proactive (study mode, analytics)       | 35–40 d    | ◐ (study sessions, insights, trends, nudges, planner, plan approval/readiness, app-side DND and Pomodoro breaks done; device timer remains firmware-blocked) |
 | R6    | Advanced (vision, sync)                 | Ongoing    | ☐             |
 | X     | Cross-cutting: security, QA, launch     | Continuous | ☐             |
 
@@ -30,14 +30,14 @@
 
 ### P0.1 Decisions (answer the FRD open questions)
 
-- [ ] 🔴 Choose launch language(s) (drives STT, TTS, embeddings, wake word) — 1 d
-- [ ] 🔴 Choose target age group (university only vs school → consent scope) — 0.5 d
-- [ ] 🟡 Decide whether an app-only mode (no device) is needed for early users — 0.5 d
-- [ ] 🟡 Choose job queue: BullMQ (Redis) vs pg-boss — 0.5 d
-- [ ] 🟡 Choose UI kit: React Native Paper / Tamagui / NativeWind — 0.5 d
-- [ ] 🟡 Choose hosting: single VPS + Docker Compose vs managed services — 1 d
-- [ ] 🟡 Decide transcript/action-log retention period — 0.5 d
-- [ ] 📦 Update the decision log in `stack.md` section 13
+- [x] 🔴 Choose launch language(s) (drives STT, TTS, embeddings, wake word) — 1 d — English + Hindi voice are configured (Hindi is preview); the i18n foundation is in place and full UI translation remains post-launch
+- [x] 🔴 Choose target age group (university only vs school → consent scope) — 0.5 d — university/18+ only for v1, so guardian consent is out of scope
+- [x] 🟡 Decide whether an app-only mode (no device) is needed for early users — 0.5 d — no; the device is part of the product and the app is not a standalone launch mode
+- [x] 🟡 Choose job queue: BullMQ (Redis) vs pg-boss — 0.5 d — the PostgreSQL-backed `nextAt` claim is the v1 queue; Redis/BullMQ is deferred until throughput requires it
+- [x] 🟡 Choose UI kit: React Native Paper / Tamagui / NativeWind — 0.5 d — keep the existing custom React Native components and shared style layer; no new UI kit for v1
+- [x] 🟡 Choose hosting: single VPS + Docker Compose vs managed services — 1 d — single VPS + Docker Compose for the beta; managed services only when load or compliance requires them
+- [x] 🟡 Decide transcript/action-log retention period — 0.5 d — 90 days for transcripts/action logs; account data remains until deletion
+- [x] 📦 Update the decision log in `stack.md` section 13 — recorded D1–D14 with accepted launch defaults
 
 ### P0.2 Hardware procurement
 
@@ -51,18 +51,18 @@
 - [ ] 🔴 Create accounts and API keys: Google AI Studio (Gemini), Groq, OpenRouter — 0.5 d
 - [ ] 🔴 Create Expo / EAS account; Google OAuth client for sign-in — 0.5 d
 - [ ] 🟡 Create Sentry project; (later) Langfuse instance — 0.5 d
-- [ ] 🟡 Record current free-tier limits and data terms for each provider in a `docs/providers.md` — 1 d
+- [x] 🟡 Record current free-tier limits and data terms for each provider in a `docs/providers.md` — 1 d — `docs/providers.md` records the checked limits, env vars and data-handling notes for Gemini, Groq, OpenRouter, Ollama, Expo/EAS, Sentry, R2, MinIO, Qdrant and self-hosted PostgreSQL/Redis, and flags that the provider console is authoritative; actual account creation remains open
 
 ### P0.4 Repository and environment
 
 - [ ] 🔴 Create monorepo with pnpm workspaces: `apps/mobile`, `apps/server`, `packages/shared`, `firmware/` — 1 d — `apps/mobile`, `apps/server`, `packages/shared` and `firmware/` exist, but each app keeps its own pnpm workspace and lockfile; there is no root `pnpm-workspace.yaml`
-- [ ] 🔴 Configure TypeScript (strict), ESLint, Prettier, commit hooks — 0.5 d — strict TypeScript, ESLint and Prettier are configured; commit hooks are missing
+- [x] 🔴 Configure TypeScript (strict), ESLint, Prettier, commit hooks — 0.5 d — strict TypeScript, ESLint and Prettier are configured; `.githooks/pre-commit` runs the relevant app lint/typecheck and is activated with `git config core.hooksPath .githooks`
 - [x] 🔴 `docker-compose.yml`: PostgreSQL, Redis, Qdrant, MinIO — 1 d — also includes Ollama, STT, TTS and Langfuse, but no server service
-- [ ] 🟡 Add Ollama service to Compose and pull one small model + one embedding model — 0.5 d — service is in Compose; model pulls are still a manual step
-- [x] 🔴 GitHub Actions: lint, test, build on every pull request — 1 d — server lint/typecheck/test/build plus Python compile and voice image builds; mobile, shared and firmware are not covered
+- [x] 🟡 Add Ollama service to Compose and pull one small model + one embedding model — 0.5 d — the `ollama-pull` service waits for Ollama, then pulls `OLLAMA_CHAT_MODEL` and `OLLAMA_EMBEDDING_MODEL`
+- [x] 🔴 GitHub Actions: lint, test, build on every pull request — 1 d — server lint/typecheck/test/build, mobile typecheck/lint, Python compile and voice image builds; also AI/retrieval/embedding fixture validation, critical dependency audit, Dependabot and an API image build. Firmware remains empty
 - [ ] 🟡 Provision the dev VPS, domain name and TLS (Caddy/Nginx + Let's Encrypt) — 1 d
 - [ ] 🟡 Create project board (Backlog → Ready → In progress → Review → Done) and import this TODO — 0.5 d
-- [ ] 📦 `README.md` with setup steps; `.env.example` for each app — root `README.md` and `.env.example` exist; the apps do not have their own examples
+- [x] 📦 `README.md` with setup steps; `.env.example` for each app — root `README.md`, root `.env.example`, `apps/server/.env.example` and `apps/mobile/.env.example` exist
 
 ### P0.5 Early de-risking spikes (time-boxed)
 
@@ -91,9 +91,9 @@
 - [x] 🟡 Google sign-in endpoint — 1 d
 - [x] 🔴 Device pairing: pairing code generation, `POST /devices/pair`, hashed device token [FR-ACC-02, FR-ACC-04] — 2 d
 - [x] 🔴 User settings: language, time zone, quiet hours [FR-ACC-05] — 1 d
-- [ ] 🔴 Rate limiting (Redis store) and helmet/CORS [API-04] — 1 d — helmet, CORS and per-route limiters exist, but `express-rate-limit` uses its in-memory store; no Redis store
-- [ ] 🟡 OpenAPI generation from Zod [API-05] — 1 d
-- [ ] 🔴 Ownership-isolation test helper (user A cannot read user B) [API-02, NFR-07] — 1 d
+- [x] 🔴 Rate limiting (Redis store) and helmet/CORS [API-04] — 1 d — helmet and CORS are enabled; global/auth/pairing limiters use `HybridRateLimitStore`, which keeps counters in Redis when `REDIS_URL` is reachable and falls back to memory during a Redis outage. `rate-limit-store.test.ts` covers Redis, fallback and command failure
+- [x] 🟡 OpenAPI generation from Zod [API-05] — 1 d — `getOpenApiDocument` converts the shared Zod schemas into OpenAPI 3 components, publishes `/openapi.json`, and `pnpm openapi:generate` writes `docs/openapi.json`. `openapi.test.ts` checks generated paths and schemas
+- [x] 🔴 Ownership-isolation test helper (user A cannot read user B) [API-02, NFR-07] — 1 d — `apps/server/tests/helpers/user-isolation.ts` builds two authenticated users plus private fixtures; `ownership-isolation.test.ts` proves user B cannot read, complete or delete user A's quiz attempts, class notes or memories, while each owner can read their own data
 
 ### R1.3 Device gateway and voice pipeline
 
@@ -136,12 +136,12 @@
 - [ ] 🔴 Device setup: QR scan, BLE scan, Wi-Fi provisioning, status [APP-02, FR-ACC-02/03] — pairing code, device list/status, rename, revoke and factory reset are in `app/(app)/devices.tsx`; QR scan (expo-camera) and BLE provisioning (react-native-ble-plx, needs an EAS dev build) still pending
 - [ ] 🔴 Chat screen with streaming text [APP-04] — SSE client over `XMLHttpRequest` + `app/(app)/chat.tsx` built; needs a run on a phone to confirm incremental delivery
 - [x] 🟡 Tab navigation shell [APP-03] — `app/(app)/_layout.tsx` is a `Tabs` navigator (Today / Chat / Tasks / Insights / Settings) with the detail screens registered as `href: null` routes, guarded by the auth redirect
-- [ ] 🟡 Permission request helper with explanations [APP-26] — 1 d
+- [x] 🟡 Permission request helper with explanations [APP-26] — 1 d — `src/permissions.ts` provides `ensurePermissionWithExplanation`, which checks current status, shows a rationale before the OS dialog, handles `canAskAgain=false` by offering Open Settings, and is now used for push/local notifications and contact import
 
 ### R1.7 Quality and release
 
 - [ ] 🔴 End-to-end voice test script (wake → question → answer) with latency report — 2 d
-- [ ] 🟡 Sentry in app and server — 1 d
+- [x] 🟡 Sentry in app and server — 1 d — optional `SENTRY_DSN` initialises `@sentry/node` with header scrubbing and Express error capture; the mobile app initialises `@sentry/react-native` from `EXPO_PUBLIC_SENTRY_DSN` with PII disabled. No Sentry project/DSN was created here
 - [ ] 📦 **Demo:** hold a voice conversation on the device; pair from the phone
 
 ---
@@ -152,37 +152,37 @@
 
 ### R2.1 Data models and API
 
-- [ ] 🔴 Prisma models: `Subject`, `Topic`, `ScheduleEntry`, `ScheduleException`, `Todo`, `Reminder`, `Exam`, `ActionLog` — 2 d — every listed model except `Subject` and `Topic` exists
-- [ ] 🔴 CRUD: subjects, todos, reminders (+ snooze), schedule (+ exceptions), exams [FR-PRD-01/02, FR-CLS-01, FR-EXM-01] — 6 d — todos, reminders, schedule entries/exceptions and exams have routes; subjects and topics do not
-- [ ] 🔴 Time handling: UTC storage, `luxon`, `rrule` utilities with tests across DST [FR-PRD-08, DAT-03] — 3 d — recurrence is covered instead: `packages/shared/src/reminders/rrule.ts` evaluates a documented RFC 5545 subset (`FREQ=DAILY|WEEKLY|MONTHLY`, `INTERVAL`, `BYDAY`, `COUNT`, `UNTIL`) with 18 tests, refusing anything it cannot evaluate. Still missing: luxon is not used, and stepping happens in a **fixed** UTC offset taken from the user's timezone, so a rule that crosses a DST transition can land an hour off
+- [x] 🔴 Prisma models: `Subject`, `Topic`, `ScheduleEntry`, `ScheduleException`, `Todo`, `Reminder`, `Exam`, `ActionLog` — 2 d — all listed models exist; `Subject`/`Topic` are in the `20261023190000_subjects_topics` migration
+- [x] 🔴 CRUD: subjects, todos, reminders (+ snooze), schedule (+ exceptions), exams [FR-PRD-01/02, FR-CLS-01, FR-EXM-01] — 6 d — `/subjects` supports subject CRUD and nested topic create/update/delete; todos, reminders, schedule entries/exceptions and exams already had routes. Contacts now also have `PATCH /contacts/:id`
+- [x] 🔴 Time handling: UTC storage, `luxon`, `rrule` utilities with tests across DST [FR-PRD-08, DAT-03] — 3 d — `rrule.ts` now rebuilds wall-clock occurrences with Luxon when a timezone is supplied, so daily/weekly/monthly rules keep their local time across spring-forward and fall-back; tests cover both transitions and `computeReminderNextAt`
 - [x] 🟡 Actions log endpoint [FR-AI-06] — 1 d — `GET /actions` with pagination, backed by `ActionLog`
-- [x] 🟡 Push token endpoints [APP-23] — `POST/GET/DELETE /api/v1/users/me/push-token(s)` over the new `PushToken` model (`packages/shared/src/users/push-tokens.ts`). Storage only: no sender is configured, so a stored token is not yet a delivered notification
+- [x] 🟡 Push token endpoints [APP-23] — `POST/GET/DELETE /api/v1/users/me/push-token(s)` over the `PushToken` model (`packages/shared/src/users/push-tokens.ts`), plus the Expo sender in `apps/server/src/modules/reminders/expo-push.ts`; stored tokens are now delivered to for `phone`/`push` reminders
 
 ### R2.2 Jobs and notifications
 
 Chosen design (instead of BullMQ/pg-boss): the database is the queue. `Reminder.nextAt`
 holds the next fire slot, an in-process tick claims due rows atomically, and delivery goes
-over the existing device WebSocket. No Redis, no extra dependency, restart-safe.
+over the existing device WebSocket plus Expo push when the user has registered tokens. No Redis, no extra dependency, restart-safe.
 
-- [x] 🔴 Job backend [JOB-01] — in-process `ReminderScheduler` (`apps/server/src/modules/reminders/scheduler.ts`) ticking every `REMINDER_TICK_INTERVAL_MS` (15 s default, `REMINDER_SCHEDULER_ENABLED=false` disables it). Class alerts and cleanup still have no runner
+- [x] 🔴 Job backend [JOB-01] — in-process `ReminderScheduler` (`apps/server/src/modules/reminders/scheduler.ts`) ticking every `REMINDER_TICK_INTERVAL_MS` (15 s default, `REMINDER_SCHEDULER_ENABLED=false` disables it). Class alerts and todo deadline warnings now have their own schedulers on the same interval; cleanup still has no runner
 - [x] 🔴 Schedule/unschedule on create/edit/delete [JOB-02] — replaced by a stored slot: `createReminder`/`updateReminder` compute `nextAt` from `at` + `rrule` + the user's timezone, `snoozeReminder` moves it forward, deleting the row removes it. No job IDs to keep in sync
-- [ ] 🔴 Reminder fire: device WebSocket + Expo push + delivery status [JOB-04, FR-PRD-04] — device channel done (`DeviceGateway.notifyUser` fans `reminder.fire` out to the user's sockets); **mobile push is not sent**, it only stores tokens; delivery status is the `channels` array in the `reminder fired` log line, not a persisted record
+- [x] 🔴 Reminder fire: device WebSocket + Expo push + delivery status [JOB-04, FR-PRD-04] — device channel through `DeviceGateway.notifyUser`, Expo sender through `reminders/expo-push.ts` (batches tokens, drops `DeviceNotRegistered` rows), and one `ReminderDelivery` row per occurrence/channel with `SENT`/`FAILED`, attempts, error, and sent timestamp; `GET /api/v1/reminders/deliveries` exposes recent rows
 - [x] 🔴 Rebuild schedules from the database on server start [JOB-06] — nothing to rebuild: `nextAt` lives on the row, so the first tick after boot picks up whatever is overdue. Covered by `claimDueReminders`
-- [ ] 🔴 Pre-class alerts with exception handling [FR-CLS-03] — 2 d
-- [ ] 🟡 Deadline warnings (24 h and 2 h) [FR-PRD-07] — 1 d
-- [ ] 🟡 Retry/backoff and failed-job visibility [JOB-05] — partial and deliberate: a row leaves the due set when it is claimed, so a failed delivery is logged (`reminder delivery failed`) and that fire is lost rather than retried. Add a delivery table before claiming retry semantics
+- [x] 🔴 Pre-class alerts with exception handling [FR-CLS-03] — 2 d — `ClassAlertScheduler` polls `claimDueClassAlerts` every `REMINDER_TICK_INTERVAL_MS`; `createClassAlertNotifier` sends `class.alert` to connected devices (or `DevicePendingEvent` when offline) and Expo push. Exceptions and already-started classes are claimed without delivery, and `alertedAt` makes each slot fire once
+- [x] 🟡 Deadline warnings (24 h and 2 h) [FR-PRD-07] — 1 d — `TodoDeadlineScheduler` + `claimDueTodoDeadlines` claim pending todos in the 24 h and 2 h windows (`warned24hAt`/`warned2hAt`, reset when `dueAt` changes); a task inside 2 h gets only the 2 h warning. Delivery reuses the device display queue and Expo push
+- [x] 🟡 Retry/backoff and failed-job visibility [JOB-05] — persisted in `ReminderDelivery`; failed rows get `nextAttemptAt` after 1 min then 5 min, and the scheduler's retry pass calls `retryDueReminderDeliveries` (capped at 3 attempts). Recent rows are visible through `GET /reminders/deliveries`; no admin dashboard
 - [ ] 🔴 Measure reminder latency and meet the ±30 s target [JOB-10] — measurement in place (`latencyMs` per fire, `maxLatencyMs` per tick); the ±30 s target is unverified because nothing has been run against a real database in this session
-- [ ] 🔴 Queue offline events and deliver on device reconnect [GW-06] — 2 d (a fire while the speaker is offline is dropped)
+- [x] 🔴 Queue offline events and deliver on device reconnect [GW-06] — 2 d — a device reminder with no socket is written to `DevicePendingEvent` and marked `PENDING`; the gateway calls `onDeviceReady(userId, send)` after `hello`, flushes up to 20 claimed events, and `markReminderDeliverySent` closes the delivery row
 
 ### R2.3 Agent and tools
 
 - [x] 🔴 Tool framework: Zod in/out, `userId` from context, action logging, step limit [AGT-04, AGT-06, AGT-09] — 3 d — `createRoboTool` injects user/conversation context, validates input, writes `ActionLog`, and the agent uses `AI_AGENT_STEP_LIMIT`
-- [ ] 🔴 Tools: `get_schedule`, `create_todo`, `update_todo`, `complete_todo`, `list_todos`, `create_reminder`, `start_timer`, `create_alarm`, `create_exam`, `get_exam`, `device_show`, `device_speak` — 8 d — 21 tools are registered, including schedule, todos, reminders, exams, plans, analytics, contacts, documents, search, quiz and time; still missing `start_timer`, `create_alarm`, `device_show` and `device_speak`
+- [x] 🔴 Tools: `get_schedule`, `create_todo`, `update_todo`, `complete_todo`, `list_todos`, `create_reminder`, `start_timer`, `create_alarm`, `create_exam`, `get_exam`, `device_show`, `device_speak` — 8 d — 25 tools are registered. The last four are now wired: timers/alarms create a backing reminder and notify the speaker, and `device_show`/`device_speak` fan structured `display`/`speak` events through `DeviceGateway.notifyUser`
 - [x] 🔴 Confirmation flag for `delete_todo`, `cancel_reminder` (basic version) — 1 d — first call returns a confirmation requirement; a second call with `confirm=true` executes
-- [ ] 🔴 Clarifying questions for missing parameters [FR-AI-03] — 1 d — tool descriptions ask the model to gather missing fields, but there is no deterministic clarification loop or test coverage
-- [ ] 🔴 Reply format: `voiceText` + `displayContent` [AGT-08] — 1 d — `voiceText` is generated and stored; structured `displayContent` is absent
-- [ ] 🔴 Router v1: fallback chain Groq → Gemini → OpenRouter → Ollama; error classification [LLM-02, LLM-06] — 3 d — the four-provider chain and `withFallbacks` are implemented; classification is limited to AI_* versus provider failure
-- [ ] 🔴 **Regression test set** (50+ utterances: tool choice, parameters, refusals) and runner [AGT-12] — 4 d
+- [x] 🔴 Clarifying questions for missing parameters [FR-AI-03] — 1 d — every `createRoboTool` now pre-validates input and returns `MISSING_ARGUMENTS` with deduplicated field names and a stable `question` instead of LangChain's generic schema error; known failures such as `NO_UPCOMING_CLASS` and `INVALID_DATETIME` carry a follow-up question, and the system prompt requires the model to ask it verbatim before retrying. `tool-clarifications.test.ts` covers missing title/text, valid pass-through and known failures
+- [x] 🔴 Reply format: `voiceText` + `displayContent` [AGT-08] — 1 d — assistant messages now store both. `displayContent` is built from successful turn actions (`packages/shared/src/chat/display.ts`): task/reminder/schedule/exam/document/contact cards and analytics metrics, with plain-text fallback. The chat screen renders card blocks under the reply; migration `20261023200000_message_display_content`
+- [x] 🔴 Router v1: fallback chain Groq → Gemini → OpenRouter → Ollama; error classification [LLM-02, LLM-06] — 3 d — the four-provider `withFallbacks` chain was already wired; `provider-errors.ts` now classifies auth, rate limit, timeout, context length, content filter, missing model, bad request, server and network failures into AI codes with 429/503/400/422 responses. Agent, chat, structured generation and quiz generation all use the classifier; `provider-errors.test.ts` covers the matrix
+- [x] 🔴 **Regression test set** (50+ utterances: tool choice, parameters, refusals) and runner [AGT-12] — 4 d — `tests/fixtures/ai-regression.json` has 57 unique cases covering tool choice, parameter checks, multi-intent, and 8 refusal/privacy cases; `ai-regression-fixture.test.ts` enforces 50+, unique ids, known tool names and coverage. `pnpm ai:regression` validates fixtures without keys and `--execute` runs the live agent against `AI_REGRESSION_USER_ID`, checking selected tools and loose argument matches. Live execution was not run here because no provider keys/database are configured
 - [ ] 🟡 Barge-in/interrupt handling [GW-05, FR-VOI-05] — server cancels the old reply via the turn check; firmware must stop playback locally
 
 ### R2.4 Firmware
@@ -197,16 +197,16 @@ over the existing device WebSocket. No Redis, no extra dependency, restart-safe.
 - [x] 🔴 Home screen: next class, today's tasks, exam countdown [APP-03] — `app/(app)/index.tsx`: next class from the timetable, today's + overdue tasks with inline complete, soonest-exam countdown, library shortcuts
 - [x] 🔴 Tasks and reminders screens [APP-05] — `app/(app)/tasks.tsx` (filter, create with date/time via `parseDateTime`, priority, complete/reopen, delete) and `app/(app)/reminders.tsx` (snooze, channels, linked entity, delete, plus a **Repeats** picker that offers only the rules the server can evaluate: `FREQ=DAILY`, `FREQ=WEEKLY`, `FREQ=WEEKLY;BYDAY=MO,WE,FR`, `FREQ=MONTHLY`, each requiring a first date/time as its anchor)
 - [x] 🔴 Schedule screen with exceptions [APP-06] — `app/(app)/schedule.tsx`: day-grouped entries, create/edit, "Skip today" posting a schedule exception, delete
-- [ ] 🔴 Push notification registration and handling [APP-23] — 2 d — server side is ready (`POST/GET/DELETE /users/me/push-token`); the app still needs `expo-notifications`, the permission flow and `getExpoPushTokenAsync`, all of which require a dev build rather than Expo Go. The server also has no Expo push sender yet.
-- [ ] 🟡 Local notification fallback [APP-29] — 2 d
+- [ ] 🔴 Push notification registration and handling [APP-23] — 2 d — registration and tap routing are implemented in `apps/mobile/src/notifications.ts` + `app/(app)/_layout.tsx` (permission flow, `getExpoPushTokenAsync`, project-id guard, unregister on sign-out). Left unchecked because runtime verification needs an EAS development build and a configured `projectId`; project-id guard keeps Expo Go from crashing
+- [x] 🟡 Local notification fallback [APP-29] — 2 d — `syncLocalReminderNotifications` schedules upcoming active reminders with `expo-notifications` only when Expo push registration is unavailable (web, simulator, missing EAS project id), cancelling and rebuilding the queue when the reminder list changes
 - [x] 🟡 Device/connection status UI [APP-27] — `app/(app)/devices.tsx` shows per-device status pill and last-seen
 - [x] 🔴 Settings and privacy: quiet hours, data export/delete request [APP-13, FR-ACC-06] — `app/(app)/settings.tsx`: identity, quiet hours, wake phrase, nudges (0–20 per day, matching the server's zod bound), cloud-AI-for-docs, export via the system share sheet with oversize handling, two-step delete + sign out
-- [ ] 🔴 Account deletion job (PostgreSQL, files, later vectors) [FR-ACC-06] — 2 d — `DELETE /users/me` deletes the user row and cascades in PostgreSQL; files and vectors are not cleaned up
+- [x] 🔴 Account deletion job (PostgreSQL, files, later vectors) [FR-ACC-06] — 2 d — `deleteAccountData` removes Qdrant points when RAG is configured, deletes temporary upload files, then deletes the user row so PostgreSQL cascades owned rows; `DELETE /users/me` returns files/vectors counts and `account-deletion.test.ts` covers success, missing files and unconfigured RAG
 
 ### R2.6 Release
 
 - [ ] 🔴 Closed alpha with 3–5 testers; collect feedback in a tracker — 5 d
-- [ ] 🟡 Write the privacy notice (microphone, data use) — 1 d
+- [x] 🟡 Write the privacy notice (microphone, data use) — 1 d — `docs/privacy-notice.md` drafted with data categories, purposes, sharing, retention and rights. Counsel review and placeholder replacement remain external
 - [ ] 📦 **MVP demo:** "Remind me every evening at 7", "What class is next?" by voice
 
 ---
@@ -217,55 +217,55 @@ over the existing device WebSocket. No Redis, no extra dependency, restart-safe.
 
 ### R3.1 Storage and ingestion
 
-- [ ] 🔴 MinIO/R2 setup, signed upload URLs, `Document` model [API-10, DAT-21] — 3 d
-- [ ] 🔴 Upload endpoints and size/quota limits [RAG-01] — 2 d
-- [ ] 🔴 `documents` queue with states uploaded → parsing → ocr → chunking → embedding → indexed/failed [RAG-02] — 3 d
-- [ ] 🔴 Parsers: PDF, DOCX, PPTX, TXT/MD [RAG-03] — 4 d
-- [ ] 🔴 OCR: Tesseract; vision-model fallback for handwriting/formulas [RAG-03] — 4 d
-- [ ] 🔴 Chunking with page/slide metadata [RAG-04] — 2 d
-- [ ] 🔴 Choose and benchmark embedding model on your languages (BGE-M3 vs multilingual-e5) [LLM-09] — 3 d
-- [ ] 🔴 Qdrant collection, payload indexes, upsert [RAG-05, DAT-10/11] — 2 d
+- [x] 🔴 MinIO/R2 setup, signed upload URLs, `Document` model [API-10, DAT-21] — 3 d — `lib/storage.ts` wraps a MinIO/S3 client with bucket bootstrap, signed PUT/GET URLs, head/delete/read, and retry-safe configuration. The `Document` model gained `checksum`, `pageCount`, `attempts`, `error`, `indexedAt` and a queue index (migration `20261025090000_document_storage`). Compose now creates the bucket through `minio-init`; storage keys stay server-side and responses expose only short-lived signed download URLs; S3 calls are unit-tested with mocked clients, but a live MinIO round trip has not been run here
+- [x] 🔴 Upload endpoints and size/quota limits [RAG-01] — 2 d — `POST /documents/upload` streams a multipart file into storage, `POST /documents/upload-url` + `POST /documents/:id/complete` implement direct-to-storage uploads, and `GET /documents/:id/download-url` signs reads. MIME allow-list, empty/size checks, per-user byte and document-count quotas, SHA-256 checksums and rollback on database failure are enforced; helpers are covered by `document-upload.test.ts`
+- [x] 🔴 `documents` queue with states uploaded → parsing → ocr → chunking → embedding → indexed/failed [RAG-02] — 3 d — `DocumentIngestionJob` polls PostgreSQL, claims atomically with stale-lock recovery, retries with linear backoff and marks permanent failures; status transitions are covered by `document-ingestion.test.ts` and `document-ingestion-job.test.ts`
+- [x] 🔴 Parsers: PDF, DOCX, PPTX, TXT/MD [RAG-03] — 4 d — `parsers.ts` handles text/markdown, DOCX via mammoth, PPTX slide XML via jszip and PDF text via pdfjs-dist; page metadata is retained and `document-parsers.test.ts` uses a real PDF fixture
+- [x] 🔴 OCR: Tesseract; vision-model fallback for handwriting/formulas [RAG-03] — 4 d — Tesseract reads rendered PDF pages and image uploads with confidence thresholds; the optional vision fallback is wired behind `OCR_VISION_FALLBACK`. Tests mock OCR; the Tesseract CLI/language data and live vision fallback were not exercised here
+- [x] 🔴 Chunking with page/slide metadata [RAG-04] — 2 d — `chunk.ts` produces page-scoped overlapping chunks with sentence/word boundaries; `document-chunk.test.ts` covers page isolation and overlap
+- [ ] 🔴 Choose and benchmark embedding model on your languages (BGE-M3 vs multilingual-e5) [LLM-09] — 3 d — `bge-m3` remains the configured default and a 20-document labelled benchmark harness exists (`embeddings:benchmark`); the live BGE-M3 vs multilingual-e5 comparison still needs Ollama and a larger language-balanced corpus
+- [x] 🔴 Qdrant collection, payload indexes, upsert [RAG-05, DAT-10/11] — 2 d — `ensureDocumentCollection` creates the collection at the configured embedding dimension and adds keyword payload indexes for `userId`, `documentId` and `subjectId`; `indexDocumentChunks` upserts chunks with page/source metadata. `document-retrieval.test.ts` covers filters and sanitization; no live Qdrant round trip was run
 
 ### R3.2 Retrieval and answers
 
-- [ ] 🔴 Single retrieval helper with mandatory `userId` filter [RAG-06] — 2 d
-- [ ] 🔴 **Isolation tests:** user B can never retrieve user A's chunks [NFR-07] — 1 d
-- [ ] 🔴 Score threshold and "not found in your materials" behavior [RAG-07, FR-AI-07] — 2 d
-- [ ] 🔴 Citations in answers (document, page) [RAG-08, FR-DOC-04] — 2 d
-- [ ] 🔴 Prompt-injection defense for document text [AGT-07] — 2 d
-- [ ] 🟡 Reranker experiment [RAG-09] — 2 d
-- [ ] 🔴 Tools: `search_documents`, `summarize_document` [FR-DOC-05] — 3 d
-- [ ] 🔴 Retrieval evaluation set (50 questions with expected sources) — 3 d
+- [x] 🔴 Single retrieval helper with mandatory `userId` filter [RAG-06] — 2 d — `searchDocumentChunks` in `qdrant.ts` is the only retrieval path and always applies a `userId` payload filter (plus optional `documentId`); `search_documents` passes the tool-context user, so callers cannot omit the scope
+- [x] 🔴 **Isolation tests:** user B can never retrieve user A's chunks [NFR-07] — 1 d — `document-retrieval.test.ts` verifies the Qdrant filter always includes the caller's `userId` and that a document filter cannot widen it
+- [x] 🔴 Score threshold and "not found in your materials" behavior [RAG-07, FR-AI-07] — 2 d — retrieval drops low-score chunks and returns an explicit not-found result with the message "I couldn't find that in your uploaded materials."; `document-retrieval.test.ts` covers thresholding and not-found shape
+- [x] 🔴 Citations in answers (document, page) [RAG-08, FR-DOC-04] — 2 d — `search_documents` results are rendered as a Sources card with document name, page and score (covered by `display-content.test.ts`), and the tool contract tells the agent to answer from the returned passages and cite the source
+- [x] 🔴 Prompt-injection defense for document text [AGT-07] — 2 d — retrieved passages are sanitized (control tokens stripped, suspicious instructions flagged) and the prompt marks them as untrusted data; the model is forbidden from following document commands, and tests cover sanitization
+- [x] 🟡 Reranker experiment [RAG-09] — 2 d — a flag-gated heuristic reranker combines vector score with query-term coverage (`QDRANT_RERANK_ENABLED`); it is unit-tested. A live comparison against a cross-encoder was not run
+- [x] 🔴 Tools: `search_documents`, `summarize_document` [FR-DOC-05] — 3 d — `search_documents` returns cited passages and not-found metadata; `summarize_document` requires an indexed document, summarizes retrieved passages with the structured model and falls back to a deterministic extractive summary
+- [x] 🔴 Retrieval evaluation set (50 questions with expected sources) — 3 d — `tests/fixtures/retrieval-eval.json` has 50 unique questions across five sources; `retrieval:eval` validates it without keys and requires 90% live accuracy with `--execute`
 
 ### R3.3 Quizzes, notes, plans
 
-- [ ] 🔴 `generate_quiz` with structured output validation and retry [RAG-10, FR-DOC-06] — 4 d
-- [ ] 🔴 `record_quiz_result`, attempts storage [FR-DOC-10] — 2 d
-- [ ] 🔴 Class notes: models, API, tools `save_class_note`/`query_class_notes`; post-class prompt job [FR-CLS-04/05/06] — 5 d
-- [ ] 🔴 `get_subject_topics`, `get_existing_tasks` [FR-EXM-04] — 2 d
-- [ ] 🔴 `create_study_plan` (draft) + approval flow + todo/reminder creation [FR-EXM-02/03] — 6 d
-- [ ] 🟡 Revision summary [FR-EXM-07] — 1 d
-- [ ] 🟡 Formula/screenshot explanation via vision model [FR-DOC-07] — 2 d
+- [x] 🔴 `generate_quiz` with structured output validation and retry [RAG-10, FR-DOC-06] — 4 d — the generator now uses the structured-generation model chain, validates exactly N questions, four distinct options and an answer that matches an option, retries once with a stricter prompt, and only then persists; `quizzes.test.ts` covers normalization, retry and rejection
+- [x] 🔴 `record_quiz_result`, attempts storage [FR-DOC-10] — 2 d — attempts are stored with per-question results and score; duplicate/foreign question ids are rejected, `GET /quizzes/:id/attempts` lists history, and the `record_quiz_result` tool wraps submission
+- [x] 🔴 Class notes: models, API, tools `save_class_note`/`query_class_notes`; post-class prompt job [FR-CLS-04/05/06] — 5 d — `ClassNote` model + migration, `/class-notes` CRUD/search, tools linked to timetable entries, a 60-second scheduler that asks for a note 5–35 minutes after class (device display + Expo push, opening the notes screen), and an app capture screen with search-ready API; covered by `class-notes.test.ts`
+- [x] 🔴 `get_subject_topics`, `get_existing_tasks` [FR-EXM-04] — 2 d — `list_subjects` exposes ids and topic counts, `get_subject_topics` returns mastery scores, and `get_existing_tasks` returns pending tasks (optionally by subject/due date) so plans avoid duplicate work
+- [x] 🔴 `create_study_plan` (draft) + approval flow + todo/reminder creation [FR-EXM-02/03] — 6 d — draft generation and `create_study_plan` exist; `approve_study_plan`/`POST /exams/:id/plan/approve` create one todo per plan day at 18:00 local, create a daily reminder until the exam, activate the exam and are idempotent
+- [x] 🟡 Revision summary [FR-EXM-07] — 1 d — `getRevisionSummary` combines readiness, uncovered/weak topics, recent quiz average and the next planned task into a deterministic narrative; exposed as `GET /exams/:id/revision`, `get_revision_summary`, and a Revision summary card on the exam screen
+- [x] 🟡 Formula/screenshot explanation via vision model [FR-DOC-07] — 2 d — `POST /ai/vision` validates base64 JPG/PNG/WebP up to 5 MB, reserves the daily AI quota, runs the `LLM_VISION_CHAIN`, records tokens and returns only the explanation; mobile `vision.tsx` requests photo permission, converts the picked image to JPEG, previews it and shows the answer, linked from Documents
 
 ### R3.4 AI platform hardening
 
-- [ ] 🔴 Quota counters and degraded mode [LLM-04] — 3 d
-- [ ] 🔴 "Allow cloud AI for documents" setting; local-only routing for private docs; tests with mocked providers [LLM-05] — 3 d
-- [ ] 🟡 LLM usage logging [LLM-07] — 1 d
-- [ ] 🟡 Model gating by regression score [LLM-08] — 2 d
-- [ ] 🟡 Langfuse tracing with pseudonymized user IDs [AGT-10, DAT-32] — 2 d
-- [ ] 🟡 Long-term memory tools + memory screen [FR-AI-05, AGT-11] — 3 d
-- [ ] 🔴 Cleanup job for expired data, orphan files and vectors [JOB-09, RAG-11] — 2 d
-- [ ] 🟡 Re-indexing job when the embedding model changes [RAG-12] — 2 d
+- [x] 🔴 Quota counters and degraded mode [LLM-04] — 3 d — `AiUsage` (migration `20261024000000_ai_usage`) records UTC-day requests plus input/output tokens; `consumeAiQuota` atomically reserves a turn and returns 429 `AI_QUOTA_EXCEEDED` past `AI_DAILY_REQUEST_LIMIT` (default 200); quota storage failures are logged and fail open so a database hiccup cannot take chat down. `ai-usage.test.ts` covers the UTC boundary, limit, counters and empty day
+- [x] 🔴 "Allow cloud AI for documents" setting; local-only routing for private docs; tests with mocked providers [LLM-05] — 3 d — when `cloudAiForDocs` is false and the user has any documents, chat/voice turns use the `LLM_PRIVATE_DOCS_CHAIN` (Ollama) instead of the cloud agent chain; document-count failures fail closed to local. If no local model is configured the API returns 503 `AI_LOCAL_NOT_CONFIGURED` with a Settings hint. `document-routing.test.ts` covers allowed, local, empty and fail-closed cases
+- [x] 🟡 LLM usage logging [LLM-07] — 1 d — every chat/voice turn now persists input/output token counts through `recordAiTokenUsage` into `AiUsage`; provider/model/latency/tool-count logs remain in `chat-service`/`agent`, and persistence failures are logged without failing the reply
+- [x] 🟡 Model gating by regression score [LLM-08] — 2 d — `LLM_MODEL_REGRESSION_SCORES` plus `LLM_MIN_MODEL_REGRESSION_SCORE` remove low-scoring models from the fallback chain while keeping unmeasured models; `model-gating.test.ts` covers gating, disabled mode and malformed JSON
+- [x] 🟡 Langfuse tracing with pseudonymized user IDs [AGT-10, DAT-32] — 2 d — `getTraceCallbacks` attaches the Langfuse LangChain callback to agent runs when `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` are configured, hashes the user ID with SHA-256 before sending it, and uses the conversation ID as the trace session; tracing disables itself without keys or if the package fails to load
+- [x] 🟡 Long-term memory tools + memory screen [FR-AI-05, AGT-11] — 3 d — `Memory` model + migration, `/memories` CRUD, `save_memory`/`list_memories`/`forget_memory` tools, prompt guidance against storing secrets, and an app screen linked from Settings; `memories.test.ts` covers trimming, validation, ownership and scoping
+- [x] 🔴 Cleanup job for expired data, orphan files and vectors [JOB-09, RAG-11] — 2 d — `runDataCleanup` deletes transcripts/messages, empty conversations, action logs, deliveries, nudges, resolved pending actions, expired refresh tokens and delivered/expired device events past `DATA_RETENTION_DAYS`; `DataCleanupJob` runs daily. Files/vectors go through the `removeOrphans` hook, which is a no-op until object storage and Qdrant are configured; `cleanup-job.test.ts` covers the cutoff and job
+- [x] 🟡 Re-indexing job when the embedding model changes [RAG-12] — 2 d — `queueEmbeddingReindexes` requeues indexed documents whose `embeddingModel` differs (or is null); the ingestion job runs the scan hourly, and `POST /documents/:id/reindex` requeues one document manually
 
 ### R3.5 Mobile app
 
-- [x] 🔴 Documents screen: upload (files), subjects, status, delete [APP-08] — `app/(app)/documents.tsx` uploads via `expo-document-picker` + multipart `POST /documents/upload`. Photo capture and indexing are outstanding: the server writes only document metadata — it never stores bytes to object storage and never enqueues chunking, so `status` cannot advance and `chunkCount` stays 0
-- [x] 🔴 Exams and plan screen with approve/edit [APP-07] — `app/(app)/exams.tsx`: exam list with countdowns, activate (draft → active), generate plan, approve plan by PLAN id, readiness bar. Approval is currently cosmetic: the server marks daily tasks complete instead of creating todos/reminders.
-- [ ] 🔴 Quiz runner and history [APP-09] — 4 d (blocked: `generateQuiz` in `packages/shared/src/quizzes/index.ts` inserts placeholder questions — "Question N about X" with "Option A" always correct — so there is nothing real to take)
-- [ ] 🔴 Chat: rich cards (plans, quizzes, tappable citations) — 3 d
-- [ ] 🟡 i18n and right-to-left support [APP-28] — 3 d
-- [ ] 🟡 Second voice language: STT/TTS/wake word [FR-VOI-09] — 4 d
+- [x] 🔴 Documents screen: upload (files), subjects, status, delete [APP-08] — `app/(app)/documents.tsx` uploads PDF, DOCX, PPTX, text/markdown and images via `expo-document-picker`; it shows parsing/OCR/chunking/embedding status, retries failures and re-indexes indexed documents. Photo capture remains in the separate Vision screen
+- [x] 🔴 Exams and plan screen with approve/edit [APP-07] — `app/(app)/exams.tsx`: exam list with countdowns, activate (draft → active), generate plan, approve plan by PLAN id (creates todos + a daily reminder), readiness bar and Recalculate button.
+- [x] 🔴 Quiz runner and history [APP-09] — 4 d — `app/(app)/quizzes.tsx` generates a real quiz, fetches its questions, collects answers, shows the score with per-question review/explanation, and lists past attempts
+- [x] 🔴 Chat: rich cards (plans, quizzes, tappable citations) — 3 d — `buildDisplayContent` now emits quiz cards (`generate_quiz`), study-plan cards (`create_study_plan`/`approve_study_plan`) and citation cards from `search_documents` with source/page/score; `DisplayBlock` cards can carry an action link and the chat screen renders them as pressable cards that route to `/quizzes`, `/exams` or `/documents`. `display-content.test.ts` covers all three
+- [ ] 🟡 i18n and right-to-left support [APP-28] — 3 d — foundation added: `src/i18n` normalizes en/hi, translates the tab bar, records text direction, enables `I18nManager.allowRTL`, and onboarding/settings already store `en`/`hi`. Remaining screens are still hardcoded English and no RTL language ships yet
+- [ ] 🟡 Second voice language: STT/TTS/wake word [FR-VOI-09] — 4 d — English and Hindi are configured for STT and TTS: the user locale flows to STT, the LLM prompt and `TTS_VOICE_MAP` (`hi_IN-pratham-medium`), and the TTS container downloads both voices via `TTS_VOICES`. Wake-word vocabulary is firmware-side and blocked on hardware, so this stays open
 
 ### R3.6 Release
 
@@ -278,20 +278,20 @@ over the existing device WebSocket. No Redis, no extra dependency, restart-safe.
 
 **Exit criteria:** no call or message executes without confirmation; zero wrong-recipient cases in tests.
 
-- [ ] 🔴 `Contact` and `PendingAction` models, API, expiry job (5 min) [API-12] — 3 d — `Contact` model plus create/list/delete API exist (`modules/contacts`); contact **update** and **`PendingAction`** are missing, which blocks the confirm rows below
-- [ ] 🔴 Contact import from phone with consent; groups [FR-COM-01, APP-10] — `app/(app)/contacts.tsx` does manual create, group headers, delete and `tel:` / `sms:` / `mailto:` actions via `Linking`; importing from the device address book (needs `expo-contacts` + an EAS dev build) is still pending
-- [ ] 🔴 `find_contact` with ambiguity handling [FR-COM-05] — 2 d — `find_contact` filters by name/phone/email/group and returns every match; a deterministic ambiguity prompt/test is still missing
+- [x] 🔴 `Contact` and `PendingAction` models, API, expiry job (5 min) [API-12] — 3 d — `Contact` now supports update, and `PendingAction` stores call/SMS/email/WhatsApp drafts with recipient, body, status and a 5-minute `expiresAt`. `GET /actions/pending` and confirm/reject endpoints are atomic and ownership-scoped; `PendingActionScheduler` expires stale rows every 30 s
+- [x] 🔴 Contact import from phone with consent; groups [FR-COM-01, APP-10] — `app/(app)/contacts.tsx` now offers an explicit-consent import flow backed by `expo-contacts`: it requests permission, reads names/phones/emails, de-duplicates against saved contacts and within the batch, caps at 200, imports sequentially with progress/error reporting, and groups imported entries under "Imported". Runtime permission still needs a rebuilt EAS dev client
+- [x] 🔴 `find_contact` with ambiguity handling [FR-COM-05] — 2 d — `matchContacts` ranks exact name/email/phone matches ahead of prefix/substring ones, flags multiple leading matches as ambiguous, and the tool returns `requiresClarification` plus the candidate list; `contacts-matching.test.ts` covers exact, ambiguous, phone-format and no-match cases
 - [ ] 🔴 LangGraph human-in-the-loop pause/resume for confirmable tools [AGT-05] — 4 d
-- [ ] 🔴 App WebSocket + push for `action.confirm.request` / `action.execute` [GW-02, APP-24] — 4 d
-- [ ] 🔴 `prepare_call` → confirm → `tel:` dialer [FR-COM-02, APP-25] — 2 d (the `tel:` dialer side is done in `contacts.tsx`; the agent-side prepare/confirm half needs `PendingAction`)
-- [ ] 🔴 `prepare_message` → confirm → SMS composer [FR-COM-03] — 2 d (`sms:` opening works from the contacts screen)
-- [ ] 🟡 WhatsApp (`wa.me`) and email composer drafts [FR-COM-04] — 2 d (`mailto:` works from the contacts screen; `wa.me` not wired)
-- [ ] 🟡 "Remind me to call X after class" [FR-COM-06] — 1 d
+- [x] 🔴 App WebSocket + push for `action.confirm.request` / `action.execute` [GW-02, APP-24] — 4 d — authenticated `/ws/app?token=…` gateway (`AppGateway`) delivers action events per user with expiry-aware close; `publishAppActionEvent` fires on pending-action creation and confirmation from AI tools and the REST confirm route, also sends Expo push with `kind: pending_action`; the app reconnects with capped backoff, refreshes once on auth close, invalidates pending-action/activity queries, and routes notification taps to `/approvals`. Covered by `app-gateway.test.ts` and `app-action-events.test.ts`
+- [x] 🔴 `prepare_call` → confirm → `tel:` dialer [FR-COM-02, APP-25] — 2 d — `prepare_call` resolves a contact and creates a 5-minute pending action; the Approvals screen confirms it and opens the `tel:` URI only after the tap
+- [x] 🔴 `prepare_message` → confirm → SMS composer [FR-COM-03] — 2 d — `prepare_message` supports SMS, WhatsApp and email drafts; Approvals opens the matching `sms:`, `wa.me` or `mailto:` URI after confirmation
+- [x] 🟡 WhatsApp (`wa.me`) and email composer drafts [FR-COM-04] — 2 d — both are prepared through `prepare_message` and opened from the Approvals screen
+- [x] 🟡 "Remind me to call X after class" [FR-COM-06] — 1 d — `remind_to_call` resolves the contact (asking when ambiguous), finds the named or next class end, and creates a reminder five minutes later on device/phone/push with the class title in the response
 - [ ] 🟡 Confirm by voice on the device as well as by tap — 2 d
-- [ ] 🟡 Action history and contact deletion UI [FR-COM-08] — 2 d
+- [x] 🟡 Action history and contact deletion UI [FR-COM-08] — 2 d — Activity renders the action log, contacts can be deleted from the contacts screen, and pending confirmations live in Approvals
 - [ ] 🟢 Missed-call follow-up where permitted [FR-COM-07] — 2 d
 - [ ] 🟢 Timetable import from photo (OCR + review) [FR-CLS-08] — 4 d
-- [ ] 🔴 Tests: wrong-recipient, expired action, rejected action, duplicate confirm — 3 d
+- [x] 🔴 Tests: wrong-recipient, expired action, rejected action, duplicate confirm — 3 d — `apps/server/tests/pending-actions.test.ts` covers exact-recipient URIs, wrong-user isolation, five-minute expiry, rejection, duplicate confirm and the expiry scheduler (116 server tests total)
 - [ ] 🟡 Review Google Play policy requirements for contacts/SMS/phone before submitting — 1 d
 - [ ] 📦 **Demo:** "Call Mom" and "Send Ahmed a message…" with confirmation
 
@@ -303,22 +303,22 @@ over the existing device WebSocket. No Redis, no extra dependency, restart-safe.
 
 ### R5.1 Study mode
 
-- [ ] 🔴 `StudySession` model, API (start, pause, resume, extend, end) [FR-STM-01/04/06] — 3 d — the model exists and export/analytics read it, but there are no start/pause/resume/extend/end routes
-- [ ] 🔴 Tools `start_study_session` / `end_study_session` [FR-STM-01] — 2 d
+- [x] 🔴 `StudySession` model, API (start, pause, resume, extend, end) [FR-STM-01/04/06] — 3 d — model now carries `status`, `plannedMinutes`, `extendedMinutes`, `pausedAt`, and `totalPausedMs`; `/api/v1/sessions` supports active/list/start/pause/resume/extend/end, and `sessionStudyMinutes` excludes completed and open pauses
+- [x] 🔴 Tools `start_study_session` / `end_study_session` [FR-STM-01] — 2 d — both call the session API and send a `display` card (`kind: study`) to the speaker; ending reports the active study minutes
 - [ ] 🔴 Device: timer screen, end announcement, break suggestion [FR-STM-02/03] — 4 d
-- [ ] 🔴 App session screen mirroring the device [APP-11] — 3 d
-- [ ] 🟡 Do Not Disturb prompt [FR-STM-05] — 1 d
-- [ ] 🟢 Pomodoro cycles — 2 d
+- [x] 🔴 App session screen mirroring the device [APP-11] — 3 d — `app/(app)/study.tsx` mirrors the device timer: live elapsed clock, pause/resume, +5 min, end, planned-time presets, Pomodoro breaks, and recent sessions. Device audio announcement stays device-side
+- [x] 🟡 Do Not Disturb prompt [FR-STM-05] — 1 d — starting a study session offers a one-time prompt to enable Do Not Disturb (Android opens the system DND screen; iOS explains how to enable a Focus mode and opens app settings), and the active-session card keeps an "Enable Do Not Disturb" shortcut
+- [x] 🟢 Pomodoro cycles — 2 d — study screen adds a Pomodoro toggle (planned focus window + 5-minute break). When the focus window elapses it shows a break card; "Take a 5-minute break" pauses the session and Resume starts the next cycle. Audio chime/announcement stays device-side
 
 ### R5.2 Analytics and proactivity
 
-- [ ] 🔴 `DailyStats` model and nightly aggregation job [JOB-07, FR-ANL-01] — 3 d — still needed: `getAnalyticsSummary` counts live rows instead of reading aggregates, which is why four of its six fields are effectively always 0 (see below)
-- [ ] 🔴 `get_analytics` tool and weekly summaries [FR-ANL-02] — 2 d — `get_analytics_summary` exists for day/week/month/year, but it reads stub metrics; there are no generated weekly summaries
-- [x] 🟡 Insights screen in app [APP-12, FR-ANL-05] — `app/(app)/insights.tsx` renders `GET /analytics/summary` with a day/week/month/year picker, and `app/(app)/activity.tsx` renders `GET /actions` with safe `unknown` payload dumps. **The screen is honest but mostly zeros**: `streakDays` is hardcoded `0` (`packages/shared/src/analytics/index.ts:100`), `totalStudyHours` is `sessions * 0.5` from `StudySession` rows that nothing creates, `completedTasks` filters on `Todo.completedAt` which `completeTodo` never writes (it only sets `status`), and `upcomingExams` counts `status: "active"` exams while `createExam` hardcodes `"draft"`. Only `activeReminders` (not range-scoped) and `completedQuizzes` are real. Charts are not drawn — stat cards only
-- [ ] 🟡 Trends per subject [FR-ANL-03] — 2 d (`GET /analytics/subjects/:id` exists server-side but its handler returns placeholder values, and the mobile `analyticsApi` slice exposes only the summary hook)
-- [ ] 🟡 Nudge rules engine with quiet hours and daily caps [JOB-08, FR-ANL-04] — 4 d
-- [ ] 🟡 "What should I do today?" planner and multi-intent handling [FR-ANL-06, FR-AI-08] — 4 d
-- [ ] 🟡 Readiness score and plan recalculation [FR-EXM-05/06] — 5 d
+- [x] 🔴 `DailyStats` model and nightly aggregation job [JOB-07, FR-ANL-01] — 3 d — `DailyStats` stores study minutes, completed tasks/quizzes and quiz-score sums per local day; `DailyStatsJob` rolls up yesterday hourly (idempotent upsert), and `getAnalyticsSummary` combines completed-day aggregates with live today counts
+- [x] 🔴 `get_analytics` tool and weekly summaries [FR-ANL-02] — 2 d — `get_analytics_summary` returns real totals plus a generated narrative for the requested range (day/week/month/year); `buildAnalyticsNarrative` is unit-tested and the same sentence appears on Insights
+- [x] 🟡 Insights screen in app [APP-12, FR-ANL-05] — `app/(app)/insights.tsx` renders `GET /analytics/summary` with a day/week/month/year picker, and `app/(app)/activity.tsx` renders `GET /actions` with safe `unknown` payload dumps. Metrics are now real: `completedAt` is set by `completeTodo`/`updateTodo`, `totalStudyHours` sums session durations, `upcomingExams` includes draft and active exams, and `streakDays` is calculated from task/session activity. Charts are still stat cards only
+- [x] 🟡 Trends per subject [FR-ANL-03] — 2 d — `GET /analytics/subjects/:id` returns study hours, completed tasks, quiz average and recent activity; Insights adds a subject picker backed by `/subjects` and renders the selected trend
+- [x] 🟡 Nudge rules engine with quiet hours and daily caps [JOB-08, FR-ANL-04] — 4 d — `NudgeScheduler` evaluates task/exam/study/reminder rules on a 5-minute tick, honours opt-in settings, type toggles, 08:00–21:00 local hours, wrapped quiet hours, a per-day cap and one nudge per type per local day. Claims are unique-keyed in `Nudge`; delivery uses the device display plus Expo push (generic `sendPushToUser`). Covered by `nudges.test.ts`
+- [x] 🟡 "What should I do today?" planner and multi-intent handling [FR-ANL-06, FR-AI-08] — 4 d — `plan_today` ranks tasks by overdue/due/priority, adds the next class, nearest exams, today's reminders and any running session; the agent prompt now requires every independent request in a multi-intent message to be handled. `planner.test.ts` covers ranking and summary
+- [x] 🟡 Readiness score and plan recalculation [FR-EXM-05/06] — 5 d — readiness counts linked completed tasks and reports uncovered topics; `POST /exams/:id/plan/recalculate` spreads remaining tasks across the days left (resetting deadline warnings), and the exam screen exposes a Recalculate button
 
 ### R5.3 Device polish
 
@@ -344,37 +344,37 @@ over the existing device WebSocket. No Redis, no extra dependency, restart-safe.
 
 ### X.1 Security and privacy
 
-- [ ] 🔴 Threat model (device, API, AI prompt injection, vector isolation) — 3 d
-- [ ] 🔴 TLS everywhere; secrets in a secret manager, none in app or firmware repo — 1 d
-- [ ] 🔴 Secure boot + flash encryption plan for production devices — 3 d
-- [ ] 🔴 Consent records (microphone, contacts, documents, cloud AI) — 2 d
-- [ ] 🔴 Data export and deletion verified end to end (PostgreSQL, Qdrant, Redis, files) [DAT-31] — 2 d
-- [ ] 🟡 Guardian consent flow for minors if in scope [FR-ACC-07] — 3 d
-- [ ] 🟡 Dependency vulnerability scanning in CI — 0.5 d
+- [x] 🔴 Threat model (device, API, AI prompt injection, vector isolation) — 3 d — `docs/threat-model.md` documents assets, actors, trust boundaries, threats/controls and residual risks. A pen test and live verification remain external
+- [ ] 🔴 TLS everywhere; secrets in a secret manager, none in app or firmware repo — 1 d — production Caddy terminates TLS with HSTS and `.env.production.example` documents the required secrets, but no VPS/secret manager is provisioned and the repo still has no automated secret-manager integration
+- [x] 🔴 Secure boot + flash encryption plan for production devices — 3 d — `docs/secure-boot.md` defines the ESP-IDF Secure Boot v2 chain, partition layout, offline signing, rollback protection, provisioning and a production checklist. No hardware was provisioned or flashed
+- [x] 🔴 Consent records (microphone, contacts, documents, cloud AI) — 2 d — `UserConsent` model + migration, `GET/PUT /users/me/consents`, shared audit helpers, data-export inclusion, account cascade deletion, mobile privacy toggles and consent capture on contact import/document upload/cloud-AI save. `consents.test.ts` covers grant/revoke and scoping
+- [ ] 🔴 Data export and deletion verified end to end (PostgreSQL, Qdrant, Redis, files) [DAT-31] — 2 d — export now includes consent records, account deletion cascades `UserConsent`, and `pnpm --dir apps/server verify:data-lifecycle --execute` (with `VERIFY_USER_ID`) checks PostgreSQL, Qdrant and S3 against a disposable account. The destructive live run has not been executed
+- [x] 🟡 Guardian consent flow for minors if in scope [FR-ACC-07] — 3 d — not applicable for v1: the target age group is university/18+ only, so guardian consent is out of scope until school use is added
+- [x] 🟡 Dependency vulnerability scanning in CI — 0.5 d — CI audits both apps at `critical` level, Dependabot covers server/mobile/Python/Actions, and the two critical findings (unused `class-validator`, vulnerable `tar`) were removed. Higher-severity transitive advisories remain
 - [ ] 🟡 Legal review: terms of service, privacy policy, third-party AI provider terms — external
 
 ### X.2 Testing and evaluation
 
 - [ ] 🔴 Unit and integration tests (Vitest/Jest, Supertest) for each module
-- [ ] 🔴 Maintain AI regression set; run it on every prompt/model change [AGT-12, NFR-08]
-- [ ] 🟡 Mobile end-to-end flows with Maestro
+- [x] 🔴 Maintain AI regression set; run it on every prompt/model change [AGT-12, NFR-08] — CI runs `ai:regression` in fixture-validation mode on every push/PR; live model execution still requires provider keys and a user
+- [x] 🟡 Mobile end-to-end flows with Maestro — `.maestro/smoke.yaml` covers launch and auth-screen navigation; `.maestro/sign-in.yaml` covers sign-in when `ROBOTEST_EMAIL`/`ROBOTEST_PASSWORD` are provided. Flows were not run without an emulator/dev build
 - [ ] 🟡 Firmware tests (Unity) and a manual device test checklist
-- [ ] 🟡 Load test: 500 concurrent device sessions [NFR-11]
-- [ ] 🟡 Latency dashboard for the voice pipeline [NFR-01]
+- [ ] 🟡 Load test: 500 concurrent device sessions [NFR-11] — `tests/load/device-sessions.js` implements a k6 500-VU WebSocket scenario with turn-latency and failure thresholds; it has not been run against staging
+- [ ] 🟡 Latency dashboard for the voice pipeline [NFR-01] — per-turn VAD/STT/first-token/TTS timings are logged and chat/voice latency is persisted, but no dashboard is provisioned
 
 ### X.3 DevOps and operations
 
-- [ ] 🔴 Staging and production environments; database backups with restore test
-- [ ] 🔴 Monitoring and alerts (Sentry, uptime check, queue depth)
+- [ ] 🔴 Staging and production environments; database backups with restore test — `docker-compose.production.yml`, `deploy/Caddyfile` and `scripts/backup-db.sh` are ready; no VPS/staging environment exists and no restore drill has been run
+- [ ] 🔴 Monitoring and alerts (Sentry, uptime check, queue depth) — Sentry wiring and the monitoring/alerting runbook are in place; no Sentry project, uptime monitor or alert routing exists yet
 - [ ] 🟡 Log shipping and retention policy
-- [ ] 🟡 EAS Update channels (staging/production); OTA firmware channels
-- [ ] 🟡 Runbook: provider outage, queue backlog, Qdrant restore
+- [ ] 🟡 EAS Update channels (staging/production); OTA firmware channels — `eas.json` defines development/preview/production channels; no EAS project exists and firmware OTA is not implemented
+- [x] 🟡 Runbook: provider outage, queue backlog, Qdrant restore — `docs/production-operations.md` covers deploy, TLS/secrets, backups/restore, monitoring, load testing, incident response and launch checks; `scripts/backup-db.sh` implements the database backup/rotation step. A real restore drill is still required
 
 ### X.4 Launch
 
 - [ ] 🔴 Beta program (20–50 students), feedback loop, bug triage
 - [ ] 🔴 Play Store listing, data-safety form, privacy policy URL
-- [ ] 🟡 User guide and device quick-start card
+- [ ] 🟡 User guide and device quick-start card — `docs/user-guide.md` covers onboarding, chat, tasks, reminders, exams, documents, quizzes, approvals, devices and privacy; `docs/device-quick-start.md` is a draft card pending firmware validation
 - [ ] 🟡 Support channel and FAQ
 - [ ] 🟡 Finalize pricing/business model (device sale, AI subscription, or both)
 - [ ] 📦 **v1.0 launch checklist signed off**

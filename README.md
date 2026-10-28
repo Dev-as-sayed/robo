@@ -6,31 +6,42 @@ backend that runs the voice pipeline and LangGraph agent.
 ## Repository layout
 
 ```
-apps/server       Express API, Prisma, LangGraph agent, device WebSocket gateway
-apps/mobile       Expo app: auth, onboarding, streaming chat, Today/Tasks/Reminders/Schedule/Exams/Documents/Contacts/Activity/Insights/Settings, device pairing
-packages/shared   Zod schemas, JWT helpers, device/store services shared by the server
+apps/server       Express API, Prisma, LangGraph agent, device/app WebSockets, jobs and scripts
+apps/mobile       Expo app: auth, chat, tasks, reminders, schedule, exams, documents, quizzes,
+                  study, insights, contacts, approvals, memories, class notes, vision, devices
+packages/shared   Zod schemas, JWT helpers, consent/data-export helpers and store services
 services/voice    faster-whisper (STT) and Piper (TTS) HTTP services
 firmware          ESP-IDF firmware (to be added)
-docs              Protocol and AI design notes
+deploy            Caddy reverse-proxy configuration
+docs              Design, privacy, security, evaluation, release and operations notes
 ```
 
 ## Prerequisites
 
 - Node.js 20+
-- pnpm 9+
+- pnpm 12+
 - Docker with Docker Compose
 
 ## Local setup
 
 ```bash
 cp .env.example .env
-docker compose up -d db redis qdrant minio ollama
+cp apps/server/.env.example apps/server/.env
+cp apps/mobile/.env.example apps/mobile/.env
+git config core.hooksPath .githooks
+docker compose up -d db redis qdrant minio minio-init ollama ollama-pull
 
 pnpm --dir apps/server install
 pnpm --dir apps/server db:generate
 pnpm --dir apps/server db:migrate
 pnpm --dir apps/server dev
 ```
+
+`minio-init` creates the `S3_BUCKET` once MinIO is ready. `ollama-pull` downloads
+`OLLAMA_CHAT_MODEL` and `OLLAMA_EMBEDDING_MODEL` once the Ollama API is ready, then exits.
+Document uploads require the `S3_*` variables in `apps/server/.env`; storage keys stay on the
+server and the API returns short-lived signed download URLs. The commit hook lints the
+server/mobile app and typechecks the server when shared code changes.
 
 The API listens on `http://localhost:3000`; health check: `GET /health`. The device WebSocket
 endpoint is `ws://localhost:3000/ws/device`.
@@ -70,11 +81,12 @@ claims rows whose slot has passed, moves each one to its next slot or completes 
 server processes against one database do not double-fire, and a restart loses nothing because
 the slots live in the rows.
 
-- Recurrence uses a dependency-free subset of RFC 5545 (`FREQ=DAILY|WEEKLY|MONTHLY`, `INTERVAL`, `BYDAY`, `COUNT`, `UNTIL`). Anything outside the subset is refused so the reminder falls back to a single fire. Rules are anchored to the user's timezone with a **fixed** offset, so a rule that crosses a DST transition can land an hour off.
+- Recurrence uses a subset of RFC 5545 (`FREQ=DAILY|WEEKLY|MONTHLY`, `INTERVAL`, `BYDAY`, `COUNT`, `UNTIL`). Anything outside the subset is refused so the reminder falls back to a single fire. Rules are rebuilt from local wall-clock parts with Luxon when a timezone is available, so they keep the same local time across DST transitions.
+- `DailyStatsJob` runs hourly and upserts the previous local day per user; the analytics summary combines those aggregates with live counts for today.
 - Snoozing delays a reminder (one-offs by `minutes`, recurring rules skip the due occurrence) rather than parking it in a `snoozed` status that never fires again.
-- Mobile push is storage only: `POST/GET/DELETE /api/v1/users/me/push-token` keeps tokens, but no sender is configured, so a `phone`/`push` channel is reported as not delivered in the fire log.
-- A fire while no device is connected is dropped, not queued.
-- `apps/server/prisma/migrations/20261022120000_reminder_next_fire_push_tokens` is written by hand and **not applied**. Run `pnpm --dir apps/server db:migrate` before using the scheduler; until then `nextAt`, `lastFiredAt` and `PushToken` do not exist in the database.
+- Expo push is wired through `src/modules/reminders/expo-push.ts`; tokens are registered from the app and a `phone`/`push` channel is recorded as `SENT`, `NO_PUSH_TOKEN` or `PUSH_REJECTED` in the delivery log.
+- A fire while no device is connected is queued as a pending device event and delivered on reconnect; the delivery record shows `PENDING` with `QUEUED_FOR_RECONNECT`.
+- The reminder migrations created by the delivery work are applied by `pnpm --dir apps/server db:migrate`.
 
 ## Mobile app
 
@@ -83,14 +95,15 @@ screens pushed as detail routes: devices, reminders, schedule, exams, documents,
 and activity. Every screen reads and writes through the RTK Query slices in `src/api/`,
 which unwrap the `{ success, code, data }` envelope and refresh tokens once on a 401.
 
-Verified statically only — typecheck, lint and a Metro Android bundle. Nothing here has
-been run on a device, so these are server-side limits of the current build, not app bugs:
+Verified statically — typecheck, lint, server tests and a Metro Android bundle. Runtime
+verification still needs an EAS development build and, for some screens, hardware:
 
-- Quiz questions are placeholders (`generateQuiz` inserts "Question N" with a fixed answer), so there is no quiz screen yet.
-- Document upload records metadata only: no object storage write and no chunk indexing, so `status` never advances past `uploaded` and `chunkCount` stays 0.
-- Four of the six insights metrics are stubs (`streakDays` hardcoded; `totalStudyHours`, `completedTasks` and `upcomingExams` count fields nothing writes).
-- `POST /exams/:id/plan` ignores `dailyLimit`, and plan approval addresses the **plan** id, not the exam id.
-- Voice replies, push notifications, QR/BLE provisioning and phone-book import need a dev build. Push tokens have endpoints, but there is no push sender behind them yet.
+- Quizzes are generated through the structured model and have a runner, history and review UI.
+- Documents upload to MinIO/S3, parse (PDF/DOCX/PPTX/text/images), OCR, chunk, embed and index; the screen exposes retry and re-index actions.
+- Insights renders real task/session/quiz data and a 90-day streak window; subject trends are returned by the API but not charted.
+- `POST /exams/:id/plan` generates a plan, and approval creates tasks plus a daily reminder.
+- Expo push registration, tap routing and the sender are implemented; runtime delivery needs a configured EAS project ID.
+- Voice replies, QR/BLE provisioning and phone-book import need a dev build; wake-word voice and the device timer need firmware.
 
 ## Checks
 
@@ -111,4 +124,13 @@ pnpm --dir apps/mobile lint
 - [`docs/ai-tools.md`](docs/ai-tools.md) — agent tools and AI setup
 - [`docs/device-gateway.md`](docs/device-gateway.md) — device WebSocket protocol and audio turns
 - [`docs/voice-pipeline.md`](docs/voice-pipeline.md) — STT/TTS contracts and voice turn behavior
+- [`docs/user-guide.md`](docs/user-guide.md) — end-user guide for the mobile app
+- [`docs/device-quick-start.md`](docs/device-quick-start.md) — draft device setup card
+- [`docs/ai-evaluation.md`](docs/ai-evaluation.md) — AI regression, retrieval and embedding evaluation
+- [`docs/production-operations.md`](docs/production-operations.md) — deploy, TLS, backup, restore and incident runbook
+- [`docs/mobile-release.md`](docs/mobile-release.md) — EAS, store and release checklist
+- [`docs/privacy-notice.md`](docs/privacy-notice.md) and [`docs/terms-of-service.md`](docs/terms-of-service.md) — draft legal documents
+- [`docs/consent.md`](docs/consent.md) — consent records and API
+- [`docs/threat-model.md`](docs/threat-model.md) and [`docs/secure-boot.md`](docs/secure-boot.md) — security design
+- [`docs/providers.md`](docs/providers.md) — provider limits and data terms
 - [`services/voice/README.md`](services/voice/README.md) — local faster-whisper and Piper services

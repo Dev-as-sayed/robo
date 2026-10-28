@@ -115,7 +115,8 @@ GROQ_STT_MODEL=whisper-large-v3-turbo
 TTS_SERVICE_URL=http://localhost:8002
 TTS_SERVICE_TIMEOUT_MS=15000
 TTS_VOICE=en_US-lessac-medium
-TTS_VOICE_MAP=
+TTS_VOICE_MAP=en:en_US-lessac-medium,hi:hi_IN-pratham-medium
+TTS_VOICES=en_US-lessac-medium,hi_IN-pratham-medium
 TTS_SAMPLE_RATE=16000
 ```
 
@@ -128,9 +129,16 @@ installed at `/models/<voice>.onnx`.
 voice turns speak the STT fallback. Without `TTS_SERVICE_URL`, voice turns return an error after
 transcription.
 
+## Supported launch languages
+
+English (`en`) and Hindi (`hi`) are configured in the Docker compose files and
+`.env.example`. The TTS container downloads both Piper voices. Users choose the
+language in onboarding/settings; the server passes the user locale to STT, the
+LLM prompt and the TTS voice map. Per-user voice selection and vocabulary/tone
+tuning remain future work.
+
 ## Still missing
 
-- Per-user TTS voice selection and the second launch language.
 - Hardware testing of streamed playback and barge-in on the device.
 
 ## Tests

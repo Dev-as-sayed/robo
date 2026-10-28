@@ -425,16 +425,22 @@ For a single-developer start, one VPS running Docker Compose is the simplest and
 
 ## 13. Decision Log and Open Choices
 
-| #   | Decision                                    | Status                 | Reason / what would change it                                                                                       |
-| --- | ------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| D1  | Qdrant as the vector DB                     | Proposed               | The FRD mentioned pgvector as a simpler option. Switch to pgvector if you want a single database and fewer services |
-| D2  | LangGraph for the agent                     | Proposed               | Needed for confirmation steps and stateful flows; plain LangChain agents are less controllable                      |
-| D3  | BullMQ vs pg-boss                           | Open                   | Choose pg-boss if you want to avoid Redis in the MVP                                                                |
-| D4  | Self-host Whisper/Piper vs hosted free APIs | Open                   | Depends on server hardware and the target languages                                                                 |
-| D5  | ESP-IDF vs Arduino/PlatformIO               | Proposed ESP-IDF       | Choose Arduino only for a quick throwaway prototype                                                                 |
-| D6  | Primary hosted LLM                          | Proposed Gemini + Groq | Re-evaluate after tool-calling tests on your own test set                                                           |
-| D7  | UI kit (Paper vs Tamagui vs NativeWind)     | Open                   | Team preference                                                                                                     |
-| D8  | Languages supported at launch               | Open                   | Drives STT, TTS, embedding model and LLM choices                                                                    |
+| #   | Decision                                    | Status                        | Reason / what would change it                                                                                       |
+| --- | ------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| D1  | Qdrant as the vector DB                     | Accepted                      | Keeps vector payload filters and isolation separate from PostgreSQL; revisit only if operating two stores is costly |
+| D2  | LangGraph for the agent                     | Accepted                      | Needed for confirmation steps and stateful flows; plain LangChain agents are less controllable                      |
+| D3  | BullMQ vs pg-boss                           | Superseded: database queue    | Reminders already use an atomic `nextAt` claim in PostgreSQL; add Redis/BullMQ only when throughput requires it     |
+| D4  | Self-host Whisper/Piper vs hosted free APIs | Accepted: self-host + Groq    | Local faster-whisper and Piper are primary; Groq Whisper is the fallback when configured                             |
+| D5  | ESP-IDF vs Arduino/PlatformIO               | Accepted: ESP-IDF             | Choose Arduino only for a quick throwaway prototype                                                                 |
+| D6  | Primary hosted LLM                          | Accepted: Gemini + Groq       | Re-evaluate after tool-calling tests on your own test set                                                           |
+| D7  | UI kit (Paper vs Tamagui vs NativeWind)     | Accepted: custom RN components| The existing Expo screens already share a small component/style layer; no new UI kit for v1                           |
+| D8  | Languages supported at launch               | Accepted: English only        | Unicode/i18n hooks stay in place; the second voice language is post-launch                                           |
+| D9  | Target age group                            | Accepted: university, 18+     | Avoids guardian-consent scope for v1; revisit if school use is validated                                            |
+| D10 | App-only mode                               | Accepted: no                  | The device is part of the product; the app alone is not a launch mode                                               |
+| D11 | Hosting                                     | Accepted: single VPS + Compose| Lowest operating cost for the beta; move managed when load or compliance requires it                               |
+| D12 | Transcript/action-log retention             | Accepted: 90 days             | Account data lives until deletion; transcripts and action logs expire after 90 days                                |
+| D13 | Object storage                              | Accepted: MinIO               | Self-hosted S3-compatible store for the beta; keep the storage interface provider-neutral                           |
+| D14 | Embedding model                             | Accepted: BGE-M3              | Multilingual-capable and available through Ollama; benchmark before indexing the beta corpus                         |
 
 ---
 

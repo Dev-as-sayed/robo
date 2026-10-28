@@ -1,0 +1,10 @@
+appId: com.robo.app
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Robo"
+- assertVisible: "Create an account"
+- tapOn: "Create an account"
+- assertVisible: "Create account"
+- tapOn: "I already have an account"
+- assertVisible: "Sign in"

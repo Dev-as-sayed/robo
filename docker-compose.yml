@@ -51,6 +51,25 @@ services:
       - "9000:9000"
       - "9001:9001"
 
+  # Creates the configured bucket once MinIO is ready.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      S3_BUCKET: ${S3_BUCKET:-robo-storage}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do
+          echo "waiting for minio..."
+          sleep 2
+        done
+        mc mb --ignore-existing "local/$$S3_BUCKET"
+    restart: "no"
+
   # Ollama - Local LLM service
   ollama:
     image: ollama/ollama:latest
@@ -59,6 +78,26 @@ services:
       - ollama_data:/root/.ollama
     ports:
       - "11434:11434"
+
+  # Pulls the configured chat and embedding models once the Ollama API is ready.
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-bge-m3}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until ollama list >/dev/null 2>&1; do
+          echo "waiting for ollama..."
+          sleep 2
+        done
+        ollama pull "$$OLLAMA_CHAT_MODEL"
+        ollama pull "$$OLLAMA_EMBEDDING_MODEL"
+    restart: "no"
 
   # Speech-to-text - faster-whisper (PCM16)
   stt:
@@ -84,6 +123,8 @@ services:
     restart: unless-stopped
     environment:
       TTS_VOICE: ${TTS_VOICE:-en_US-lessac-medium}
+      TTS_VOICES: ${TTS_VOICES:-en_US-lessac-medium,hi_IN-pratham-medium}
+      TTS_VOICE_MAP: ${TTS_VOICE_MAP:-en:en_US-lessac-medium,hi:hi_IN-pratham-medium}
       TTS_DATA_DIR: /models
       PIPER_VOICE_BASE_URL: ${PIPER_VOICE_BASE_URL:-https://hf-mirror.com}
     volumes:

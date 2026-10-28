@@ -1,0 +1,16 @@
+appId: com.robo.app
+env:
+  ROBOTEST_EMAIL: ""
+  ROBOTEST_PASSWORD: ""
+---
+- launchApp:
+    clearState: true
+- tapOn: "I already have an account"
+- tapOn:
+    id: "email"
+- inputText: ${ROBOTEST_EMAIL}
+- tapOn:
+    id: "password"
+- inputText: ${ROBOTEST_PASSWORD}
+- tapOn: "Sign in"
+- assertVisible: "Today"

@@ -40,6 +40,8 @@ All control messages are JSON text frames. Audio chunks are binary frames.
 | `transcript` | `turnId`, `text`, `isFinal?` | Ready for the STT stage |
 | `tts.start` / binary / `tts.end` | `turnId`, codec, sample rate | Ready for the TTS stage |
 | `reminder.fire` | `reminderId`, `text`, `dueAt`, `firedAt`, `rrule?` | Server-initiated; sent by the scheduler tick, not tied to a turn |
+| `display` | `kind` (`text`/`timer`/`alarm`/`study`/`exam`), `title`, `body?`, `durationSeconds?`, `dueAt?` | Server-initiated card for the speaker display |
+| `speak` | `text` | Server-initiated short announcement; does not start a voice turn |
 
 ## Server-initiated messages
 
@@ -47,6 +49,12 @@ All control messages are JSON text frames. Audio chunks are binary frames.
 socket owned by that user and returns how many took it. The reminder scheduler
 (`apps/server/src/modules/reminders/scheduler.ts`) uses it on a
 `REMINDER_TICK_INTERVAL_MS` tick (15 s by default) after claiming due rows.
+
+When no socket is connected, the reminder notifier stores the fire in
+`DevicePendingEvent` with a `PENDING` delivery row. Class alerts and todo deadline
+warnings use the same queue. After a successful `hello`, the gateway calls
+`onDeviceReady(userId, send)`, which claims up to 20 pending events and sends them in
+order; delivered reminder rows are marked `SENT`.
 
 Claiming happens in the database: a row only fires when its own `nextAt` can still be
 matched, so two server processes cannot fire the same reminder twice. A device that is

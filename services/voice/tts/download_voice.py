@@ -61,6 +61,13 @@ def download(voice: str, data_dir: str) -> None:
             raise SystemExit("voice download failed:\n" + "\n".join(errors))
 
 
+def configured_voices() -> list[str]:
+    raw = os.getenv("TTS_VOICES") or os.getenv("TTS_VOICE") or DEFAULT_VOICE
+    voices = [voice.strip() for voice in raw.split(",") if voice.strip()]
+    return list(dict.fromkeys(voices))
+
+
 if __name__ == "__main__":
-    download(os.getenv("TTS_VOICE", DEFAULT_VOICE), os.getenv("TTS_DATA_DIR", "/models"))
+    for configured in configured_voices():
+        download(configured, os.getenv("TTS_DATA_DIR", "/models"))
     sys.exit(0)

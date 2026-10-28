@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/.expo
+**/.git
+**/*.log
+apps/server/.env*
+apps/mobile/.env*
+firmware
+tests/load
