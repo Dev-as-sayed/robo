@@ -80,7 +80,10 @@ const shortcuts: Shortcut[] = [
   { label: "Timetable", hint: "Weekly classes", route: "/schedule" },
   { label: "Exams", hint: "Countdown & plan", route: "/exams" },
   { label: "Notes", hint: "Upload study material", route: "/documents" },
+  { label: "Class notes", hint: "Capture what you learned", route: "/class-notes" },
+  { label: "Quizzes", hint: "Practice and review", route: "/quizzes" },
   { label: "Contacts", hint: "Call & message", route: "/contacts" },
+  { label: "Approvals", hint: "Confirm calls & texts", route: "/approvals" },
   { label: "Activity", hint: "What Robo did", route: "/activity" },
   { label: "Devices", hint: "Pair the speaker", route: "/devices" },
 ];

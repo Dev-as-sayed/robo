@@ -25,6 +25,25 @@ export interface User {
   updatedAt: string;
 }
 
+export type ConsentKind =
+  | "MICROPHONE"
+  | "CONTACTS"
+  | "DOCUMENTS"
+  | "CLOUD_AI";
+
+export interface ConsentRecord {
+  id: string;
+  userId: string;
+  kind: ConsentKind;
+  granted: boolean;
+  policyVersion: string;
+  source: string | null;
+  grantedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;
@@ -40,11 +59,94 @@ export interface AuthResult {
 
 export type ChatRole = "USER" | "ASSISTANT" | "SYSTEM" | "TOOL";
 
+export type StudySessionStatus = "active" | "paused" | "ended";
+
+export interface StudySession {
+  id: string;
+  userId: string;
+  subject: string | null;
+  status: StudySessionStatus;
+  plannedMinutes: number | null;
+  extendedMinutes: number;
+  pausedAt: string | null;
+  totalPausedMs: number;
+  startedAt: string;
+  endedAt: string | null;
+  createdAt: string;
+}
+
+export interface StudySessionResult {
+  session: StudySession;
+  studyMinutes: number;
+}
+
+export type PendingActionKind = "CALL" | "MESSAGE" | "EMAIL" | "WHATSAPP";
+export type PendingActionStatus = "PENDING" | "CONFIRMED" | "REJECTED" | "EXPIRED";
+
+export interface PendingAction {
+  id: string;
+  userId: string;
+  contactId: string | null;
+  kind: PendingActionKind;
+  recipientName: string;
+  recipientPhone: string | null;
+  recipientEmail: string | null;
+  body: string | null;
+  status: PendingActionStatus;
+  expiresAt: string;
+  confirmedAt: string | null;
+  rejectedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PendingActionWithUri extends PendingAction {
+  uri: string;
+}
+
+export type DisplaySection =
+  | "tasks"
+  | "reminders"
+  | "schedule"
+  | "exams"
+  | "analytics"
+  | "documents"
+  | "contacts"
+  | "actions"
+  | "quizzes"
+  | "plans"
+  | "citations";
+
+export interface DisplayItem {
+  id?: string;
+  title: string;
+  subtitle?: string;
+  meta?: string;
+  status?: string;
+}
+
+export type DisplayBlock =
+  | { type: "text"; text: string }
+  | {
+      type: "card";
+      section: DisplaySection;
+      title: string;
+      items: DisplayItem[];
+      action?: { label: string; route: string };
+    };
+
+export interface DisplayContent {
+  version: 1;
+  title: string | null;
+  blocks: DisplayBlock[];
+}
+
 export interface ChatMessage {
   id: string;
   role: ChatRole;
   content: string;
   voiceText: string | null;
+  displayContent: DisplayContent | null;
   createdAt: string;
 }
 
@@ -110,6 +212,7 @@ export interface Reminder {
   channels: ReminderChannel[];
   linkedEntity: "todo" | "exam" | "schedule" | null;
   status: ReminderStatus;
+  nextAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -167,7 +270,33 @@ export interface Readiness {
   missingTasks: string[];
 }
 
-export type DocumentStatus = "uploaded" | "processing" | "processed" | "failed";
+export interface RevisionSummary {
+  examSubject: string;
+  daysLeft: number;
+  preparedness: number;
+  remainingTopics: string[];
+  missingTasks: string[];
+  weakTopics: string[];
+  quizAverage: number | null;
+  nextTask: { title: string; dueAt: string | null } | null;
+  narrative: string;
+}
+
+export interface PlanRecalculation {
+  rescheduled: number;
+  preparedness: number;
+  daysLeft: number;
+}
+
+export type DocumentStatus =
+  | "pending"
+  | "uploaded"
+  | "parsing"
+  | "ocr"
+  | "chunking"
+  | "embedding"
+  | "indexed"
+  | "failed";
 
 export interface StudyDocument {
   id: string;
@@ -178,6 +307,78 @@ export interface StudyDocument {
   subject: string | null;
   chunkCount: number;
   createdAt: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: string;
+  explanation: string | null;
+}
+
+export interface QuizSummary {
+  id: string;
+  userId: string;
+  title: string;
+  description: string | null;
+  subject: string | null;
+  topic: string | null;
+  questionCount: number;
+  createdAt: string;
+}
+
+export interface Quiz extends QuizSummary {
+  questions: QuizQuestion[];
+}
+
+export interface QuizAttemptResult {
+  questionId: string;
+  selectedAnswer: string;
+  isCorrect: boolean;
+}
+
+export interface QuizAttempt {
+  id: string;
+  userId: string;
+  quizId: string;
+  score: number | null;
+  answeredAt: string | null;
+  results: QuizAttemptResult[];
+  createdAt?: string;
+}
+
+export interface QuizGenerationResult {
+  quiz: Quiz;
+  generatedAt: string;
+}
+
+export interface ClassNote {
+  id: string;
+  userId: string;
+  scheduleEntryId: string | null;
+  subject: string | null;
+  title: string;
+  content: string;
+  classAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MemoryCategory =
+  | "general"
+  | "preference"
+  | "fact"
+  | "goal"
+  | "study";
+
+export interface Memory {
+  id: string;
+  userId: string;
+  content: string;
+  category: MemoryCategory;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Contact {
@@ -210,6 +411,16 @@ export interface AnalyticsSummary {
   activeReminders: number;
   upcomingExams: number;
   streakDays: number;
+  narrative: string;
+}
+
+export interface Subject {
+  id: string;
+  userId: string;
+  name: string;
+  color: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface QuietHours {
@@ -257,6 +468,7 @@ export interface DataExport {
   studySessions: unknown[];
   conversations: unknown[];
   actionLogs: unknown[];
+  consents: unknown[];
 }
 
 export interface AnalyticsBySubject {

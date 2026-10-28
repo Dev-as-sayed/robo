@@ -6,9 +6,11 @@ import {
 } from "expo-document-picker";
 import { useRouter } from "expo-router";
 import { apiErrorMessage } from "@/api/errors";
+import { useUpdateConsentMutation } from "@/api/account-api";
 import {
   useDeleteDocumentMutation,
   useDocumentsQuery,
+  useReindexDocumentMutation,
   useUploadDocumentMutation,
 } from "@/api/documents-api";
 import { Button } from "@/components/Button";
@@ -24,20 +26,36 @@ import type { DocumentStatus, StudyDocument } from "@/types";
 import { colors, radii, spacing } from "@/theme";
 
 const statusTones: Record<DocumentStatus, PillTone> = {
+  pending: "muted",
   uploaded: "muted",
-  processing: "warning",
-  processed: "success",
+  parsing: "warning",
+  ocr: "warning",
+  chunking: "warning",
+  embedding: "warning",
+  indexed: "success",
   failed: "danger",
 };
 
 const statusLabels: Record<DocumentStatus, string> = {
+  pending: "Waiting",
   uploaded: "Uploaded",
-  processing: "Processing",
-  processed: "Processed",
+  parsing: "Parsing",
+  ocr: "Reading",
+  chunking: "Chunking",
+  embedding: "Indexing",
+  indexed: "Ready",
   failed: "Failed",
 };
 
-const pickerTypes = ["application/pdf", "text/plain"];
+const pickerTypes = [
+  "application/pdf",
+  "text/plain",
+  "text/markdown",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "image/png",
+  "image/jpeg",
+];
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -69,6 +87,8 @@ export default function DocumentsScreen() {
   const [uploadDocument, { isLoading: uploading }] =
     useUploadDocumentMutation();
   const [deleteDocument] = useDeleteDocumentMutation();
+  const [reindexDocument] = useReindexDocumentMutation();
+  const [updateConsent] = useUpdateConsentMutation();
 
   const documents = data ?? [];
 
@@ -100,6 +120,11 @@ export default function DocumentsScreen() {
         ...(trimmedSubject ? { subject: trimmedSubject } : {}),
       }).unwrap();
       setSubject("");
+      void updateConsent({
+        kind: "DOCUMENTS",
+        granted: true,
+        source: "document-upload",
+      });
     } catch (cause) {
       setUploadError(
         apiErrorMessage(cause, `Robo could not upload ${asset.name}.`)
@@ -121,6 +146,16 @@ export default function DocumentsScreen() {
   return (
     <Screen>
       <ScreenHeader kicker="NOTES" onBack={() => router.back()} />
+
+      <Card title="EXPLAIN A PHOTO">
+        <Text style={styles.muted}>
+          Snapped a formula or diagram? Robo can read the photo and explain it.
+        </Text>
+        <Button
+          label="Explain a photo"
+          onPress={() => router.push("/vision")}
+        />
+      </Card>
 
       {isError ? (
         <ErrorBanner
@@ -163,20 +198,36 @@ export default function DocumentsScreen() {
                 tone={statusTones[doc.status]}
               />
 
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Delete ${doc.originalName}`}
-                onPress={() => remove(doc)}
-                hitSlop={10}
-              >
-                <Text style={styles.remove}>✕</Text>
-              </Pressable>
+              <View style={styles.actions}>
+                {doc.status === "failed" || doc.status === "indexed" ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Re-index ${doc.originalName}`}
+                    onPress={() => void reindexDocument(doc.id)}
+                    hitSlop={10}
+                  >
+                    <Text style={styles.reindex}>
+                      {doc.status === "failed" ? "Retry" : "Re-index"}
+                    </Text>
+                  </Pressable>
+                ) : null}
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${doc.originalName}`}
+                  onPress={() => remove(doc)}
+                  hitSlop={10}
+                >
+                  <Text style={styles.remove}>✕</Text>
+                </Pressable>
+              </View>
             </View>
           ))}
 
           <Text style={styles.caption}>
-            Robo currently records the file details only — the bytes are not
-            stored or searched, so status will not advance on its own.
+            Robo stores the file securely and indexes its text for search.
+            Retry a failed document or re-index one after changing embedding
+            models.
           </Text>
         </View>
       )}
@@ -246,6 +297,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     paddingTop: spacing.xs,
+  },
+  actions: {
+    alignItems: "flex-end",
+    gap: spacing.sm,
+  },
+  reindex: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: "600",
   },
   remove: {
     color: colors.textMuted,

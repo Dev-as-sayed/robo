@@ -1,2 +1,8 @@
 packages:
   - "."
+allowBuilds:
+  unrs-resolver: true
+  "@sentry/cli": true
+
+overrides:
+  tar: ^7.5.19

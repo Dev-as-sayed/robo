@@ -34,6 +34,13 @@ export const documentsApi = createApi({
         response.data.document,
       invalidatesTags: ["Documents"],
     }),
+    reindexDocument: builder.mutation<StudyDocument | null, string>({
+      query: id => ({ url: `/documents/${id}/reindex`, method: "POST" }),
+      transformResponse: (
+        response: ApiEnvelope<{ document: StudyDocument | null }>
+      ) => response.data.document,
+      invalidatesTags: ["Documents"],
+    }),
     deleteDocument: builder.mutation<void, string>({
       query: id => ({ url: `/documents/${id}`, method: "DELETE" }),
       invalidatesTags: ["Documents"],
@@ -44,5 +51,6 @@ export const documentsApi = createApi({
 export const {
   useDocumentsQuery,
   useUploadDocumentMutation,
+  useReindexDocumentMutation,
   useDeleteDocumentMutation,
 } = documentsApi;

@@ -3,11 +3,23 @@ import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as Sentry from "@sentry/react-native";
 import { Provider } from "react-redux";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { restoreSession } from "@/features/auth/session";
 import { store, useAppDispatch, useAppSelector } from "@/store";
 import { colors } from "@/theme";
+
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT ?? "production",
+    tracesSampleRate: 0.1,
+    sendDefaultPii: false,
+  });
+}
 
 function AppShell() {
   const dispatch = useAppDispatch();
@@ -38,7 +50,7 @@ function AppShell() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <Provider store={store}>
       <SafeAreaProvider>
@@ -47,6 +59,8 @@ export default function RootLayout() {
     </Provider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
 
 const styles = StyleSheet.create({
   loading: {

@@ -16,6 +16,8 @@ import {
   useExamsQuery,
   useGeneratePlanMutation,
   useLazyReadinessQuery,
+  useLazyRevisionSummaryQuery,
+  useRecalculatePlanMutation,
   useUpdateExamMutation,
 } from "@/api/exams-api";
 import {
@@ -65,8 +67,13 @@ export default function ExamsScreen() {
   const [deleteExam] = useDeleteExamMutation();
   const [generatePlan, { isLoading: generating }] = useGeneratePlanMutation();
   const [approvePlan, { isLoading: approving }] = useApprovePlanMutation();
+  const [recalculatePlan, { isLoading: recalculating }] =
+    useRecalculatePlanMutation();
   const [fetchReadiness, { data: readiness, isFetching: checkingReadiness }] =
     useLazyReadinessQuery();
+  const [fetchRevision, { data: revision, isFetching: loadingRevision }] =
+    useLazyRevisionSummaryQuery();
+  const [revisionExamId, setRevisionExamId] = useState<string | null>(null);
 
   const exams = [...(data ?? [])].sort(
     (a, b) => toDate(a.date).getTime() - toDate(b.date).getTime()
@@ -146,7 +153,6 @@ export default function ExamsScreen() {
   const activate = async () => {
     if (!selected) return;
     try {
-      // Generated plans do not activate the exam; draft -> active is manual.
       await updateExam({ id: selected.id, status: "active" }).unwrap();
     } catch {
       setActionError("Robo could not activate this exam.");
@@ -179,6 +185,33 @@ export default function ExamsScreen() {
       setApproved(true);
     } catch {
       setActionError("Robo could not approve this plan.");
+    }
+  };
+
+  const recalculate = async () => {
+    if (!selected) return;
+    setActionError(null);
+    try {
+      const result = await recalculatePlan(selected.id).unwrap();
+      Alert.alert(
+        "Plan updated",
+        result.rescheduled === 0
+          ? "Every remaining task is already complete."
+          : `${result.rescheduled} remaining task${result.rescheduled === 1 ? "" : "s"} spread over ${result.daysLeft} day${result.daysLeft === 1 ? "" : "s"}.`
+      );
+    } catch {
+      setActionError("Robo could not recalculate this plan.");
+    }
+  };
+
+  const loadRevision = async () => {
+    if (!selected) return;
+    setActionError(null);
+    try {
+      await fetchRevision(selected.id).unwrap();
+      setRevisionExamId(selected.id);
+    } catch {
+      setActionError("Robo could not build a revision summary.");
     }
   };
 
@@ -330,18 +363,49 @@ export default function ExamsScreen() {
                   onPress={() => void approve()}
                   loading={approving}
                 />
-              ) : null}
+              ) : (
+                <Button
+                  label="Recalculate remaining"
+                  variant="ghost"
+                  onPress={() => void recalculate()}
+                  loading={recalculating}
+                />
+              )}
             </View>
           ) : null}
 
           {actionError ? <ErrorBanner message={actionError} /> : null}
 
-          <Button
-            label="Check readiness"
-            variant="ghost"
-            onPress={() => void checkReadiness()}
-            loading={checkingReadiness}
-          />
+          <View style={styles.rowActions}>
+            <Button
+              label="Check readiness"
+              variant="ghost"
+              onPress={() => void checkReadiness()}
+              loading={checkingReadiness}
+            />
+            <Button
+              label="Revision summary"
+              variant="ghost"
+              onPress={() => void loadRevision()}
+              loading={loadingRevision}
+            />
+          </View>
+
+          {revision && revisionExamId === selected.id ? (
+            <Card title="REVISION">
+              <Text style={styles.rowMeta}>{revision.narrative}</Text>
+              {revision.nextTask ? (
+                <Text style={styles.rowMeta}>
+                  {`Next task: ${revision.nextTask.title}`}
+                </Text>
+              ) : null}
+              {revision.weakTopics.length > 0 ? (
+                <Text style={styles.rowMeta}>
+                  {`Weak topics: ${revision.weakTopics.join(", ")}`}
+                </Text>
+              ) : null}
+            </Card>
+          ) : null}
 
           {readiness && readinessExamId === selected.id ? (
             <View style={styles.readiness}>

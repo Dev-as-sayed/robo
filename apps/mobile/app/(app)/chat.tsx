@@ -101,6 +101,7 @@ export default function ChatScreen() {
       role: "USER",
       content,
       voiceText: null,
+      displayContent: null,
       createdAt: new Date().toISOString(),
     };
 
@@ -229,6 +230,47 @@ export default function ChatScreen() {
               >
                 {message.content}
               </Text>
+
+              {message.displayContent?.blocks
+                .filter(block => block.type === "card")
+                .map((block, blockIndex) =>
+                  block.type === "card" ? (
+                    <Pressable
+                      key={`${message.id}-${blockIndex}`}
+                      accessibilityRole={block.action ? "button" : undefined}
+                      accessibilityLabel={block.action?.label}
+                      disabled={!block.action}
+                      onPress={() => {
+                        if (block.action) {
+                          router.push(block.action.route as Parameters<typeof router.push>[0]);
+                        }
+                      }}
+                      style={({ pressed }) => [
+                        styles.card,
+                        pressed && block.action ? styles.cardPressed : null,
+                      ]}
+                    >
+                      <Text style={styles.cardTitle}>{block.title}</Text>
+                      {block.items.map((row, rowIndex) => (
+                        <View
+                          key={row.id ?? `${blockIndex}-${rowIndex}`}
+                          style={styles.cardRow}
+                        >
+                          <Text style={styles.cardRowTitle}>{row.title}</Text>
+                          {row.subtitle ? (
+                            <Text style={styles.cardRowMeta}>{row.subtitle}</Text>
+                          ) : null}
+                          {row.meta ? (
+                            <Text style={styles.cardRowMeta}>{row.meta}</Text>
+                          ) : null}
+                        </View>
+                      ))}
+                      {block.action ? (
+                        <Text style={styles.cardAction}>{block.action.label} →</Text>
+                      ) : null}
+                    </Pressable>
+                  ) : null
+                )}
             </View>
           ))}
 
@@ -358,6 +400,42 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  cardPressed: {
+    opacity: 0.75,
+  },
+  cardAction: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: spacing.sm,
+  },
+  card: {
+    marginTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+  },
+  cardTitle: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  cardRow: {
+    gap: 2,
+  },
+  cardRowTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  cardRowMeta: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 17,
   },
   bubbleText: {
     color: colors.text,

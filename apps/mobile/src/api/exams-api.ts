@@ -5,7 +5,9 @@ import type {
   Exam,
   ExamStatus,
   PlanGenerationResult,
+  PlanRecalculation,
   Readiness,
+  RevisionSummary,
 } from "@/types";
 
 export interface CreateExamInput {
@@ -77,6 +79,21 @@ export const examsApi = createApi({
       query: planId => ({ url: `/exams/${planId}/plan/approve`, method: "POST" }),
       invalidatesTags: ["Exams", "Readiness"],
     }),
+    recalculatePlan: builder.mutation<PlanRecalculation, string>({
+      query: examId => ({
+        url: `/exams/${examId}/plan/recalculate`,
+        method: "POST",
+      }),
+      transformResponse: (response: ApiEnvelope<{ result: PlanRecalculation }>) =>
+        response.data.result,
+      invalidatesTags: ["Exams", "Readiness"],
+    }),
+    revisionSummary: builder.query<RevisionSummary, string>({
+      query: examId => `/exams/${examId}/revision`,
+      transformResponse: (
+        response: ApiEnvelope<{ summary: RevisionSummary }>
+      ) => response.data.summary,
+    }),
     readiness: builder.query<Readiness, string>({
       query: examId => `/exams/${examId}/readiness`,
       transformResponse: (response: ApiEnvelope<{ readiness: Readiness }>) =>
@@ -96,6 +113,8 @@ export const {
   useDeleteExamMutation,
   useGeneratePlanMutation,
   useApprovePlanMutation,
+  useRecalculatePlanMutation,
   useReadinessQuery,
   useLazyReadinessQuery,
+  useLazyRevisionSummaryQuery,
 } = examsApi;

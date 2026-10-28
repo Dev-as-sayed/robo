@@ -13,13 +13,16 @@ import { TextField } from "@/components/TextField";
 import { apiErrorMessage } from "@/api/errors";
 import { useMeQuery, useUpdateMeMutation } from "@/api/auth-api";
 import {
+  useConsentsQuery,
   useDeleteAccountMutation,
   useExportDataMutation,
+  useUpdateConsentMutation,
 } from "@/api/account-api";
 import { signOut } from "@/features/auth/session";
 import { useAppDispatch, useAppSelector } from "@/store";
 import type {
   AccountPreferences,
+  ConsentKind,
   NudgeSettings,
   User,
   WakePhrase,
@@ -292,7 +295,7 @@ function WakePhraseSection({ user }: { user: User }) {
 
 function NudgesSection({ user }: { user: User }) {
   const initial = user.nudgeSettings;
-  const [enabled, setEnabled] = useState(initial?.enabled ?? true);
+  const [enabled, setEnabled] = useState(initial?.enabled ?? false);
   const [maxPerDay, setMaxPerDay] = useState(String(initial?.maxPerDay ?? 3));
   const [types, setTypes] = useState<NudgeSettings["types"]>({
     reminders: initial?.types.reminders ?? true,
@@ -331,7 +334,7 @@ function NudgesSection({ user }: { user: User }) {
     <Card title="NUDGES">
       <ToggleRow
         label="Proactive nudges"
-        hint="Let Robo reach out on its own."
+        hint="Opt in to occasional reminders about tasks, exams and study."
         checked={enabled}
         onChange={setEnabled}
       />
@@ -384,11 +387,17 @@ function CloudAiSection({ user }: { user: User }) {
   const [on, setOn] = useState(user.cloudAiForDocs);
   const [formError, setFormError] = useState<string | null>(null);
   const [updateMe, { isLoading }] = useUpdateMeMutation();
+  const [updateConsent] = useUpdateConsentMutation();
 
   const save = async () => {
     setFormError(null);
     try {
       await updateMe({ cloudAiForDocs: on }).unwrap();
+      await updateConsent({
+        kind: "CLOUD_AI",
+        granted: on,
+        source: "settings-cloud-ai",
+      }).unwrap();
     } catch (e) {
       setFormError(apiErrorMessage(e, "Could not save this preference."));
     }
@@ -413,7 +422,77 @@ function CloudAiSection({ user }: { user: User }) {
   );
 }
 
+
+const consentOptions: {
+  kind: ConsentKind;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    kind: "MICROPHONE",
+    label: "Microphone",
+    hint: "Lets you talk to Robo. Audio is only captured while you are speaking with it.",
+  },
+  {
+    kind: "CONTACTS",
+    label: "Contacts",
+    hint: "Lets Robo import names, phone numbers and emails when you ask it to.",
+  },
+  {
+    kind: "DOCUMENTS",
+    label: "Documents",
+    hint: "Stores and indexes the files you upload so Robo can search them.",
+  },
+  {
+    kind: "CLOUD_AI",
+    label: "Cloud AI",
+    hint: "Allows document excerpts to be sent to a third-party AI for answers.",
+  },
+];
+
+function ConsentSection() {
+  const { data, isLoading } = useConsentsQuery();
+  const [updateConsent, { isLoading: saving }] = useUpdateConsentMutation();
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const granted = new Map(
+    (data ?? []).map(record => [record.kind, record.granted])
+  );
+
+  const setConsent = async (kind: ConsentKind, value: boolean) => {
+    setFormError(null);
+    try {
+      await updateConsent({ kind, granted: value, source: "settings" }).unwrap();
+    } catch (e) {
+      setFormError(apiErrorMessage(e, "Could not save this consent."));
+    }
+  };
+
+  return (
+    <Card title="PRIVACY & CONSENT">
+      <Text style={styles.hint}>
+        You can withdraw consent at any time. Robo records the change so the
+        permission history is auditable.
+      </Text>
+      {isLoading ? <Text style={styles.hint}>Loading consents…</Text> : null}
+      {consentOptions.map(option => (
+        <ToggleRow
+          key={option.kind}
+          label={option.label}
+          hint={option.hint}
+          checked={granted.get(option.kind) ?? false}
+          onChange={value => {
+            if (!saving) void setConsent(option.kind, value);
+          }}
+        />
+      ))}
+      {formError ? <ErrorBanner message={formError} /> : null}
+    </Card>
+  );
+}
+
 function DataSection() {
+  const router = useRouter();
   const [exportData, { isLoading }] = useExportDataMutation();
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -449,6 +528,7 @@ function DataSection() {
         onPress={() => void runExport()}
         loading={isLoading}
       />
+      <LinkRow label="Memories" onPress={() => router.push("/memories")} />
     </Card>
   );
 }
@@ -577,6 +657,7 @@ export default function SettingsScreen() {
       <WakePhraseSection user={user} />
       <NudgesSection user={user} />
       <CloudAiSection user={user} />
+      <ConsentSection />
       <DataSection />
       <DangerSection email={user.email} />
       <LinksSection />

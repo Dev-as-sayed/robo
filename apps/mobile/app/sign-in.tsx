@@ -75,6 +75,7 @@ export default function SignInScreen() {
               autoComplete="email"
               keyboardType="email-address"
               label="Email"
+              testID="email"
               onBlur={onBlur}
               onChangeText={onChange}
               placeholder="you@school.edu"
@@ -91,6 +92,7 @@ export default function SignInScreen() {
               autoCapitalize="none"
               autoComplete="current-password"
               label="Password"
+              testID="password"
               onBlur={onBlur}
               onChangeText={onChange}
               placeholder="Your password"

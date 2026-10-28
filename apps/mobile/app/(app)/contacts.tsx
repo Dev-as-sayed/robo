@@ -7,8 +7,10 @@ import {
   Text,
   View,
 } from "react-native";
+import * as Contacts from "expo-contacts";
 import { useRouter } from "expo-router";
 import { apiErrorMessage } from "@/api/errors";
+import { useUpdateConsentMutation } from "@/api/account-api";
 import {
   useContactsQuery,
   useCreateContactMutation,
@@ -22,6 +24,7 @@ import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TextField } from "@/components/TextField";
 import type { Contact } from "@/types";
+import { ensurePermissionWithExplanation } from "@/permissions";
 import { colors, radii, spacing } from "@/theme";
 
 const fallbackGroup = "Other";
@@ -159,8 +162,13 @@ function ContactRow({ contact }: { contact: Contact }) {
   );
 }
 
+function phoneKey(value: string | null | undefined): string {
+  return value?.replace(/[^\d]/g, "") ?? "";
+}
+
 export default function ContactsScreen() {
   const router = useRouter();
+  const [importing, setImporting] = useState(false);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -174,9 +182,170 @@ export default function ContactsScreen() {
 
   const { data, isLoading, isError, error, refetch } = useContactsQuery();
   const [createContact, { isLoading: creating }] = useCreateContactMutation();
+  const [updateConsent] = useUpdateConsentMutation();
 
   const contacts = data ?? [];
   const groups = groupContacts(contacts);
+
+  const runImport = async () => {
+    setFormError(null);
+    setImporting(true);
+
+    try {
+      const allowed = await ensurePermissionWithExplanation({
+        title: "Import phone contacts",
+        message:
+          "Robo reads names, phone numbers and emails only when you import. It never uploads them without your action.",
+        api: {
+          get: async () => {
+            const permission = await Contacts.getPermissionsAsync();
+            return {
+              status: permission.status,
+              canAskAgain: permission.canAskAgain,
+            };
+          },
+          request: async () => {
+            const permission = await Contacts.requestPermissionsAsync();
+            return {
+              status: permission.status,
+              canAskAgain: permission.canAskAgain,
+            };
+          },
+        },
+      });
+      if (!allowed) {
+        setFormError(
+          "Robo needs contact permission to import names. You can still add contacts manually."
+        );
+        return;
+      }
+
+      await updateConsent({
+        kind: "CONTACTS",
+        granted: true,
+        source: "contacts-import",
+      }).unwrap();
+
+      const { data: deviceContacts } = await Contacts.getContactsAsync({
+        fields: [
+          Contacts.Fields.Name,
+          Contacts.Fields.PhoneNumbers,
+          Contacts.Fields.Emails,
+        ],
+      });
+
+      const existingPhones = new Set(
+        contacts.map(contact => phoneKey(contact.phone)).filter(Boolean)
+      );
+      const existingEmails = new Set(
+        contacts
+          .map(contact => contact.email?.trim().toLowerCase())
+          .filter((email): email is string => Boolean(email))
+      );
+      const existingNames = new Set(
+        contacts.map(contact => contact.name.trim().toLowerCase())
+      );
+      const batchPhones = new Set<string>();
+      const batchEmails = new Set<string>();
+      const batchNames = new Set<string>();
+
+      const candidates = deviceContacts
+        .map(contact => {
+          const name = contact.name?.trim();
+          const phone = contact.phoneNumbers?.[0]?.number?.trim();
+          const email = contact.emails?.[0]?.email?.trim();
+          return {
+            name,
+            phone,
+            email,
+            group: "Imported",
+          };
+        })
+        .filter(
+          (contact): contact is {
+            name: string;
+            phone: string | undefined;
+            email: string | undefined;
+            group: string;
+          } => Boolean(contact.name && (contact.phone || contact.email))
+        )
+        .filter(contact => {
+          const phone = phoneKey(contact.phone);
+          const email = contact.email?.toLowerCase();
+          const name = contact.name.toLowerCase();
+
+          if (phone && (existingPhones.has(phone) || batchPhones.has(phone))) {
+            return false;
+          }
+          if (email && (existingEmails.has(email) || batchEmails.has(email))) {
+            return false;
+          }
+          if (existingNames.has(name) || batchNames.has(name)) {
+            return false;
+          }
+
+          if (phone) batchPhones.add(phone);
+          if (email) batchEmails.add(email);
+          batchNames.add(name);
+          return true;
+        })
+        .slice(0, 200);
+
+      if (candidates.length === 0) {
+        Alert.alert("No new contacts", "Every name with a phone or email is already saved.");
+        return;
+      }
+
+      Alert.alert(
+        "Import contacts",
+        `Add ${candidates.length} contact${candidates.length === 1 ? "" : "s"} from your phone? Robo will only use them when you ask it to reach someone.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Import",
+            onPress: () => {
+              void (async () => {
+                setImporting(true);
+                let imported = 0;
+                try {
+                  for (const candidate of candidates) {
+                    await createContact({
+                      name: candidate.name,
+                      group: candidate.group,
+                      ...(candidate.phone ? { phone: candidate.phone } : {}),
+                      ...(candidate.email ? { email: candidate.email } : {}),
+                    }).unwrap();
+                    imported += 1;
+                  }
+                  await refetch();
+                  Alert.alert(
+                    "Contacts imported",
+                    `${imported} contact${imported === 1 ? "" : "s"} added.`
+                  );
+                } catch (cause) {
+                  setFormError(
+                    apiErrorMessage(
+                      cause,
+                      `Imported ${imported} contacts, then stopped on an error.`
+                    )
+                  );
+                  await refetch();
+                } finally {
+                  setImporting(false);
+                }
+              })();
+            },
+          },
+        ]
+      );
+    } catch (cause) {
+      setFormError(
+        apiErrorMessage(cause, "Robo could not read your phone contacts.")
+      );
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const reset = () => {
     setName("");
@@ -255,6 +424,29 @@ export default function ContactsScreen() {
           </Card>
         ))
       )}
+
+      <Card title="IMPORT">
+        <Text style={styles.muted}>
+          Bring names, phone numbers and emails from your phone. Nothing is read
+          until you tap import and allow access.
+        </Text>
+        {formError ? <ErrorBanner message={formError} /> : null}
+        <Button
+          label="Import from phone"
+          variant="ghost"
+          onPress={() =>
+            Alert.alert(
+              "Import contacts",
+              "Robo will read your phone contacts so you can call or message them. You can delete any contact later.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Continue", onPress: () => void runImport() },
+              ]
+            )
+          }
+          loading={importing}
+        />
+      </Card>
 
       <Card title="NEW CONTACT">
         <TextField

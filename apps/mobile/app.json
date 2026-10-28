@@ -7,7 +7,23 @@
     "scheme": "robo",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
-    "plugins": ["expo-router", "expo-secure-store"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Robo uses a photo you choose to explain formulas and study problems."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Robo reads contacts only when you ask it to import someone you can call or message."
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     },
