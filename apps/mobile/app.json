@@ -14,7 +14,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Robo uses a photo you choose to explain formulas and study problems."
+          "photosPermission": "Robo uses a photo you choose to explain formulas and study problems.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       [
@@ -32,7 +34,13 @@
       "bundleIdentifier": "com.robo.app"
     },
     "android": {
-      "package": "com.robo.app"
+      "package": "com.robo.app",
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "bundler": "metro",

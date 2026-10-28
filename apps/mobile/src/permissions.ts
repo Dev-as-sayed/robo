@@ -1,4 +1,3 @@
-import * as ImagePicker from "expo-image-picker";
 import * as Notifications from "expo-notifications";
 import { Alert, Linking } from "react-native";
 
@@ -65,19 +64,6 @@ export async function ensurePermissionWithExplanation(options: {
   }
   return false;
 }
-
-export const mediaLibraryPermission: PermissionApi = {
-  get: async () => {
-    const { status, canAskAgain } =
-      await ImagePicker.getMediaLibraryPermissionsAsync();
-    return { status, canAskAgain };
-  },
-  request: async () => {
-    const { status, canAskAgain } =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-    return { status, canAskAgain };
-  },
-};
 
 export const notificationPermission: PermissionApi = {
   get: async () => {

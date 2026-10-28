@@ -129,6 +129,7 @@ pnpm --dir apps/mobile lint
 - [`docs/ai-evaluation.md`](docs/ai-evaluation.md) — AI regression, retrieval and embedding evaluation
 - [`docs/production-operations.md`](docs/production-operations.md) — deploy, TLS, backup, restore and incident runbook
 - [`docs/mobile-release.md`](docs/mobile-release.md) — EAS, store and release checklist
+- [`docs/play-policy-review.md`](docs/play-policy-review.md) — Google Play permissions, data safety and launch blockers
 - [`docs/privacy-notice.md`](docs/privacy-notice.md) and [`docs/terms-of-service.md`](docs/terms-of-service.md) — draft legal documents
 - [`docs/consent.md`](docs/consent.md) — consent records and API
 - [`docs/threat-model.md`](docs/threat-model.md) and [`docs/secure-boot.md`](docs/secure-boot.md) — security design

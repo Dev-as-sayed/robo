@@ -40,10 +40,29 @@ ROBOTEST_EMAIL=... ROBOTEST_PASSWORD=... maestro test .maestro/sign-in.yaml
 Maestro needs a running emulator/simulator and a development or preview build.
 Add `expo-dev-client` before producing development builds.
 
+## Play policy
+
+`docs/play-policy-review.md` records the current permission inventory, Data
+safety mapping and launch blockers. Re-run the manifest check before every store
+submission:
+
+```bash
+cd apps/mobile
+pnpm exec expo config --type introspect
+```
+
+The production build must target Android 16 (API 36) or higher. The current
+Expo 51 build targets API 34, so the SDK upgrade is a release blocker.
+
 ## Release checklist
 
 - [ ] Expo project ID and EAS credentials configured.
 - [ ] Sentry DSN and source-map upload configured.
+- [ ] Target Android 16 (API 36) and re-test permissions, notifications and links.
+- [ ] In-app AI answer reporting is available.
+- [ ] Public account-deletion page and privacy-policy URL are live.
+- [ ] Data safety, content rating and adult audience answers completed.
+- [ ] Contacts policy decision recorded (Contact Picker or Play declaration).
 - [ ] Screenshots, descriptions, privacy labels and content ratings prepared.
 - [ ] Physical Android and iOS smoke tests pass.
 - [ ] Push notifications verified on both platforms.

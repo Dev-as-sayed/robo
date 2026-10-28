@@ -11,10 +11,6 @@ import { ErrorBanner } from "@/components/ErrorBanner";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TextField } from "@/components/TextField";
-import {
-  ensurePermissionWithExplanation,
-  mediaLibraryPermission,
-} from "@/permissions";
 import { colors, radii, spacing } from "@/theme";
 
 interface PickedImage {
@@ -33,14 +29,6 @@ export default function VisionScreen() {
   const chooseImage = async () => {
     setFormError(null);
     setAnswer(null);
-
-    const allowed = await ensurePermissionWithExplanation({
-      title: "Photo access",
-      message:
-        "Robo needs access to one photo so it can explain the formula or problem in it.",
-      api: mediaLibraryPermission,
-    });
-    if (!allowed) return;
 
     try {
       const picked = await ImagePicker.launchImageLibraryAsync({

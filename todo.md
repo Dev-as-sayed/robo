@@ -292,7 +292,8 @@ over the existing device WebSocket plus Expo push when the user has registered t
 - [ ] 🟢 Missed-call follow-up where permitted [FR-COM-07] — 2 d
 - [ ] 🟢 Timetable import from photo (OCR + review) [FR-CLS-08] — 4 d
 - [x] 🔴 Tests: wrong-recipient, expired action, rejected action, duplicate confirm — 3 d — `apps/server/tests/pending-actions.test.ts` covers exact-recipient URIs, wrong-user isolation, five-minute expiry, rejection, duplicate confirm and the expiry scheduler (116 server tests total)
-- [ ] 🟡 Review Google Play policy requirements for contacts/SMS/phone before submitting — 1 d
+- [x] 🟡 Review Google Play policy requirements for contacts/SMS/phone before submitting — 1 d — `docs/play-policy-review.md` records the permission/data-safety inventory and launch blockers. SMS/call actions are intent-only with no restricted permissions, and the manifest now drops unused microphone, contacts-write and broad storage access. Remaining blockers: target API 36, AI-answer reporting, account-deletion web page, hosted privacy policy/Data safety, and the Contact Picker decision
+- [ ] 🟡 Replace broad contact import with the system Contact Picker before targeting Android 17 (API 37), or prepare a Play Console declaration — 2 d
 - [ ] 📦 **Demo:** "Call Mom" and "Send Ahmed a message…" with confirmation
 
 ---
@@ -372,6 +373,9 @@ over the existing device WebSocket plus Expo push when the user has registered t
 
 ### X.4 Launch
 
+- [ ] 🔴 Upgrade mobile to target Android 16 (API 36) — Expo 51 currently targets API 34, which blocks new submissions since 2026-08-31
+- [ ] 🔴 In-app AI answer reporting/flagging for chat and vision, plus moderation triage — required by Play's AI-Generated Content policy
+- [ ] 🔴 Public account-deletion web resource, linked from Play Console and the in-app deletion flow
 - [ ] 🔴 Beta program (20–50 students), feedback loop, bug triage
 - [ ] 🔴 Play Store listing, data-safety form, privacy policy URL
 - [ ] 🟡 User guide and device quick-start card — `docs/user-guide.md` covers onboarding, chat, tasks, reminders, exams, documents, quizzes, approvals, devices and privacy; `docs/device-quick-start.md` is a draft card pending firmware validation
