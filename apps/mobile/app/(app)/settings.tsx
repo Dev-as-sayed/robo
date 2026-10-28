@@ -620,6 +620,7 @@ function LinksSection() {
     <Card title="ACCOUNT">
       <LinkRow label="Devices" onPress={() => router.push("/devices")} />
       <LinkRow label="Activity" onPress={() => router.push("/activity")} />
+      <LinkRow label="Help & FAQ" onPress={() => router.push("/help")} />
     </Card>
   );
 }

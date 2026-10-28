@@ -183,7 +183,10 @@ resource before declaring deletion support in Play Console.
 - Declare the AI chatbot/assistant feature accurately in the store listing.
 - Complete the Data safety and account-deletion sections consistently with the
   privacy policy.
-- Provide a support URL and a monitored contact address.
+- Provide a support URL and a monitored contact address. The in-app Help & FAQ
+  and configurable support channel are in place; set `EXPO_PUBLIC_SUPPORT_EMAIL`
+  or `EXPO_PUBLIC_SUPPORT_URL` before release. See
+  [`support-faq.md`](support-faq.md).
 - Do not claim on-device processing or "no data collection" while requests are
   sent to cloud providers.
 - Keep screenshots and descriptions free of real student data, names, phone

@@ -23,6 +23,14 @@ Set `EXPO_PUBLIC_SENTRY_DSN` in the EAS environment. The app initialises Sentry 
 `app/_layout.tsx` with `sendDefaultPii: false`. Configure source-map upload in the
 EAS build profile once the Sentry organisation/project exists.
 
+## Support contact
+
+Set `EXPO_PUBLIC_SUPPORT_EMAIL` (preferred) or `EXPO_PUBLIC_SUPPORT_URL` in the
+EAS production environment. The in-app Help & FAQ action uses the email when
+present and falls back to the public issue tracker otherwise. Use the same
+monitored contact in the Play Console and store listing; see
+[`support-faq.md`](support-faq.md).
+
 ## Maestro
 
 Flows live in `.maestro/`. Smoke test:

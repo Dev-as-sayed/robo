@@ -379,7 +379,7 @@ over the existing device WebSocket plus Expo push when the user has registered t
 - [ ] 🔴 Beta program (20–50 students), feedback loop, bug triage
 - [ ] 🔴 Play Store listing, data-safety form, privacy policy URL
 - [ ] 🟡 User guide and device quick-start card — `docs/user-guide.md` covers onboarding, chat, tasks, reminders, exams, documents, quizzes, approvals, devices and privacy; `docs/device-quick-start.md` is a draft card pending firmware validation
-- [ ] 🟡 Support channel and FAQ
+- [x] 🟡 Support channel and FAQ — in-app Help & FAQ screen linked from Settings, with a configurable `EXPO_PUBLIC_SUPPORT_EMAIL`/`EXPO_PUBLIC_SUPPORT_URL` channel and a GitHub issue fallback; triage workflow and launch checklist in `docs/support-faq.md`. Set a monitored production contact before release
 - [ ] 🟡 Finalize pricing/business model (device sale, AI subscription, or both)
 - [ ] 📦 **v1.0 launch checklist signed off**
 

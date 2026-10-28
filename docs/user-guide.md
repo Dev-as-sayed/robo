@@ -90,6 +90,8 @@ device, the phone app fallback is noted.
   removes database rows, uploaded files and document vectors.
 - Microphone audio is deleted after transcription. Transcripts and action logs
   are retained for 90 days by default.
+- **Settings → Help & FAQ** has short answers and opens the configured support
+  channel. See [`support-faq.md`](support-faq.md) for the operator workflow.
 
 ## 10. Troubleshooting
 
