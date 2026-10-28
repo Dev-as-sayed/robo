@@ -25,7 +25,7 @@
     "expo-document-picker": "~12.0.2",
     "expo-image-manipulator": "~12.0.5",
     "expo-image-picker": "~15.0.7",
-    "expo-linking": "~6.3.1",
+    "expo-linking": "~58.0.14",
     "expo-localization": "~15.0.3",
     "expo-notifications": "~0.28.19",
     "expo-router": "~3.5.24",
