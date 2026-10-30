@@ -73,7 +73,7 @@ reconnect behavior before every store submission.
 - [ ] In-app AI answer reporting is available.
 - [ ] Deploy the public account-deletion page and privacy-policy URL, then enter both in Play Console.
 - [ ] Data safety, content rating and adult audience answers completed.
-- [ ] Contacts policy decision recorded (Contact Picker or Play declaration).
+- [x] Contacts policy decision recorded: the app uses the native single-contact picker instead of a broad import.
 - [ ] Screenshots, descriptions, privacy labels and content ratings prepared.
 - [ ] Physical Android and iOS smoke tests pass.
 - [ ] Push notifications verified on both platforms.

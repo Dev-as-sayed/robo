@@ -12,9 +12,9 @@
 		Permissions-Policy "camera=(), geolocation=(), microphone=()"
 		-Server
 	}
-	reverse_proxy api:3000
+	reverse_proxy 127.0.0.1:3000
 }
 
 {$MINIO_DOMAIN} {
-	reverse_proxy minio:9000
+	reverse_proxy 127.0.0.1:9000
 }

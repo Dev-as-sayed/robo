@@ -65,8 +65,10 @@ device, the phone app fallback is noted.
 
 ## 7. Contacts and approvals
 
-- Import contacts only after granting the contacts permission. You can choose
-  which contacts to import and delete them later.
+- Tap **Choose from phone** to open the system contact picker and select one
+  person. Robo reads only that contact, fills in the form for review, and saves
+  it only when you tap **Add contact**. You can also add contacts manually and
+  delete saved contacts later.
 - When you ask Robo to call or message someone, it prepares a draft and asks for
   confirmation on the **Approvals** screen. Nothing is sent until you tap
   **Confirm**. Drafts expire after five minutes.

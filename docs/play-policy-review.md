@@ -22,7 +22,7 @@ After this review it requests only:
 | Permission | Source | Use |
 | --- | --- | --- |
 | `android.permission.INTERNET` | Expo | API, WebSocket, AI and sync traffic |
-| `android.permission.READ_CONTACTS` | `expo-contacts` | User-initiated phone contact import |
+| `android.permission.READ_CONTACTS` | `expo-contacts` | Single contact chosen from the system picker |
 | `POST_NOTIFICATIONS` | `expo-notifications` | Runtime reminder/nudge notifications |
 
 The following permissions were present before this review and are now removed or
@@ -39,7 +39,7 @@ blocked in `app.json`:
   not use either capability.
 
 The app does not request SMS, Call Log, Phone, Location, `QUERY_ALL_PACKAGES`,
-camera, or broad media permissions. Contact import remains the only sensitive
+camera, or broad media permissions. Contact access remains the only sensitive
 runtime permission.
 
 ## Release blockers
@@ -104,28 +104,26 @@ error-monitoring providers. The form must disclose account data, contacts,
 chat/voice content, uploaded documents, study activity, identifiers, and
 diagnostics as applicable.
 
-### 5. Contacts policy decision
+### 5. Contacts policy decision (implemented, needs device re-test)
 
-Contact import is user-initiated and is preceded by an in-app explanation before
-the system permission prompt. The app records consent, imports only names,
-phones and emails, caps the batch at 200, de-duplicates, and offers manual entry
-as an alternative.
+The app now opens the native single-contact picker
+(`Contacts.presentContactPickerAsync`) instead of reading the whole address book.
+The student selects one person, Robo reads only that contact's name, phone
+number and email, pre-fills the form for review, de-duplicates against saved
+contacts and records `CONTACTS` consent. Manual entry remains available and no
+batch import or 200-contact cap remains.
 
 On 2027-01-27 Google Play's Contacts Permissions policy becomes effective. Apps
 that target Android 17 (API 37) or later may request `READ_CONTACTS` only when
 the Android Contact Picker cannot provide the core functionality, or with an
-approved Play Console declaration. The current app performs a broad contact-list
-import, so it must either:
+approved Play Console declaration. The app no longer performs a broad contact
+read, but `expo-contacts` still asks for `READ_CONTACTS` on Android before
+launching the picker (iOS needs no permission). Before targeting API 37, either
+adopt a picker path that does not request the permission or submit a declaration
+covering the single-contact use.
 
-1. move to the system Contact Picker or per-contact selection before targeting
-   API 37, or
-2. keep broad import and submit a declaration that explains why the picker is
-   insufficient.
-
-Recommended: use per-contact selection. Importing the entire address book is not
-required for calling or messaging one person, and it reduces privacy and review
-risk. If broad import remains, record the product decision and prepare the
-declaration before the next target-SDK increase.
+Action before release: re-test the picker on an Android 16 EAS build and confirm
+in Play Console whether the current `READ_CONTACTS` request needs a declaration.
 
 ## Findings that are compliant
 
@@ -169,8 +167,8 @@ deployed build and provider contracts.
 | Data type | Collected? | Purpose | Shared with | Notes |
 | --- | --- | --- | --- | --- |
 | Name, email, account ID | Yes | Account management, app functionality | Hosting provider | Required to sign in |
-| Phone number | Optional | Account/profile, contact actions | AI provider when used in a request | Also present in imported contacts |
-| Contacts | Optional | Contact lookup and calling/messaging actions | AI provider when the agent needs the contact | User-initiated import; delete with contact/account |
+| Phone number | Optional | Account/profile, contact actions | AI provider when used in a request | Also present in saved phone contacts |
+| Contacts | Optional | Contact lookup and calling/messaging actions | AI provider when the agent needs the contact | User-initiated single-contact picker; delete with contact/account |
 | Chat messages and AI prompts | Yes | App functionality | AI provider | Includes tool results and generated answers |
 | Voice audio and transcripts | Device feature | Voice assistant | STT/TTS provider, AI provider | Audio is not retained as a recording; transcripts follow chat retention |
 | Photos selected for vision | Yes, per request | App functionality | AI provider | Only the selected image is sent |
@@ -200,7 +198,8 @@ support.
   sent to cloud providers.
 - Keep screenshots and descriptions free of real student data, names, phone
   numbers or contact details.
-- Complete the permissions declaration for contacts if broad import remains.
+- Confirm whether Play requires a contacts declaration for the picker's
+  `READ_CONTACTS` request.
 
 ## Action checklist
 
@@ -211,7 +210,8 @@ support.
 - [x] Implement the account-deletion web page and moderator processing path.
 - [ ] Deploy the deletion page on the public API domain and enter it in Play Console.
 - [ ] Finalize and host the privacy policy; complete the Data safety form.
-- [ ] Decide between Contact Picker and a broad-contacts declaration.
+- [x] Replace broad contact import with the native single-contact picker.
+- [ ] Re-test the contact picker on Android 16 and confirm the Play Console declaration position.
 - [ ] Set the adult target audience and complete the content rating.
 - [x] Remove unused microphone, contacts-write and storage permissions.
 - [x] Review SMS/Call Log restrictions and confirm intent-only behavior.

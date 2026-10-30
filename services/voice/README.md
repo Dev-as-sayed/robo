@@ -1,17 +1,36 @@
 # Voice services
 
 Two small HTTP services used by the device voice pipeline. Both speak raw audio over the wire and
-are built by `docker-compose.yml` at the repository root.
+run as normal Python processes — no container runtime is required.
 
 | Service | Port | Engine | Input | Output |
 | --- | --- | --- | --- | --- |
 | `stt` | 8001 | faster-whisper | PCM16, 16 kHz mono | JSON transcript |
 | `tts` | 8002 | Piper | JSON text | Raw PCM16, mono |
 
+## Prerequisites
+
+- Python 3.11 or 3.12, or [`uv`](https://docs.astral.sh/uv/)
+- Network access on first start for the Whisper model and Piper voice download
+
+The helper scripts prefer `uv` when it is available and use a managed Python 3.11 virtualenv.
+Without `uv`, install Python 3.11/3.12 and retry.
+
 ## Quick start
 
+From the repository root:
+
 ```bash
-docker compose up -d stt tts
+scripts/services/stt.sh
+scripts/services/tts.sh
+```
+
+Or start both with Redis and MinIO:
+
+```bash
+scripts/services/start-all.sh
+scripts/services/status.sh
+scripts/services/stop-all.sh
 ```
 
 Then point the server at them:
@@ -22,17 +41,20 @@ TTS_SERVICE_URL=http://localhost:8002
 TTS_VOICE=en_US-lessac-medium
 ```
 
-`WHISPER_MODEL` defaults to `base` on CPU with `int8`. Use `small` or `distil-small.en` for better
-accuracy, or set `WHISPER_DEVICE=cuda` when a GPU is available.
+The first start creates `services/voice/*/.venv`, installs the requirements and caches models under
+`.local/`. `WHISPER_MODEL` defaults to `base` on CPU with `int8`. Use `small` or `distil-small.en`
+for better accuracy, or set `WHISPER_DEVICE=cuda` when a GPU is available.
 
-The TTS image downloads the selected Piper voice from `rhasspy/piper-voices` on first start and
-stores it in the `tts_models` volume. The STT model is downloaded from Hugging Face into the
-`stt_models` volume on the first transcription.
+The TTS script downloads every voice listed in `TTS_VOICES` (default
+`en_US-lessac-medium,hi_IN-pratham-medium`) into `TTS_DATA_DIR` (default `.local/tts-models`) and
+selects voices per request. The Piper CLI comes
+from the `piper-tts` Python package installed in the service virtualenv.
 
-Downloads use `HF_ENDPOINT` (default `https://hf-mirror.com`) because the Xet backend is disabled
-with `HF_HUB_DISABLE_XET=1`. The Piper voice downloader tries the official Hub first, then
-`PIPER_VOICE_BASE_URL`; set both to `https://huggingface.co` if the mirror is not needed. The first
-download can take a few minutes and needs network access.
+Set `HF_ENDPOINT` (for example `https://hf-mirror.com`) and `HF_HUB_DISABLE_XET=1` when the
+official Hub is unreachable or its Xet backend fails; the example env files already contain both.
+`PIPER_VOICE_BASE_URL` overrides the Piper voice source; otherwise the downloader tries
+`HF_ENDPOINT`, then the official Hub and its mirror. The first download can take a few minutes and
+needs network access.
 
 ## Health checks
 
@@ -43,7 +65,7 @@ curl http://localhost:8002/health
 
 ## Verified locally
 
-Both images build with Podman and respond on the compose network:
+Both services respond on the configured ports:
 
 ```bash
 curl http://localhost:8001/health
@@ -79,13 +101,12 @@ device that sends PCM16.
 
 The response is raw PCM16 with `X-Audio-Codec` and `X-Sample-Rate` headers. Piper voices are
 selected with `voice`; the server resolves it from `TTS_VOICE_MAP` by language, then falls back to
-`TTS_VOICE`. Only the `TTS_VOICE` model is downloaded at startup, so add each mapped voice to the
-`tts_models` volume or pre-download it before switching languages.
+`TTS_VOICE`. Add each mapped voice to `TTS_VOICES` so the script downloads it.
 
 ## Changing the TTS voice
 
 ```bash
-TTS_VOICE=en_US-amy-medium docker compose up -d tts
+TTS_VOICES=en_US-amy-medium TTS_VOICE=en_US-amy-medium scripts/services/tts.sh
 ```
 
 Use any voice id from the [Piper voices list](https://huggingface.co/rhasspy/piper-voices). The id

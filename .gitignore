@@ -30,7 +30,10 @@ playwright-report/
 
 # Runtime files
 *.pid
+.local/
 
 # Python
 __pycache__/
 *.pyc
+.venv/
+services/voice/*/.venv/

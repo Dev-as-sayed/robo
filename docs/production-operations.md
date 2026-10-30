@@ -2,30 +2,41 @@
 
 ## Topology
 
-`docker-compose.production.yml` runs Caddy, the API, PostgreSQL, Redis, Qdrant,
-MinIO, Ollama, STT and TTS. Only Caddy publishes ports; databases and model
-services stay on the private Docker network.
+Caddy fronts the API and MinIO on one host. The API, PostgreSQL, Redis, MinIO,
+Qdrant, Ollama, STT and TTS run as native services (systemd units or the helper
+scripts under `scripts/services/`). Only Caddy publishes ports 80/443; bind the
+API, databases and model services to `127.0.0.1`.
 
 ## First deploy
 
 1. Provision a Linux VPS with at least 8 GB RAM and 40 GB disk (more for local
    models).
 2. Point `API_DOMAIN` and `MINIO_DOMAIN` DNS records at the host.
-3. Copy `.env.production.example` to `.env.production`, fill every secret with
+3. Install Node.js 20+, pnpm, PostgreSQL, Redis, Caddy and, when voice or RAG is
+   enabled, Python 3.11/3.12 (or `uv`), Qdrant and Ollama.
+4. Copy `.env.production.example` to `apps/server/.env`, fill every secret with
    random values and set the real domains.
-4. Run `docker compose -f docker-compose.production.yml up -d --build`.
-5. Run `docker compose -f docker-compose.production.yml ps` and confirm every
-   service is healthy.
-6. Verify `https://$API_DOMAIN/health` returns `200` with a valid certificate.
-7. Verify MinIO is not anonymously listable and only Caddy exposes 80/443.
-8. Run the smoke checks: register, sign in, upload a document, wait for
-   `indexed`, ask a document question, pair a test device.
+5. Install dependencies and apply migrations:
+   `pnpm install && pnpm db:generate && pnpm --dir apps/server exec prisma migrate deploy`.
+6. Start the API with your process manager, for example a systemd unit running
+   `node apps/server/dist/index.js` after `pnpm --dir apps/server build`.
+7. Start Redis, MinIO, STT and TTS with `scripts/services/start-all.sh`, or run
+   each as its own systemd unit. MinIO data lives in `.local/minio` by default.
+   The helper pins MinIO's last published community binary
+   (`RELEASE.2025-09-07T16-13-09Z`); use managed S3 or another maintained
+   S3-compatible service for production document storage.
+8. Start Qdrant and Ollama natively if document indexing or private-document
+   routing is enabled.
+9. Verify `https://$API_DOMAIN/health` returns `200` with a valid certificate.
+10. Verify MinIO is not anonymously listable and only Caddy exposes 80/443.
+11. Run the smoke checks: register, sign in, upload a document, wait for
+    `indexed`, ask a document question, pair a test device.
 
 ## Secrets
 
 - Generate passwords with `openssl rand -base64 48`.
 - Keep `.env.production` mode `0600`, owned by the deploy user.
-- Never build images with secrets. Build-time args are not secret storage.
+- Never pass secrets as process arguments, build variables or repository files.
 - Rotate JWT, S3, provider and database credentials on a documented schedule.
 - Use GitHub encrypted secrets for CI, never repository variables for keys.
 
@@ -37,11 +48,12 @@ Do not expose the API over plain HTTP; redirect is handled by Caddy.
 
 ## Backups
 
-- Install `scripts/backup-db.sh` in cron, for example daily at 02:15.
+- Install `scripts/backup-db.sh` in cron, for example daily at 02:15. It requires
+  `DATABASE_URL` and `pg_dump`.
 - Copy backups to encrypted off-host storage with object lock where available.
-- Back up MinIO document bytes separately.
+- Back up MinIO document bytes separately (`.local/minio` by default).
 - Test a restore monthly into a disposable database:
-  `gunzip -c backup.sql.gz | docker compose ... exec -T db psql -U robo robo`.
+  `gunzip -c backup.sql.gz | psql "$DATABASE_URL"`.
 - Qdrant vectors can be rebuilt from documents; do not treat them as the source
   of truth.
 
@@ -72,7 +84,7 @@ Do not expose the API over plain HTTP; redirect is handled by Caddy.
 - Metrics: chat and voice turns already record latency and token usage in the
   database and logs. Alert on p95 chat latency above 5 s, voice turn p95 above
   3 s, document ingestion failures, queue depth growth and 5xx rate above 1%.
-- Disk: alert at 70% and 85%; images and model volumes grow.
+- Disk: alert at 70% and 85%; model caches and MinIO data grow.
 - Certificate expiry and backup age are also alertable.
 
 ## Load test

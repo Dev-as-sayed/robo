@@ -55,7 +55,7 @@ Whisper (`GROQ_API_KEY`, default model `whisper-large-v3-turbo`). Groq only rece
 wrapped in a WAV container. Opus turns require a local service that decodes Opus; the bundled
 faster-whisper service accepts PCM16 only.
 
-The Docker service is in `services/voice/stt`; see [`services/voice/README.md`](../services/voice/README.md).
+The native service is in `services/voice/stt` and starts with `scripts/services/stt.sh`; see [`services/voice/README.md`](../services/voice/README.md).
 
 ## TTS service contract
 
@@ -78,7 +78,7 @@ It returns raw audio bytes. Optional headers:
 
 PCM16 replies are split into 4 KiB binary WebSocket frames. Opus replies are sent as one frame.
 
-The Docker service is in `services/voice/tts`; voices are downloaded on first start and selected
+The native service is in `services/voice/tts` and starts with `scripts/services/tts.sh`; voices are downloaded on first start and selected
 with `TTS_VOICE` or the request `voice` field.
 
 ## Failure behavior
@@ -131,8 +131,8 @@ transcription.
 
 ## Supported launch languages
 
-English (`en`) and Hindi (`hi`) are configured in the Docker compose files and
-`.env.example`. The TTS container downloads both Piper voices. Users choose the
+English (`en`) and Hindi (`hi`) are configured in `.env.example` and the service
+defaults. The TTS script downloads both Piper voices when both are listed in `TTS_VOICES`. Users choose the
 language in onboarding/settings; the server passes the user locale to STT, the
 LLM prompt and the TTS voice map. Per-user voice selection and vocabulary/tone
 tuning remain future work.

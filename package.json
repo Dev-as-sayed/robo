@@ -3,23 +3,19 @@
   "version": "1.0.0",
   "description": "Student AI Assistant monorepo",
   "private": true,
-  "workspaces": {
-    "packages": [
-      "packages/*"
-    ],
-    "projects": [
-      "apps/*",
-      "packages/*",
-      "firmware/*"
-    ]
-  },
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
-    "dev": "pnpm --dir apps/server dev",
-    "lint": "pnpm --dir apps/server lint",
-    "typecheck": "pnpm --dir apps/server typecheck",
-    "test": "pnpm --dir apps/server test",
-    "build": "pnpm --dir apps/server build"
+    "dev": "pnpm --filter robo-server dev",
+    "lint": "pnpm --filter robo-server lint",
+    "typecheck": "pnpm --filter robo-server typecheck",
+    "test": "pnpm --filter robo-server test",
+    "build": "pnpm --filter robo-server build",
+    "db:generate": "pnpm --filter robo-server db:generate",
+    "db:migrate": "pnpm --filter robo-server db:migrate",
+    "mobile:dev": "pnpm --filter robo-mobile dev",
+    "mobile:typecheck": "pnpm --filter robo-mobile typecheck",
+    "mobile:lint": "pnpm --filter robo-mobile lint",
+    "shared:typecheck": "pnpm --filter @robo/shared typecheck"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "8.72.0",

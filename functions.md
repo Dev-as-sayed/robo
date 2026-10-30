@@ -548,7 +548,7 @@ DailyStats      id, userId, date, studyMinutes, tasksDone, tasksMissed, quizAvg
 | NFR-08 | AI quality      | ≥ 90% correct tool selection and ≥ 90% grounded answers on the regression set for any model enabled for production.                   |
 | NFR-09 | Cost            | Free-tier usage is tracked; the system degrades gracefully (shorter answers, fallback models) instead of failing when quotas run out. |
 | NFR-10 | Compatibility   | Android 10+ primary; iOS secondary; ESP32-S3 with PSRAM.                                                                              |
-| NFR-11 | Scalability     | Initial deployment supports 10,000 registered users and 500 concurrent device sessions on a single Docker host without redesign.      |
+| NFR-11 | Scalability     | Initial deployment supports 10,000 registered users and 500 concurrent device sessions on a single host without redesign.          |
 | NFR-12 | Observability   | Structured logs, Sentry for errors, Langfuse for AI traces, device telemetry.                                                         |
 | NFR-13 | Maintainability | Shared Zod schemas in `packages/shared`; tool contracts versioned and tested; CI runs lint, tests and builds.                         |
 | NFR-14 | Usability       | Core actions complete in ≤ 2 voice turns; app supports screen readers and large text.                                                 |
@@ -655,7 +655,7 @@ R1 plus the essentials of R2: voice chat, todos, reminders, class schedule with 
 1. Which languages must be supported at launch? (Affects STT, TTS, embeddings, wake word.)
 2. Is the target university students only, or school students too (consent and safety scope)?
 3. Is an app-only mode (no device) required for early users?
-4. Hosting: single VPS with Docker Compose, or managed services?
+4. Hosting: single VPS with native services, or managed services?
 5. BullMQ (Redis) or pg-boss for the MVP?
 6. Which UI kit for the app (Paper, Tamagui, NativeWind)?
 7. Required retention period for transcripts and action logs?

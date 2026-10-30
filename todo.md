@@ -17,7 +17,7 @@
 | R1    | Voice foundation                        | 30–40 d    | In progress (R1.3 gateway + voice pipeline now stream agent tokens through sentence-level TTS; mobile auth/chat in place — firmware, pairing and BLE setup pending) |
 | R2    | Productivity (MVP complete)             | 30–40 d    | In progress (all R2 mobile screens built — Today, Tasks, Reminders incl. recurrence, Schedule, Settings; reminders now fire through an in-process scheduler tick over the device WebSocket and Expo push, with persisted delivery status, retry/backoff and an offline reconnect queue; pre-class and 24 h/2 h deadline jobs are now wired — mobile push registration still missing) |
 | R3    | Study Brain (documents, quizzes, plans) | 40–50 d    | In progress (exams, plans/approval, quizzes, class notes and memory are real; documents now upload to MinIO/S3 with signed URLs and quotas, but parsing/chunking/embedding and indexing are still pending) |
-| R4    | Communication (calls, messages)         | 25–30 d    | ◐ (contacts, contact import, pending-action confirmations, app WebSocket push and LangGraph destructive-action confirmations done; device voice confirmation remains) |
+| R4    | Communication (calls, messages)         | 25–30 d    | ◐ (contacts, contact picker, pending-action confirmations, app WebSocket push and LangGraph destructive-action confirmations done; device voice confirmation remains) |
 | R5    | Proactive (study mode, analytics)       | 35–40 d    | ◐ (study sessions, insights, trends, nudges, planner, plan approval/readiness, app-side DND and Pomodoro breaks done; device timer remains firmware-blocked) |
 | R6    | Advanced (vision, sync)                 | Ongoing    | ☐             |
 | X     | Cross-cutting: security, QA, launch     | Continuous | ☐             |
@@ -35,7 +35,7 @@
 - [x] 🟡 Decide whether an app-only mode (no device) is needed for early users — 0.5 d — no; the device is part of the product and the app is not a standalone launch mode
 - [x] 🟡 Choose job queue: BullMQ (Redis) vs pg-boss — 0.5 d — the PostgreSQL-backed `nextAt` claim is the v1 queue; Redis/BullMQ is deferred until throughput requires it
 - [x] 🟡 Choose UI kit: React Native Paper / Tamagui / NativeWind — 0.5 d — keep the existing custom React Native components and shared style layer; no new UI kit for v1
-- [x] 🟡 Choose hosting: single VPS + Docker Compose vs managed services — 1 d — single VPS + Docker Compose for the beta; managed services only when load or compliance requires them
+- [x] 🟡 Choose hosting: single VPS with native services vs managed services — 1 d — single VPS with native services (systemd + Caddy) for the beta; managed services only when load or compliance requires them
 - [x] 🟡 Decide transcript/action-log retention period — 0.5 d — 90 days for transcripts/action logs; account data remains until deletion
 - [x] 📦 Update the decision log in `stack.md` section 13 — recorded D1–D14 with accepted launch defaults
 
@@ -57,8 +57,8 @@
 
 - [ ] 🔴 Create monorepo with pnpm workspaces: `apps/mobile`, `apps/server`, `packages/shared`, `firmware/` — 1 d — `apps/mobile`, `apps/server`, `packages/shared` and `firmware/` exist, but each app keeps its own pnpm workspace and lockfile; there is no root `pnpm-workspace.yaml`
 - [x] 🔴 Configure TypeScript (strict), ESLint, Prettier, commit hooks — 0.5 d — strict TypeScript, ESLint and Prettier are configured; `.githooks/pre-commit` runs the relevant app lint/typecheck and is activated with `git config core.hooksPath .githooks`
-- [x] 🔴 `docker-compose.yml`: PostgreSQL, Redis, Qdrant, MinIO — 1 d — also includes Ollama, STT, TTS and Langfuse, but no server service
-- [x] 🟡 Add Ollama service to Compose and pull one small model + one embedding model — 0.5 d — the `ollama-pull` service waits for Ollama, then pulls `OLLAMA_CHAT_MODEL` and `OLLAMA_EMBEDDING_MODEL`
+- [x] 🔴 Native local services: PostgreSQL, Redis, Qdrant, MinIO — 1 d — `scripts/services/` starts Redis, MinIO (S3), STT and TTS natively; PostgreSQL, Qdrant and Ollama are installed and run by the operator
+- [x] 🟡 Document native Ollama setup and model pulls — 0.5 d — `ollama serve` plus `ollama pull "$OLLAMA_CHAT_MODEL"` and `ollama pull "$OLLAMA_EMBEDDING_MODEL"`
 - [x] 🔴 GitHub Actions: lint, test, build on every pull request — 1 d — server lint/typecheck/test/build, mobile typecheck/lint, Python compile and voice image builds; also AI/retrieval/embedding fixture validation, critical dependency audit, Dependabot and an API image build. Firmware remains empty
 - [ ] 🟡 Provision the dev VPS, domain name and TLS (Caddy/Nginx + Let's Encrypt) — 1 d
 - [ ] 🟡 Create project board (Backlog → Ready → In progress → Review → Done) and import this TODO — 0.5 d
@@ -100,8 +100,8 @@
 - [x] 🔴 `ws` server at `/ws/device`: `hello` authentication, presence, heartbeat 30 s [GW-01, GW-03, GW-04] — 3 d
 - [x] 🔴 Audio turn handling: `audio.start`, binary frames, `audio.end`, timeout — 2 d
 - [x] 🔴 Silero VAD integration for end-of-speech detection [VP-01] — 2 d
-- [x] 🔴 STT service: faster-whisper (Docker) with Groq Whisper fallback [VP-02] — image builds; real 16 kHz PCM fixture transcribed and Groq fallback covered by tests
-- [x] 🔴 TTS service: Piper (Docker), per-language voice selection, chunked output [VP-04, VP-08] — image builds, PCM synthesis verified, `TTS_VOICE_MAP` selects a voice by language
+- [x] 🔴 STT service: faster-whisper (native Python service) with Groq Whisper fallback [VP-02] — `scripts/services/stt.sh` builds the venv and serves the HTTP API; real 16 kHz PCM fixture transcribed and Groq fallback covered by tests
+- [x] 🔴 TTS service: Piper (native Python service), per-language voice selection, chunked output [VP-04, VP-08] — `scripts/services/tts.sh` builds the venv, downloads voices and serves the HTTP API; PCM synthesis verified, `TTS_VOICE_MAP` selects a voice by language
 - [x] 🔴 Sentence splitter: stream LLM tokens → sentences → TTS → device [FR-VOI-06] — 2 d — the voice pipeline now consumes `streamChatMessage` tokens through `SentenceSplitter`, queues completed sentences for synthesis while the agent is still streaming, aborts on barge-in, and caps spoken output at two sentences / 320 characters. Covered by new pipeline tests.
 - [x] 🟡 Stage timing metrics (VAD, STT, first token, TTS start) [VP-06] — VAD/STT/agent/first-token/first-audio/TTS timings are logged per turn; the first token is recorded from the streamed token callback
 - [x] 🔴 Delete raw audio after transcription [VP-07] — 0.5 d
@@ -136,7 +136,7 @@
 - [ ] 🔴 Device setup: QR scan, BLE scan, Wi-Fi provisioning, status [APP-02, FR-ACC-02/03] — pairing code, device list/status, rename, revoke and factory reset are in `app/(app)/devices.tsx`; QR scan (expo-camera) and BLE provisioning (react-native-ble-plx, needs an EAS dev build) still pending
 - [ ] 🔴 Chat screen with streaming text [APP-04] — SSE client over `XMLHttpRequest` + `app/(app)/chat.tsx` built; needs a run on a phone to confirm incremental delivery
 - [x] 🟡 Tab navigation shell [APP-03] — `app/(app)/_layout.tsx` is a `Tabs` navigator (Today / Chat / Tasks / Insights / Settings) with the detail screens registered as `href: null` routes, guarded by the auth redirect
-- [x] 🟡 Permission request helper with explanations [APP-26] — 1 d — `src/permissions.ts` provides `ensurePermissionWithExplanation`, which checks current status, shows a rationale before the OS dialog, handles `canAskAgain=false` by offering Open Settings, and is now used for push/local notifications and contact import
+- [x] 🟡 Permission request helper with explanations [APP-26] — 1 d — `src/permissions.ts` provides `ensurePermissionWithExplanation`, which checks current status, shows a rationale before the OS dialog, handles `canAskAgain=false` by offering Open Settings, and is now used for push/local notifications and opening the contact picker
 
 ### R1.7 Quality and release
 
@@ -217,7 +217,7 @@ over the existing device WebSocket plus Expo push when the user has registered t
 
 ### R3.1 Storage and ingestion
 
-- [x] 🔴 MinIO/R2 setup, signed upload URLs, `Document` model [API-10, DAT-21] — 3 d — `lib/storage.ts` wraps a MinIO/S3 client with bucket bootstrap, signed PUT/GET URLs, head/delete/read, and retry-safe configuration. The `Document` model gained `checksum`, `pageCount`, `attempts`, `error`, `indexedAt` and a queue index (migration `20261025090000_document_storage`). Compose now creates the bucket through `minio-init`; storage keys stay server-side and responses expose only short-lived signed download URLs; S3 calls are unit-tested with mocked clients, but a live MinIO round trip has not been run here
+- [x] 🔴 MinIO/R2 setup, signed upload URLs, `Document` model [API-10, DAT-21] — 3 d — `lib/storage.ts` wraps a MinIO/S3 client with bucket bootstrap, signed PUT/GET URLs, head/delete/read, and retry-safe configuration. The `Document` model gained `checksum`, `pageCount`, `attempts`, `error`, `indexedAt` and a queue index (migration `20261025090000_document_storage`). the server bootstraps the bucket on first use; storage keys stay server-side and responses expose only short-lived signed download URLs; S3 calls are unit-tested with mocked clients, but a live MinIO round trip has not been run here
 - [x] 🔴 Upload endpoints and size/quota limits [RAG-01] — 2 d — `POST /documents/upload` streams a multipart file into storage, `POST /documents/upload-url` + `POST /documents/:id/complete` implement direct-to-storage uploads, and `GET /documents/:id/download-url` signs reads. MIME allow-list, empty/size checks, per-user byte and document-count quotas, SHA-256 checksums and rollback on database failure are enforced; helpers are covered by `document-upload.test.ts`
 - [x] 🔴 `documents` queue with states uploaded → parsing → ocr → chunking → embedding → indexed/failed [RAG-02] — 3 d — `DocumentIngestionJob` polls PostgreSQL, claims atomically with stale-lock recovery, retries with linear backoff and marks permanent failures; status transitions are covered by `document-ingestion.test.ts` and `document-ingestion-job.test.ts`
 - [x] 🔴 Parsers: PDF, DOCX, PPTX, TXT/MD [RAG-03] — 4 d — `parsers.ts` handles text/markdown, DOCX via mammoth, PPTX slide XML via jszip and PDF text via pdfjs-dist; page metadata is retained and `document-parsers.test.ts` uses a real PDF fixture
@@ -279,7 +279,7 @@ over the existing device WebSocket plus Expo push when the user has registered t
 **Exit criteria:** no call or message executes without confirmation; zero wrong-recipient cases in tests.
 
 - [x] 🔴 `Contact` and `PendingAction` models, API, expiry job (5 min) [API-12] — 3 d — `Contact` now supports update, and `PendingAction` stores call/SMS/email/WhatsApp drafts with recipient, body, status and a 5-minute `expiresAt`. `GET /actions/pending` and confirm/reject endpoints are atomic and ownership-scoped; `PendingActionScheduler` expires stale rows every 30 s
-- [x] 🔴 Contact import from phone with consent; groups [FR-COM-01, APP-10] — `app/(app)/contacts.tsx` now offers an explicit-consent import flow backed by `expo-contacts`: it requests permission, reads names/phones/emails, de-duplicates against saved contacts and within the batch, caps at 200, imports sequentially with progress/error reporting, and groups imported entries under "Imported". Runtime permission still needs a rebuilt EAS dev client
+- [x] 🔴 Contact import from phone with consent; groups [FR-COM-01, APP-10] — `app/(app)/contacts.tsx` now opens the native single-contact picker: it shows a permission rationale on Android, reads only the chosen contact's name/phone/email, de-duplicates against saved contacts, records `CONTACTS` consent, and pre-fills the form for review before saving under "Imported". Manual entry remains. Runtime permission still needs a rebuilt EAS dev client
 - [x] 🔴 `find_contact` with ambiguity handling [FR-COM-05] — 2 d — `matchContacts` ranks exact name/email/phone matches ahead of prefix/substring ones, flags multiple leading matches as ambiguous, and the tool returns `requiresClarification` plus the candidate list; `contacts-matching.test.ts` covers exact, ambiguous, phone-format and no-match cases
 - [x] 🔴 LangGraph human-in-the-loop pause/resume for confirmable tools [AGT-05] — 4 d — `delete_todo` and `cancel_reminder` now call LangGraph `interrupt()` instead of trusting a model-supplied confirm flag. The agent checkpoints the paused run, returns the question to chat/voice, and resumes with `Command({ resume })` only after the student's yes/no reply; ambiguous replies re-ask without executing. Covered by the interrupt/resume test and confirmation-reply unit tests
 - [x] 🔴 App WebSocket + push for `action.confirm.request` / `action.execute` [GW-02, APP-24] — 4 d — authenticated `/ws/app?token=…` gateway (`AppGateway`) delivers action events per user with expiry-aware close; `publishAppActionEvent` fires on pending-action creation and confirmation from AI tools and the REST confirm route, also sends Expo push with `kind: pending_action`; the app reconnects with capped backoff, refreshes once on auth close, invalidates pending-action/activity queries, and routes notification taps to `/approvals`. Covered by `app-gateway.test.ts` and `app-action-events.test.ts`
@@ -292,8 +292,8 @@ over the existing device WebSocket plus Expo push when the user has registered t
 - [ ] 🟢 Missed-call follow-up where permitted [FR-COM-07] — 2 d
 - [ ] 🟢 Timetable import from photo (OCR + review) [FR-CLS-08] — 4 d
 - [x] 🔴 Tests: wrong-recipient, expired action, rejected action, duplicate confirm — 3 d — `apps/server/tests/pending-actions.test.ts` covers exact-recipient URIs, wrong-user isolation, five-minute expiry, rejection, duplicate confirm and the expiry scheduler (116 server tests total)
-- [x] 🟡 Review Google Play policy requirements for contacts/SMS/phone before submitting — 1 d — `docs/play-policy-review.md` records the permission/data-safety inventory and launch blockers. SMS/call actions are intent-only with no restricted permissions, and the manifest now drops unused microphone, contacts-write and broad storage access. Remaining blockers: target API 36, AI-answer reporting, account-deletion web page, hosted privacy policy/Data safety, and the Contact Picker decision
-- [ ] 🟡 Replace broad contact import with the system Contact Picker before targeting Android 17 (API 37), or prepare a Play Console declaration — 2 d
+- [x] 🟡 Review Google Play policy requirements for contacts/SMS/phone before submitting — 1 d — `docs/play-policy-review.md` records the permission/data-safety inventory and launch blockers. SMS/call actions are intent-only with no restricted permissions, and the manifest now drops unused microphone, contacts-write and broad storage access. Remaining blockers: target API 36 device re-test, AI-answer reporting production verification, account-deletion page deployment, hosted privacy policy/Data safety, and the Play Console contacts declaration position
+- [x] 🟡 Replace broad contact import with the system Contact Picker before targeting Android 17 (API 37), or prepare a Play Console declaration — 2 d — `contacts.tsx` now uses `Contacts.presentContactPickerAsync()` for one contact at a time, pre-fills the form for review, de-duplicates, and records consent; the 200-contact batch import is gone. `expo-contacts` still requests `READ_CONTACTS` on Android, so a production re-test and the Play Console declaration position remain
 - [ ] 📦 **Demo:** "Call Mom" and "Send Ahmed a message…" with confirmation
 
 ---
@@ -348,7 +348,7 @@ over the existing device WebSocket plus Expo push when the user has registered t
 - [x] 🔴 Threat model (device, API, AI prompt injection, vector isolation) — 3 d — `docs/threat-model.md` documents assets, actors, trust boundaries, threats/controls and residual risks. A pen test and live verification remain external
 - [ ] 🔴 TLS everywhere; secrets in a secret manager, none in app or firmware repo — 1 d — production Caddy terminates TLS with HSTS and `.env.production.example` documents the required secrets, but no VPS/secret manager is provisioned and the repo still has no automated secret-manager integration
 - [x] 🔴 Secure boot + flash encryption plan for production devices — 3 d — `docs/secure-boot.md` defines the ESP-IDF Secure Boot v2 chain, partition layout, offline signing, rollback protection, provisioning and a production checklist. No hardware was provisioned or flashed
-- [x] 🔴 Consent records (microphone, contacts, documents, cloud AI) — 2 d — `UserConsent` model + migration, `GET/PUT /users/me/consents`, shared audit helpers, data-export inclusion, account cascade deletion, mobile privacy toggles and consent capture on contact import/document upload/cloud-AI save. `consents.test.ts` covers grant/revoke and scoping
+- [x] 🔴 Consent records (microphone, contacts, documents, cloud AI) — 2 d — `UserConsent` model + migration, `GET/PUT /users/me/consents`, shared audit helpers, data-export inclusion, account cascade deletion, mobile privacy toggles and consent capture on contact-picker selection/document upload/cloud-AI save. `consents.test.ts` covers grant/revoke and scoping
 - [ ] 🔴 Data export and deletion verified end to end (PostgreSQL, Qdrant, Redis, files) [DAT-31] — 2 d — export now includes consent records, account deletion cascades `UserConsent`, and `pnpm --dir apps/server verify:data-lifecycle --execute` (with `VERIFY_USER_ID`) checks PostgreSQL, Qdrant and S3 against a disposable account. The destructive live run has not been executed
 - [x] 🟡 Guardian consent flow for minors if in scope [FR-ACC-07] — 3 d — not applicable for v1: the target age group is university/18+ only, so guardian consent is out of scope until school use is added
 - [x] 🟡 Dependency vulnerability scanning in CI — 0.5 d — CI audits both apps at `critical` level, Dependabot covers server/mobile/Python/Actions, and the two critical findings (unused `class-validator`, vulnerable `tar`) were removed. Higher-severity transitive advisories remain
@@ -365,7 +365,7 @@ over the existing device WebSocket plus Expo push when the user has registered t
 
 ### X.3 DevOps and operations
 
-- [ ] 🔴 Staging and production environments; database backups with restore test — `docker-compose.production.yml`, `deploy/Caddyfile` and `scripts/backup-db.sh` are ready; no VPS/staging environment exists and no restore drill has been run
+- [ ] 🔴 Staging and production environments; database backups with restore test — `docs/production-operations.md`, `deploy/Caddyfile` and `scripts/backup-db.sh` cover native deployment; no VPS/staging environment exists and no restore drill has been run
 - [ ] 🔴 Monitoring and alerts (Sentry, uptime check, queue depth) — Sentry wiring and the monitoring/alerting runbook are in place; no Sentry project, uptime monitor or alert routing exists yet
 - [ ] 🟡 Log shipping and retention policy
 - [ ] 🟡 EAS Update channels (staging/production); OTA firmware channels — `eas.json` defines development/preview/production channels; no EAS project exists and firmware OTA is not implemented
@@ -405,7 +405,7 @@ Highest-risk items to start early: wake-word accuracy on the chosen hardware, en
 1. [ ] Decide languages and hosting (P0.1)
 2. [ ] Order hardware (P0.2)
 3. [ ] Create accounts and keys (P0.3)
-4. [ ] Monorepo, Docker Compose, CI (P0.4)
+4. [ ] Monorepo, native services, CI (P0.4)
 5. [ ] Voice spike: record and play back on ESP32-S3 (P0.5)
 6. [ ] Latency spike on a laptop: Whisper → LLM → Piper (P0.5)
 7. [ ] Expo development build with BLE scan (P0.5)

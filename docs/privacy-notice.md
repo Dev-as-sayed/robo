@@ -20,8 +20,8 @@ Contact: **{{PRIVACY_EMAIL}}**.
 - **Voice data:** audio turns streamed from a paired device, transcripts and
   generated speech. Audio is processed to answer the current turn and is not
   retained as a recording by the application.
-- **Contacts:** only when you tap import; names, phone numbers and emails you
-  choose to import.
+- **Contacts:** only the contact you select in your phone's contact picker; the
+  name, phone number and email you choose to save.
 - **Device data:** device identifier, firmware version, locale, pairing status,
   last-seen time and connection metadata.
 - **Usage and diagnostics:** request IDs, AI token usage, tool outcomes, latency,

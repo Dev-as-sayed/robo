@@ -31,7 +31,7 @@ const faqs: Faq[] = [
     id: "contacts",
     question: "Why does Robo ask for contacts?",
     answer:
-      "Contacts are optional. Robo imports only the names, phone numbers and emails you choose when you ask it to help with a call, SMS or WhatsApp message. You can still add a contact manually and remove imported contacts in Contacts.",
+      "Contacts are optional. Robo reads only the contact you choose in your phone's contact picker when you ask it to help with a call, SMS or WhatsApp message. You can review the details before saving, add a contact manually, and remove saved contacts in Contacts.",
   },
   {
     id: "report",

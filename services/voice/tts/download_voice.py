@@ -23,7 +23,17 @@ def voice_path(voice: str) -> str:
 
 def base_urls() -> list[str]:
     override = os.getenv("PIPER_VOICE_BASE_URL")
-    return [override.rstrip("/")] if override else list(DEFAULT_BASES)
+    if override:
+        return [override.rstrip("/")]
+
+    urls: list[str] = []
+    endpoint = os.getenv("HF_ENDPOINT")
+    if endpoint:
+        urls.append(endpoint.rstrip("/"))
+    for base in DEFAULT_BASES:
+        if base not in urls:
+            urls.append(base)
+    return urls
 
 
 def download_file(url: str, target: Path, timeout: float) -> None:

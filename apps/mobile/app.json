@@ -22,7 +22,7 @@
       [
         "expo-contacts",
         {
-          "contactsPermission": "Robo reads contacts only when you ask it to import someone you can call or message."
+          "contactsPermission": "Robo reads only the contact you choose in the contact picker when you ask it to help you call or message someone."
         }
       ],
       "@sentry/react-native",

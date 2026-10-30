@@ -20,7 +20,10 @@ docs              Design, privacy, security, evaluation, release and operations 
 
 - Node.js 20+
 - pnpm 12+
-- Docker with Docker Compose
+- PostgreSQL 15+
+- Redis 7+ or Valkey (optional but recommended)
+- Python 3.11/3.12 or `uv` for the local STT/TTS services (optional, voice only)
+- `curl` for the MinIO download (optional, document storage)
 
 ## Local setup
 
@@ -29,22 +32,32 @@ cp .env.example .env
 cp apps/server/.env.example apps/server/.env
 cp apps/mobile/.env.example apps/mobile/.env
 git config core.hooksPath .githooks
-docker compose up -d db redis qdrant minio minio-init ollama ollama-pull
 
-pnpm --dir apps/server install
-pnpm --dir apps/server db:generate
-pnpm --dir apps/server db:migrate
-pnpm --dir apps/server dev
+# Create the PostgreSQL role/database and set DATABASE_URL in apps/server/.env.
+pnpm install
+pnpm db:generate
+pnpm --dir apps/server exec prisma migrate deploy
+pnpm dev
 ```
-
-`minio-init` creates the `S3_BUCKET` once MinIO is ready. `ollama-pull` downloads
-`OLLAMA_CHAT_MODEL` and `OLLAMA_EMBEDDING_MODEL` once the Ollama API is ready, then exits.
-Document uploads require the `S3_*` variables in `apps/server/.env`; storage keys stay on the
-server and the API returns short-lived signed download URLs. The commit hook lints the
-server/mobile app and typechecks the server when shared code changes.
 
 The API listens on `http://localhost:3000`; health check: `GET /health`. The device WebSocket
 endpoint is `ws://localhost:3000/ws/device`.
+
+No Docker is required. Native helper scripts run Redis, MinIO (S3), STT and TTS:
+
+```bash
+scripts/services/start-all.sh
+scripts/services/status.sh
+scripts/services/stop-all.sh
+```
+
+Logs and runtime data live under `.local/`. The scripts do not start PostgreSQL, Qdrant or
+Ollama; install those natively only when you need them. Document uploads require the `S3_*`
+variables in `apps/server/.env`; the server creates the bucket automatically. MinIO defaults to
+`http://127.0.0.1:9000` with `minioadmin` / `minioadmin`, or point `S3_*` at AWS S3, Cloudflare R2
+or another S3-compatible provider. The helper pins MinIO's last published community binary
+(`RELEASE.2025-09-07T16-13-09Z`) and verifies its SHA-256; use managed S3 for production. Storage
+keys stay on the server and the API returns short-lived signed download URLs.
 
 `@robo/shared` is installed into `apps/server` as a **copy**, not a live symlink. After editing
 anything under `packages/shared/src`, run `pnpm --dir apps/server install` again — otherwise the
@@ -54,15 +67,17 @@ At least one LLM provider key (`GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API
 running Ollama instance is required for chat. Document search also needs Ollama embeddings and
 Qdrant.
 
-For voice, start the local speech services and set the URLs in `.env`:
+For voice, start the local speech services and set the URLs in `apps/server/.env`:
 
 ```bash
-docker compose up -d stt tts
+scripts/services/stt.sh
+scripts/services/tts.sh
 # STT_SERVICE_URL=http://localhost:8001
 # TTS_SERVICE_URL=http://localhost:8002
 ```
 
-The first start downloads the Whisper model and the Piper voice; see
+The first start creates a Python virtualenv, installs the requirements, downloads the Whisper
+model and the Piper voice, and caches them under `.local/`. See
 [`services/voice/README.md`](services/voice/README.md).
 
 The mobile app talks to the API through `EXPO_PUBLIC_API_URL`; on a physical device this must

@@ -32,7 +32,7 @@
 | Firmware           | ESP-IDF (C/C++) + ESP-ADF                                        | Arduino core + PlatformIO                    |
 | Push notifications | Expo Push Service                                                | Firebase Cloud Messaging direct              |
 | File storage       | S3-compatible (MinIO / Cloudflare R2)                            | Supabase Storage                             |
-| DevOps             | Docker, GitHub Actions, EAS                                      | —                                            |
+| DevOps             | GitHub Actions, EAS, systemd/native services                     | —                                            |
 
 ---
 
@@ -261,13 +261,13 @@ Question → embed → Qdrant search (filter by userId) → rerank (optional) �
 | ORM / migrations     | **Prisma** (Prisma Migrate)                                                                                                                                                                        |
 | Stores               | Users, devices, subjects, schedule, todos, reminders, exams, topics, study plans, study sessions, quizzes and attempts, contacts, action logs, memory, LangGraph checkpoints, analytics aggregates |
 | Time handling        | Store timestamps in UTC; keep the user's IANA time zone on the user record                                                                                                                         |
-| Free hosting options | Self-hosted Docker, Neon, Supabase (verify current free tiers)                                                                                                                                     |
+| Free hosting options | Self-hosted native services, Neon, Supabase (verify current free tiers)                                                                                                                            |
 
 ### 6.2 Vector database
 
 | Option                 | Role                                                             | Reasoning                                                                                                                                                              |
 | ---------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Qdrant** (chosen)    | Dedicated vector store for document chunks and memory embeddings | Open source, runs in Docker for free, has a free cloud tier, strong payload filtering (essential for per-user isolation), good LangChain support (`@langchain/qdrant`) |
+| **Qdrant** (chosen)    | Dedicated vector store for document chunks and memory embeddings | Open source, runs natively for free, has a free cloud tier, strong payload filtering (essential for per-user isolation), good LangChain support (`@langchain/qdrant`)    |
 | pgvector (alternative) | Vectors inside PostgreSQL                                        | One database to run and back up, simpler for the MVP. Prisma needs `Unsupported("vector")` and raw SQL for similarity queries, or use LangChain's PGVector store       |
 | Chroma                 | Prototyping                                                      | Easy locally, less suited to production multi-tenancy                                                                                                                  |
 | Pinecone / Weaviate    | Managed options                                                  | Free tiers exist but add vendor lock-in                                                                                                                                |
@@ -280,7 +280,7 @@ Question → embed → Qdrant search (filter by userId) → rerank (optional) �
 
 ### 6.3 Redis
 
-Used for BullMQ queues, rate limiting, short-lived device session state and caching. Free hosting options include self-hosted Docker or a free hosted tier (verify limits).
+Used for rate limiting and short-lived state; the reminder queue remains in PostgreSQL. Free hosting options include self-hosted Redis/Valkey or a free hosted tier (verify limits).
 
 ### 6.4 File storage
 
@@ -363,22 +363,22 @@ ESP32: mic → AFE (noise/echo) → wake word (on-device)
 | --------------- | ------------------------------------------------------------------------------------------------------------ |
 | Repo structure  | **Monorepo**: `pnpm` workspaces (+ Turborepo optional)                                                       |
 | Packages        | `apps/mobile` (Expo), `apps/server` (Express), `packages/shared` (Zod schemas, types), `firmware/` (ESP-IDF) |
-| CI/CD           | **GitHub Actions** (lint, test, build, EAS build, Docker image)                                              |
-| Containers      | **Docker** and Docker Compose for local dev (PostgreSQL, Redis, Qdrant, MinIO, Ollama, Langfuse)             |
+| CI/CD           | **GitHub Actions** (lint, test, build, EAS build)                                                            |
+| Services        | Native processes managed by `scripts/services/` locally and systemd in production                            |
 | Mobile delivery | **EAS Build / Submit / Update**                                                                              |
 
 ### 10.2 Hosting (free or low-cost; verify current terms)
 
 | Component                | Options                                                                                   |
 | ------------------------ | ----------------------------------------------------------------------------------------- |
-| Express API + workers    | A small VPS (Hetzner, Oracle Cloud Always Free) with Docker, or Render / Railway / Fly.io |
+| Express API + workers    | A small VPS (Hetzner, Oracle Cloud Always Free) with systemd, or Render / Railway / Fly.io |
 | PostgreSQL               | Same VPS, Neon, or Supabase                                                               |
-| Qdrant                   | Same VPS (Docker) or Qdrant Cloud free tier                                               |
+| Qdrant                   | Same VPS (native service) or Qdrant Cloud free tier                                       |
 | Redis                    | Same VPS or a free hosted tier                                                            |
 | Ollama / Whisper / Piper | A VPS with enough RAM; a GPU machine if you want local models at usable speed             |
 | Object storage           | MinIO on the VPS or Cloudflare R2                                                         |
 
-For a single-developer start, one VPS running Docker Compose is the simplest and cheapest option. Free PaaS tiers often sleep idle services, which hurts a voice device that must answer immediately.
+For a single-developer start, one VPS running native services behind Caddy is the simplest and cheapest option. Free PaaS tiers often sleep idle services, which hurts a voice device that must answer immediately.
 
 ### 10.3 Observability and quality
 
@@ -414,7 +414,7 @@ For a single-developer start, one VPS running Docker Compose is the simplest and
 
 | Release                 | Stack parts introduced                                                                                                                                                        |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **R1 Voice foundation** | Expo app shell and auth, Express + PostgreSQL + Prisma, WebSocket gateway, ESP32-S3 firmware (ESP-IDF/ADF/SR), Whisper + Piper, LangChain with one hosted LLM, Docker Compose |
+| **R1 Voice foundation** | Expo app shell and auth, Express + PostgreSQL + Prisma, WebSocket gateway, ESP32-S3 firmware (ESP-IDF/ADF/SR), Whisper + Piper, LangChain with one hosted LLM, native service scripts |
 | **R2 Productivity**     | Redis + BullMQ, `rrule` + `luxon`, Expo notifications, LangGraph agent with todo/reminder/schedule tools, OTA                                                                 |
 | **R3 Study Brain**      | Qdrant, embeddings model, document pipeline (parsers, Tesseract), S3/MinIO, quiz and plan generation, LLM router with fallbacks, Langfuse                                     |
 | **R4 Communication**    | `expo-contacts`, `expo-sms`, `Linking` intents, confirmation flow in LangGraph                                                                                                |
@@ -437,7 +437,7 @@ For a single-developer start, one VPS running Docker Compose is the simplest and
 | D8  | Languages supported at launch               | Accepted: English only        | Unicode/i18n hooks stay in place; the second voice language is post-launch                                           |
 | D9  | Target age group                            | Accepted: university, 18+     | Avoids guardian-consent scope for v1; revisit if school use is validated                                            |
 | D10 | App-only mode                               | Accepted: no                  | The device is part of the product; the app alone is not a launch mode                                               |
-| D11 | Hosting                                     | Accepted: single VPS + Compose| Lowest operating cost for the beta; move managed when load or compliance requires it                               |
+| D11 | Hosting                                     | Accepted: single VPS + native services | Lowest operating cost for the beta; move managed when load or compliance requires it                      |
 | D12 | Transcript/action-log retention             | Accepted: 90 days             | Account data lives until deletion; transcripts and action logs expire after 90 days                                |
 | D13 | Object storage                              | Accepted: MinIO               | Self-hosted S3-compatible store for the beta; keep the storage interface provider-neutral                           |
 | D14 | Embedding model                             | Accepted: BGE-M3              | Multilingual-capable and available through Ollama; benchmark before indexing the beta corpus                         |
