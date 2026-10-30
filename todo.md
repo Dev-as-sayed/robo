@@ -5,22 +5,24 @@
 | **Based on**   | `Student_Assistant_FRD_v2_Stack.md` and `stack.md`                                                                                                                                                      |
 | **Created**    | 14 Oct 2026                                                                                                                                                                                             |
 | **How to use** | Tick `[x]` when a task meets its Definition of Done. Requirement IDs in brackets point to the FRD. Estimates are in working days for one developer and are rough (±40%); re-estimate at sprint planning |
-| **Legend**     | 🔴 critical path · 🟡 important · 🟢 optional · ⛓ depends on the task named · 📦 deliverable                                                                                                            |
+| **Legend**     | 🔴 critical path · 🟡 important · 🟢 optional · ⛓ depends on the task named · 📦 deliverable                                                                                                           |
 
 ---
 
 ## Progress Tracker
 
-| Phase | Goal                                    | Est.       | Status        |
-| ----- | --------------------------------------- | ---------- | ------------- |
-| P0    | Decisions, setup, hardware ordered      | 10–15 d    | Partial (code setup in place; decisions/hardware pending) |
-| R1    | Voice foundation                        | 30–40 d    | In progress (R1.3 gateway + voice pipeline now stream agent tokens through sentence-level TTS; mobile auth/chat in place — firmware, pairing and BLE setup pending) |
-| R2    | Productivity (MVP complete)             | 30–40 d    | In progress (all R2 mobile screens built — Today, Tasks, Reminders incl. recurrence, Schedule, Settings; reminders now fire through an in-process scheduler tick over the device WebSocket and Expo push, with persisted delivery status, retry/backoff and an offline reconnect queue; pre-class and 24 h/2 h deadline jobs are now wired — mobile push registration still missing) |
-| R3    | Study Brain (documents, quizzes, plans) | 40–50 d    | In progress (exams, plans/approval, quizzes, class notes and memory are real; documents now upload to MinIO/S3 with signed URLs and quotas, but parsing/chunking/embedding and indexing are still pending) |
-| R4    | Communication (calls, messages)         | 25–30 d    | ◐ (contacts, contact picker, pending-action confirmations, app WebSocket push and LangGraph destructive-action confirmations done; device voice confirmation remains) |
-| R5    | Proactive (study mode, analytics)       | 35–40 d    | ◐ (study sessions, insights, trends, nudges, planner, plan approval/readiness, app-side DND and Pomodoro breaks done; device timer remains firmware-blocked) |
-| R6    | Advanced (vision, sync)                 | Ongoing    | ☐             |
-| X     | Cross-cutting: security, QA, launch     | Continuous | ☐             |
+| Phase | Goal                                    | Est.       | Status                                                                                                                                                                                                                                     |
+| ----- | --------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P0    | Decisions, setup, hardware ordered      | 10–15 d    | Partial (root pnpm workspace now exists; decisions, accounts and hardware still pending)                                                                                                                                                   |
+| R1    | Voice foundation                        | 30–40 d    | In progress (R1.3 gateway + voice pipeline stream agent tokens through sentence-level TTS; mobile auth/chat UI exists, but chat streaming is unverified on-device and device QR/BLE/Wi-Fi setup is missing — see [`report.md`](report.md)) |
+| R2    | Productivity (MVP complete)             | 30–40 d    | In progress (R2 mobile screens and reminder delivery exist; push is code-complete but unverified on a development build, and Home/Schedule need completion fixes — see [`report.md`](report.md))                                           |
+| R3    | Study Brain (documents, quizzes, plans) | 40–50 d    | In progress (documents, quizzes, exams and plans exist; plan approval is not reload-safe and chat citations are not individually tappable; parsing/embedding runtime still pending — see [`report.md`](report.md))                         |
+| R4    | Communication (calls, messages)         | 25–30 d    | ◐ (contacts, contact picker, pending-action confirmations, app WebSocket push and LangGraph destructive-action confirmations done; device voice confirmation remains)                                                                      |
+| R5    | Proactive (study mode, analytics)       | 35–40 d    | ◐ (insights, trends, nudges and the app study timer are done; the device timer remains firmware-blocked)                                                                                                                                   |
+| R6    | Advanced (vision, sync)                 | Ongoing    | ☐                                                                                                                                                                                                                                          |
+| X     | Cross-cutting: security, QA, launch     | Continuous | ☐                                                                                                                                                                                                                                          |
+
+**Mobile audit (2026-10-30):** the app is not todo-complete. See [`report.md`](report.md) for evidence and the follow-ups below.
 
 **Definition of Done (every task):** code reviewed · tests passing · Zod schemas / tool contracts documented · privacy impact checked · demonstrated on the real device or app where relevant.
 
@@ -55,7 +57,7 @@
 
 ### P0.4 Repository and environment
 
-- [ ] 🔴 Create monorepo with pnpm workspaces: `apps/mobile`, `apps/server`, `packages/shared`, `firmware/` — 1 d — `apps/mobile`, `apps/server`, `packages/shared` and `firmware/` exist, but each app keeps its own pnpm workspace and lockfile; there is no root `pnpm-workspace.yaml`
+- [x] 🔴 Create monorepo with pnpm workspaces: `apps/mobile`, `apps/server`, `packages/shared`, `firmware/` — 1 d — root `pnpm-workspace.yaml` covers `apps/*`, `packages/*` and `firmware/*`; CI installs, typechecks and lints the mobile app through the root workspace
 - [x] 🔴 Configure TypeScript (strict), ESLint, Prettier, commit hooks — 0.5 d — strict TypeScript, ESLint and Prettier are configured; `.githooks/pre-commit` runs the relevant app lint/typecheck and is activated with `git config core.hooksPath .githooks`
 - [x] 🔴 Native local services: PostgreSQL, Redis, Qdrant, MinIO — 1 d — `scripts/services/` starts Redis, MinIO (S3), STT and TTS natively; PostgreSQL, Qdrant and Ollama are installed and run by the operator
 - [x] 🟡 Document native Ollama setup and model pulls — 0.5 d — `ollama serve` plus `ollama pull "$OLLAMA_CHAT_MODEL"` and `ollama pull "$OLLAMA_EMBEDDING_MODEL"`
@@ -87,7 +89,7 @@
 
 - [x] 🔴 Express app skeleton: config, pino logging, error handler, request IDs, Zod validation middleware [API-01, API-06] — 2 d
 - [x] 🔴 Prisma setup; models `User`, `Device`, `PushToken`, `Conversation`, `Message`; first migration [DAT-01, DAT-02] — 2 d — all listed models exist; the `PushToken` migration is still uncommitted
-- [x] 🔴 Auth: register, login, refresh rotation, logout; argon2; JWT middleware [FR-ACC-01, DAT-04] — 3 d — refresh-token reuse revokes the user's token family
+- [x] 🔴 Auth: register, login, refresh rotation, logout; argon2; JWT middleware [FR-ACC-01, DAT-04] — 3 d — refresh-token reuse revokes the user's token family; logout now also revokes a session by refresh token when the access token is expired
 - [x] 🟡 Google sign-in endpoint — 1 d
 - [x] 🔴 Device pairing: pairing code generation, `POST /devices/pair`, hashed device token [FR-ACC-02, FR-ACC-04] — 2 d
 - [x] 🔴 User settings: language, time zone, quiet hours [FR-ACC-05] — 1 d
@@ -129,12 +131,12 @@
 
 ### R1.6 Mobile app
 
-- [ ] 🔴 Expo project with Expo Router, TypeScript, EAS development build [APP-20] — scaffold, router and screens are in place; EAS development build not run yet
-- [x] 🔴 Redux Toolkit store + RTK Query API slice with token refresh [APP-21] — `src/store.ts`, `src/api/base-query.ts` (single-flight refresh on 401), `auth-api`/`chat-api` slices
+- [ ] 🔴 Expo project with Expo Router, TypeScript, EAS development build [APP-20] — scaffold, router, SDK 54 and screens are in place; EAS project `@amsayed231/robo` is linked, but no development build or signing credentials exist yet
+- [x] 🔴 Redux Toolkit store + RTK Query API slice with token refresh [APP-21] — `src/store.ts`, `src/api/base-query.ts` (single-flight refresh on 401; terminal refresh failures clear user/API/chat state, transient failures preserve tokens and the cached profile, refresh is timeout-bounded, and a sign-out guard prevents an in-flight refresh from resurrecting the session); `auth-api`/`chat-api` slices
 - [x] 🔴 Secure token storage (`expo-secure-store`) [APP-22] — `src/auth/tokens.ts`, localStorage fallback on web
 - [x] 🔴 Auth and onboarding screens (language, time zone) [APP-01] — `app/sign-in.tsx`, `app/sign-up.tsx`, `app/onboarding.tsx`
-- [ ] 🔴 Device setup: QR scan, BLE scan, Wi-Fi provisioning, status [APP-02, FR-ACC-02/03] — pairing code, device list/status, rename, revoke and factory reset are in `app/(app)/devices.tsx`; QR scan (expo-camera) and BLE provisioning (react-native-ble-plx, needs an EAS dev build) still pending
-- [ ] 🔴 Chat screen with streaming text [APP-04] — SSE client over `XMLHttpRequest` + `app/(app)/chat.tsx` built; needs a run on a phone to confirm incremental delivery
+- [ ] 🔴 Device setup: QR scan, BLE scan, Wi-Fi provisioning, status [APP-02, FR-ACC-02/03] — pairing code, device list/status, rename, revoke and factory reset exist in `app/(app)/devices.tsx`; QR scan, BLE/Wi-Fi provisioning, the `robo://pair` route, live status refresh and reset confirmation are missing
+- [ ] 🔴 Chat screen with streaming text [APP-04] — SSE client and chat UI are built, but on-device incremental delivery is unverified; stop/error races, no request timeout, history lost after restart and missing FRD-level voice-note input remain
 - [x] 🟡 Tab navigation shell [APP-03] — `app/(app)/_layout.tsx` is a `Tabs` navigator (Today / Chat / Tasks / Insights / Settings) with the detail screens registered as `href: null` routes, guarded by the auth redirect
 - [x] 🟡 Permission request helper with explanations [APP-26] — 1 d — `src/permissions.ts` provides `ensurePermissionWithExplanation`, which checks current status, shows a rationale before the OS dialog, handles `canAskAgain=false` by offering Open Settings, and is now used for push/local notifications and opening the contact picker
 
@@ -156,7 +158,7 @@
 - [x] 🔴 CRUD: subjects, todos, reminders (+ snooze), schedule (+ exceptions), exams [FR-PRD-01/02, FR-CLS-01, FR-EXM-01] — 6 d — `/subjects` supports subject CRUD and nested topic create/update/delete; todos, reminders, schedule entries/exceptions and exams already had routes. Contacts now also have `PATCH /contacts/:id`
 - [x] 🔴 Time handling: UTC storage, `luxon`, `rrule` utilities with tests across DST [FR-PRD-08, DAT-03] — 3 d — `rrule.ts` now rebuilds wall-clock occurrences with Luxon when a timezone is supplied, so daily/weekly/monthly rules keep their local time across spring-forward and fall-back; tests cover both transitions and `computeReminderNextAt`
 - [x] 🟡 Actions log endpoint [FR-AI-06] — 1 d — `GET /actions` with pagination, backed by `ActionLog`
-- [x] 🟡 Push token endpoints [APP-23] — `POST/GET/DELETE /api/v1/users/me/push-token(s)` over the `PushToken` model (`packages/shared/src/users/push-tokens.ts`), plus the Expo sender in `apps/server/src/modules/reminders/expo-push.ts`; stored tokens are now delivered to for `phone`/`push` reminders
+- [x] 🟡 Push token endpoints [APP-23] — `POST/GET/DELETE /api/v1/users/me/push-token(s)` over the `PushToken` model (`packages/shared/src/users/push-tokens.ts`), plus the Expo sender in `apps/server/src/modules/reminders/expo-push.ts`; stored tokens are now delivered for `phone`/`push` reminders
 
 ### R2.2 Jobs and notifications
 
@@ -194,13 +196,13 @@ over the existing device WebSocket plus Expo push when the user has registered t
 
 ### R2.5 Mobile app
 
-- [x] 🔴 Home screen: next class, today's tasks, exam countdown [APP-03] — `app/(app)/index.tsx`: next class from the timetable, today's + overdue tasks with inline complete, soonest-exam countdown, library shortcuts
-- [x] 🔴 Tasks and reminders screens [APP-05] — `app/(app)/tasks.tsx` (filter, create with date/time via `parseDateTime`, priority, complete/reopen, delete) and `app/(app)/reminders.tsx` (snooze, channels, linked entity, delete, plus a **Repeats** picker that offers only the rules the server can evaluate: `FREQ=DAILY`, `FREQ=WEEKLY`, `FREQ=WEEKLY;BYDAY=MO,WE,FR`, `FREQ=MONTHLY`, each requiring a first date/time as its anchor)
-- [x] 🔴 Schedule screen with exceptions [APP-06] — `app/(app)/schedule.tsx`: day-grouped entries, create/edit, "Skip today" posting a schedule exception, delete
-- [ ] 🔴 Push notification registration and handling [APP-23] — 2 d — registration and tap routing are implemented in `apps/mobile/src/notifications.ts` + `app/(app)/_layout.tsx` (permission flow, `getExpoPushTokenAsync`, project-id guard, unregister on sign-out). Left unchecked because runtime verification needs an EAS development build and a configured `projectId`; project-id guard keeps Expo Go from crashing
-- [x] 🟡 Local notification fallback [APP-29] — 2 d — `syncLocalReminderNotifications` schedules upcoming active reminders with `expo-notifications` only when Expo push registration is unavailable (web, simulator, missing EAS project id), cancelling and rebuilding the queue when the reminder list changes
-- [x] 🟡 Device/connection status UI [APP-27] — `app/(app)/devices.tsx` shows per-device status pill and last-seen
-- [x] 🔴 Settings and privacy: quiet hours, data export/delete request [APP-13, FR-ACC-06] — `app/(app)/settings.tsx`: identity, quiet hours, wake phrase, nudges (0–20 per day, matching the server's zod bound), cloud-AI-for-docs, export via the system share sheet with oversize handling, two-step delete + sign out
+- [ ] 🔴 Home screen: next class, today's tasks, exam countdown [APP-03] — `app/(app)/index.tsx` shows a class later today, today's/overdue tasks with inline complete and an active-exam countdown; tomorrow's next class and draft exams are not shown, and the screen still needs a device smoke test
+- [x] 🔴 Tasks and reminders screens [APP-05] — `app/(app)/tasks.tsx` (filter, create with date/time via `parseDateTime`, priority, complete/reopen, delete) and `app/(app)/reminders.tsx` (snooze, channels, linked entity, delete, plus a **Repeats** picker that offers only the rules the server can evaluate: `FREQ=DAILY`, `FREQ=WEEKLY`, `FREQ=WEEKLY;BYDAY=MO,WE,FR`, `FREQ=MONTHLY`); partial: a repeat can be saved with a date but no time, which silently anchors it at midnight
+- [ ] 🔴 Schedule screen with exceptions [APP-06] — `app/(app)/schedule.tsx`: day-grouped entries, create, "Skip today" and delete; edit UI is missing, and `GET /schedule` does not filter exceptions, so skipped classes still appear on Schedule and Home with no undo
+- [ ] 🔴 Push notification registration and handling [APP-23] — 2 d — registration and tap routing are code-complete in `apps/mobile/src/notifications.ts` + `app/(app)/_layout.tsx`: EAS project linked, sign-out revokes the token and clears local schedules, cold-start responses are handled once, and reminder/class/deadline/nudge/class-note/pending-action taps route explicitly. Unchecked because no development build or physical device has verified delivery and taps
+- [x] 🟡 Local notification fallback [APP-29] — 2 d — `syncLocalReminderNotifications` schedules upcoming active reminders with `expo-notifications` only when Expo push registration is unavailable (web, simulator, missing EAS project id), cancelling and rebuilding the queue when the reminder list changes; local schedules are cancelled once push registration succeeds and re-checked while scheduling
+- [x] 🟡 Device/connection status UI [APP-27] — `app/(app)/devices.tsx` shows a per-device status pill and last-seen; status refreshes only on pull-to-refresh, not through the app WebSocket
+- [x] 🔴 Settings and privacy: quiet hours, data export/delete request [APP-13, FR-ACC-06] — `app/(app)/settings.tsx`: identity, quiet hours, wake phrase, nudges (0–20 per day, matching the server's zod bound), cloud-AI-for-docs, export via the system share sheet with oversize handling, two-step delete + sign out; partial: saving identity/preferences does not refresh `auth.user`, so nav labels and other user-derived UI stay stale until restart
 - [x] 🔴 Account deletion job (PostgreSQL, files, later vectors) [FR-ACC-06] — 2 d — `deleteAccountData` removes Qdrant points when RAG is configured, deletes temporary upload files, then deletes the user row so PostgreSQL cascades owned rows; `DELETE /users/me` returns files/vectors counts and `account-deletion.test.ts` covers success, missing files and unconfigured RAG
 
 ### R2.6 Release
@@ -260,11 +262,11 @@ over the existing device WebSocket plus Expo push when the user has registered t
 
 ### R3.5 Mobile app
 
-- [x] 🔴 Documents screen: upload (files), subjects, status, delete [APP-08] — `app/(app)/documents.tsx` uploads PDF, DOCX, PPTX, text/markdown and images via `expo-document-picker`; it shows parsing/OCR/chunking/embedding status, retries failures and re-indexes indexed documents. Photo capture remains in the separate Vision screen
-- [x] 🔴 Exams and plan screen with approve/edit [APP-07] — `app/(app)/exams.tsx`: exam list with countdowns, activate (draft → active), generate plan, approve plan by PLAN id (creates todos + a daily reminder), readiness bar and Recalculate button.
+- [x] 🔴 Documents screen: upload (files), subjects, status, delete [APP-08] — `app/(app)/documents.tsx` uploads PDF, DOCX, PPTX, text/markdown and images via `expo-document-picker`; it shows parsing/OCR/chunking/embedding status, retries failures and re-indexes indexed documents. Status advances only after a manual refresh; there is no document open/download action
+- [ ] 🔴 Exams and plan screen with approve/edit [APP-07] — `app/(app)/exams.tsx`: exam list with countdowns, activate (draft → active), generate plan, approve plan by PLAN id (creates todos + a daily reminder), readiness bar and Recalculate button; the generated plan lives only in component state, so approve/recalculate disappear after reload and are unavailable for plans created through chat/tools; plan task titles are placeholders
 - [x] 🔴 Quiz runner and history [APP-09] — 4 d — `app/(app)/quizzes.tsx` generates a real quiz, fetches its questions, collects answers, shows the score with per-question review/explanation, and lists past attempts
-- [x] 🔴 Chat: rich cards (plans, quizzes, tappable citations) — 3 d — `buildDisplayContent` now emits quiz cards (`generate_quiz`), study-plan cards (`create_study_plan`/`approve_study_plan`) and citation cards from `search_documents` with source/page/score; `DisplayBlock` cards can carry an action link and the chat screen renders them as pressable cards that route to `/quizzes`, `/exams` or `/documents`. `display-content.test.ts` covers all three
-- [ ] 🟡 i18n and right-to-left support [APP-28] — 3 d — foundation added: `src/i18n` normalizes en/hi, translates the tab bar, records text direction, enables `I18nManager.allowRTL`, and onboarding/settings already store `en`/`hi`. Remaining screens are still hardcoded English and no RTL language ships yet
+- [ ] 🔴 Chat: rich cards (plans, quizzes, tappable citations) — 3 d — `buildDisplayContent` emits quiz cards (`generate_quiz`), study-plan cards (`create_study_plan`/`approve_study_plan`) and citation cards from `search_documents` with source/page/score; plan and quiz cards route to their list screens, but citation rows are plain text and only the whole Sources card opens `/documents`, so “tappable citations” is not met. Confirmation cards are also non-actionable.
+- [ ] 🟡 i18n and right-to-left support [APP-28] — 3 d — foundation added: `src/i18n` normalizes en/hi, translates the five tab labels, records text direction, calls `I18nManager.allowRTL`, and onboarding/settings store `en`/`hi`; remaining screens, alerts and validation messages are hardcoded English, device locale is ignored, `textDirection()` is unused and no RTL language ships
 - [ ] 🟡 Second voice language: STT/TTS/wake word [FR-VOI-09] — 4 d — English and Hindi are configured for STT and TTS: the user locale flows to STT, the LLM prompt and `TTS_VOICE_MAP` (`hi_IN-pratham-medium`), and the TTS container downloads both voices via `TTS_VOICES`. Wake-word vocabulary is firmware-side and blocked on hardware, so this stays open
 
 ### R3.6 Release
@@ -307,7 +309,7 @@ over the existing device WebSocket plus Expo push when the user has registered t
 - [x] 🔴 `StudySession` model, API (start, pause, resume, extend, end) [FR-STM-01/04/06] — 3 d — model now carries `status`, `plannedMinutes`, `extendedMinutes`, `pausedAt`, and `totalPausedMs`; `/api/v1/sessions` supports active/list/start/pause/resume/extend/end, and `sessionStudyMinutes` excludes completed and open pauses
 - [x] 🔴 Tools `start_study_session` / `end_study_session` [FR-STM-01] — 2 d — both call the session API and send a `display` card (`kind: study`) to the speaker; ending reports the active study minutes
 - [ ] 🔴 Device: timer screen, end announcement, break suggestion [FR-STM-02/03] — 4 d
-- [x] 🔴 App session screen mirroring the device [APP-11] — 3 d — `app/(app)/study.tsx` mirrors the device timer: live elapsed clock, pause/resume, +5 min, end, planned-time presets, Pomodoro breaks, and recent sessions. Device audio announcement stays device-side
+- [x] 🔴 App session screen mirroring the device [APP-11] — 3 d — `app/(app)/study.tsx` has live elapsed clock, pause/resume, +5 min, end, presets, Pomodoro breaks and recent sessions; `/sessions/active` now returns the same `StudySessionResult` shape as the other session endpoints, covered by `toStudySessionResult` regression coverage. Device audio announcement stays device-side
 - [x] 🟡 Do Not Disturb prompt [FR-STM-05] — 1 d — starting a study session offers a one-time prompt to enable Do Not Disturb (Android opens the system DND screen; iOS explains how to enable a Focus mode and opens app settings), and the active-session card keeps an "Enable Do Not Disturb" shortcut
 - [x] 🟢 Pomodoro cycles — 2 d — study screen adds a Pomodoro toggle (planned focus window + 5-minute break). When the focus window elapses it shows a break card; "Take a 5-minute break" pauses the session and Resume starts the next cycle. Audio chime/announcement stays device-side
 
@@ -341,6 +343,33 @@ over the existing device WebSocket plus Expo push when the user has registered t
 
 ---
 
+## Mobile Audit Follow-ups (2026-10-30)
+
+Full report: [`report.md`](report.md). The app typechecks and lints, and all mobile-called API routes exist, but these items block calling the mobile scope complete.
+
+### P0 — runtime and configuration blockers
+
+- [ ] 🔴 Set production `EXPO_PUBLIC_API_URL` for the EAS profiles; verify push registration, cold-start tap routing, nudge routing and sign-out token revocation on a development build
+- [ ] 🔴 Implement or explicitly descope APP-02 QR/BLE/Wi-Fi provisioning, the `robo://pair` route and live device status
+
+### P1 — checked items that still need completion
+
+- [ ] 🔴 Schedule: add edit UI and make exceptions suppress entries in Schedule and Home
+- [ ] 🔴 Home: show the next class across days and include draft exams in the countdown
+- [ ] 🔴 Exams: add a persisted plan read endpoint and restore approve/recalculate after reload and for chat-created plans
+- [ ] 🟡 Chat: make citation rows individually tappable, persist/restore history, and harden stop/error/timeout handling
+- [ ] 🟡 Vision: add camera capture and permission handling, or update the FRD/todo to library-only
+- [ ] 🟡 Documents: poll processing status or refresh on focus so parsing/OCR/embedding progress is visible
+- [ ] 🟡 Settings: refresh `auth.user` after preference saves
+- [ ] 🟡 i18n/RTL: translate the remaining screens and activate RTL before shipping an RTL locale
+
+### P2 — release verification
+
+- [ ] 🔴 Build an EAS development client and run Android 16 smoke tests for push, chat streaming, contacts, photo picker, edge-to-edge layout and WebSocket reconnect
+- [ ] 🔴 Run the Maestro smoke/sign-in flows against the development build
+
+---
+
 ## X — Cross-Cutting Tasks (continuous)
 
 ### X.1 Security and privacy
@@ -358,7 +387,7 @@ over the existing device WebSocket plus Expo push when the user has registered t
 
 - [ ] 🔴 Unit and integration tests (Vitest/Jest, Supertest) for each module
 - [x] 🔴 Maintain AI regression set; run it on every prompt/model change [AGT-12, NFR-08] — CI runs `ai:regression` in fixture-validation mode on every push/PR; live model execution still requires provider keys and a user
-- [x] 🟡 Mobile end-to-end flows with Maestro — `.maestro/smoke.yaml` covers launch and auth-screen navigation; `.maestro/sign-in.yaml` covers sign-in when `ROBOTEST_EMAIL`/`ROBOTEST_PASSWORD` are provided. Flows were not run without an emulator/dev build
+- [ ] 🟡 Mobile end-to-end flows with Maestro — `.maestro/smoke.yaml` covers launch and auth-screen navigation; `.maestro/sign-in.yaml` covers sign-in when `ROBOTEST_EMAIL`/`ROBOTEST_PASSWORD` are provided. Flows are authored but have not been run because no emulator/development build exists
 - [ ] 🟡 Firmware tests (Unity) and a manual device test checklist
 - [ ] 🟡 Load test: 500 concurrent device sessions [NFR-11] — `tests/load/device-sessions.js` implements a k6 500-VU WebSocket scenario with turn-latency and failure thresholds; it has not been run against staging
 - [ ] 🟡 Latency dashboard for the voice pipeline [NFR-01] — per-turn VAD/STT/first-token/TTS timings are logged and chat/voice latency is persisted, but no dashboard is provisioned
@@ -368,7 +397,7 @@ over the existing device WebSocket plus Expo push when the user has registered t
 - [ ] 🔴 Staging and production environments; database backups with restore test — `docs/production-operations.md`, `deploy/Caddyfile` and `scripts/backup-db.sh` cover native deployment; no VPS/staging environment exists and no restore drill has been run
 - [ ] 🔴 Monitoring and alerts (Sentry, uptime check, queue depth) — Sentry wiring and the monitoring/alerting runbook are in place; no Sentry project, uptime monitor or alert routing exists yet
 - [ ] 🟡 Log shipping and retention policy
-- [ ] 🟡 EAS Update channels (staging/production); OTA firmware channels — `eas.json` defines development/preview/production channels; no EAS project exists and firmware OTA is not implemented
+- [ ] 🟡 EAS Update channels (staging/production); OTA firmware channels — `eas.json` defines development/preview/production channels and the EAS project is linked; EAS Update is not configured and firmware OTA is not implemented
 - [x] 🟡 Runbook: provider outage, queue backlog, Qdrant restore — `docs/production-operations.md` covers deploy, TLS/secrets, backups/restore, monitoring, load testing, incident response and launch checks; `scripts/backup-db.sh` implements the database backup/rotation step. A real restore drill is still required
 
 ### X.4 Launch
