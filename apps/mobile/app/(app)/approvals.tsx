@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorBanner } from "@/components/ErrorBanner";
@@ -40,6 +40,7 @@ function expiryLabel(action: PendingAction): string {
 
 export default function ApprovalsScreen() {
   const router = useRouter();
+  const { actionId } = useLocalSearchParams<{ actionId?: string }>();
   const { data: actions, isLoading, isError, error, refetch } = usePendingActionsQuery();
   const [confirmAction] = useConfirmPendingActionMutation();
   const [rejectAction] = useRejectPendingActionMutation();
@@ -49,6 +50,11 @@ export default function ApprovalsScreen() {
   );
   const [failed, setFailed] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const orderedActions = [...(actions ?? [])].sort((left, right) => {
+    if (left.id === actionId) return -1;
+    if (right.id === actionId) return 1;
+    return 0;
+  });
 
   const open = async (label: string, uri: string): Promise<void> => {
     const supported = await Linking.canOpenURL(uri);
@@ -123,7 +129,7 @@ export default function ApprovalsScreen() {
           body="Ask Robo to call or message someone. It will prepare the action here and wait for your tap before opening the dialer or composer."
         />
       ) : (
-        actions.map(action => (
+        orderedActions.map(action => (
           <Card key={action.id} title={actionLabels[action.kind].toUpperCase()}>
             <Text style={styles.recipient}>{action.recipientName}</Text>
             <Text style={styles.muted}>
@@ -182,9 +188,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 15,
     lineHeight: 21,
-    borderLeftWidth: 2,
-    borderLeftColor: colors.accent,
-    paddingLeft: spacing.md,
+    borderStartWidth: 2,
+    borderStartColor: colors.accent,
+    paddingStart: spacing.md,
   },
   expiry: {
     color: colors.warning,

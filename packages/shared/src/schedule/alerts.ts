@@ -39,7 +39,8 @@ export function isCancelledOnDay(
 ): boolean {
   const classDay = dayKey(startAt, offsetMinutes);
 
-  return exceptionDates.some(date => dayKey(date, offsetMinutes) === classDay);
+  // Exception dates are calendar dates (stored at UTC midnight), not instants.
+  return exceptionDates.some(date => dayKey(date) === classDay);
 }
 
 export interface DueClass {

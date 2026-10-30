@@ -14,101 +14,83 @@
 - Test account for authenticated Maestro flows.
 - Three to five closed-alpha testers.
 
-## Phase 0 — Baseline and Scope Record
+## Acceptance Checklist
 
-**Estimate:** 0.5 day
-
-- [ ] Checkpoint the current uncommitted auth/push work on a branch or commit, with approval.
-- [ ] Mark APP-02 and voice-note input as explicitly descoped in `todo.md`, `report.md` and any external FRD.
-- [ ] Create an acceptance checklist mapping every remaining item to a phase and verification method.
-
-**Exit criteria:** Current work is safely checkpointed, descopes are documented, and every remaining item has an owner phase.
+| Item                            | Phase      | Verification                                                              |
+| ------------------------------- | ---------- | ------------------------------------------------------------------------- |
+| APP-02 provisioning             | Descoped   | `todo.md` and `report.md` record the v1 descope; no QR/BLE code is added.  |
+| Voice-note input                | Descoped   | APP-04 is text-only and the gap is recorded.                              |
+| Production API URL              | 1          | Production EAS env uses HTTPS; release check rejects missing/localhost.   |
+| EAS development build and FCM   | 1, 7       | Development build installs on Android; push credentials are valid.        |
+| Push registration and routing   | 7          | Foreground/background/killed delivery, cold start and sign-out revocation. |
+| Schedule edit/exceptions/undo   | 2          | Server tests pass; skipped entries vanish and Undo restores them.          |
+| Home next class and draft exams | 2          | Tomorrow’s class and a draft exam appear without activation.              |
+| Persisted exam plans            | 3          | GET-plan tests pass; plan survives reload and chat deep link.              |
+| Chat history and streaming      | 4          | Reload restores history; stop/error/timeout paths are usable on-device.    |
+| Citations and confirmations     | 4          | Citation opens the document/page; confirmation opens the pending action.   |
+| Vision camera                   | 5          | Camera capture and upload work on the physical device.                    |
+| Document status                 | 5          | Status advances without manual refresh and stops on terminal states.      |
+| Settings auth refresh           | 5          | Name and language changes update UI immediately.                          |
+| i18n and RTL                    | 6          | English/Hindi switch is complete; forced-RTL smoke test passes.           |
+| Maestro and Android 16          | 7          | Smoke/feature flows pass and the Android 16 checklist is signed off.      |
+| Closed alpha                    | 7          | No open P0/P1 findings.                                                    |
 
 ## Phase 1 — Release Config and Device Build
 
 **Estimate:** 1–2 days plus build time
 
 - [ ] Add `EXPO_PUBLIC_API_URL` to the development, preview and production EAS profiles.
-- [ ] Keep local LAN overrides for local development.
-- [ ] Add a release check that fails when the production API URL is missing or points at localhost.
+- [x] Keep local LAN overrides for local development.
+- [x] Add a release check that fails when the production API URL is missing or points at localhost.
 - [ ] Configure Android signing credentials and FCM V1 push credentials in EAS.
 - [ ] Build and install the EAS development client on the physical Android device.
 
 **Exit criteria:** The authenticated app launches against the deployed API; `expo config`, mobile typecheck, lint and Prettier pass.
 
-## Phase 2 — Schedule and Home
-
-**Estimate:** 2–3 days
-
-- [ ] Make `getSchedule` exception-aware and timezone-aware.
-- [ ] Add an `includeSkipped` option and expose exception IDs.
-- [ ] Add DELETE exception support for Undo.
-- [ ] Add server/shared tests for exception filtering and removal.
-- [ ] Add mobile schedule editing using the existing PATCH endpoint.
-- [ ] Add delete confirmation and a skipped-class section with Undo.
-- [ ] Show the next class across days on Home, excluding skipped entries.
-- [ ] Include active and draft exams in the Home countdown/readiness area.
-
-**Exit criteria:** Skipped classes disappear from Home and Schedule, Undo restores them, and edits/deletes refresh consistently.
-
-## Phase 3 — Persisted Exam Plans
-
-**Estimate:** 1.5–2 days
-
-- [ ] Add `getPlan(userId, examId)` to shared exam logic.
-- [ ] Add `GET /exams/:id/plan` with approval state, daily tasks and linked todo status.
-- [ ] Add tests for ownership, missing plans and approved plans.
-- [ ] Replace local generated-plan state with a server-backed mobile plan query.
-- [ ] Invalidate the plan after generate, approve and recalculate.
-- [ ] Add `/exams?examId=...` deep-link selection.
-- [ ] Make the chat plan card route to the selected exam.
-
-**Exit criteria:** Generated and approved plans survive navigation and reload, and chat-created plans are visible.
-
 ## Phase 4 — Chat Hardening and Actions
 
 **Estimate:** 2–3 days
 
-- [ ] Add a mobile `listConversations` client.
-- [ ] Hydrate the latest conversation on mount.
-- [ ] Persist the active conversation ID and support starting a new chat.
-- [ ] Make streaming cancellation immediate.
-- [ ] Add request and inactivity timeouts.
-- [ ] Guard against late callbacks after cancellation.
-- [ ] Restore the input and message state on streaming failure.
-- [ ] Add per-item display actions for citations.
-- [ ] Emit document IDs and pages from the server for citations.
-- [ ] Open Documents at the matching document/page when a citation is tapped.
-- [ ] Add a Review action to confirmation cards that opens the matching pending action in Approvals.
-- [ ] Keep voice notes descoped and documented.
+- [x] Add a mobile `listConversations` client.
+- [x] Hydrate the latest conversation on mount.
+- [x] Persist the active conversation ID and support starting a new chat.
+- [x] Make streaming cancellation immediate.
+- [x] Add request and inactivity timeouts.
+- [x] Guard against late callbacks after cancellation.
+- [x] Restore the input and message state on streaming failure.
+- [x] Add per-item display actions for citations.
+- [x] Emit document IDs and pages from the server for citations.
+- [x] Open the signed document URL at the matching page when a citation is tapped.
+- [x] Add a Review action to confirmation cards that opens the matching pending action in Approvals.
+- [x] Keep voice notes descoped and documented.
 
-**Exit criteria:** Streaming is verified on-device, stop/error paths leave a usable chat, and citations and confirmation cards are tappable.
+**Exit criteria:** Streaming is verified on-device, stop/error paths leave a usable chat, and citations and confirmation cards are tappable. Code and typecheck/lint verification are complete; on-device streaming verification is pending Phase 1.
 
 ## Phase 5 — Vision, Documents and Settings
 
 **Estimate:** 1.5–2 days
 
-- [ ] Enable camera permission and add camera/library source selection using `expo-image-picker`.
+- [x] Enable camera permission and add camera/library source selection using `expo-image-picker`.
 - [ ] Test camera capture and upload on the physical device.
-- [ ] Refetch documents on focus.
-- [ ] Poll only while a document is processing, stopping on terminal states.
-- [ ] Update `auth.user` in Redux after `updateMe` succeeds.
-- [ ] Ensure profile, language and consent-driven UI refresh immediately.
+- [x] Refetch documents on focus.
+- [x] Poll only while a document is processing, stopping on terminal states.
+- [x] Update `auth.user` in Redux after `updateMe` succeeds.
+- [x] Ensure profile, language and consent-driven UI refresh immediately.
 
-**Exit criteria:** Camera capture works on-device, document status updates automatically, and profile/preference changes reflect across screens.
+**Exit criteria:** Camera capture works on-device, document status updates automatically, and profile/preference changes reflect across screens. Code verification is complete; camera device verification is pending Phase 1.
 
 ## Phase 6 — i18n and RTL Readiness
 
 **Estimate:** 3–4 days, parallelizable after Phase 3
 
-- [ ] Build typed English and Hindi dictionaries.
+- [x] Build typed English and Hindi dictionaries.
 - [ ] Replace all static user-facing mobile strings.
 - [ ] Localize date and number formatting.
 - [ ] Localize server-authored display labels while leaving AI response text in the conversational language.
-- [ ] Persist the selected locale and fall back to the device locale.
-- [ ] Make layouts start/end-aware.
+- [x] Persist the selected locale and fall back to the device locale.
+- [x] Make layouts start/end-aware.
 - [ ] Verify a forced-RTL development build.
-- [ ] Do not ship an RTL locale.
+- [x] Do not ship an RTL locale.
 
 **Exit criteria:** Language switching updates the whole UI, no untranslated static strings remain, and the forced-RTL smoke test passes.
 
@@ -129,9 +111,9 @@
 
 ## Sequencing
 
-Critical path: Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7.
+Critical path: Phase 1 → 4 → 5 → 6 → 7. Phases 2 and 3 are complete and removed.
 
-i18n can start after Phase 3 and overlap with Phases 4–5, but the final string sweep must follow all UI changes.
+i18n can overlap with Phases 4–5, but the final string sweep must follow all UI changes.
 
 ## Estimate
 

@@ -51,8 +51,7 @@ function upcomingClass(entries: ScheduleEntry[]): ScheduleEntry | undefined {
     .find(
       entry =>
         !entry.allDay &&
-        toDate(entry.endAt ?? entry.startAt).getTime() >= now &&
-        isSameDay(entry.startAt)
+        toDate(entry.endAt ?? entry.startAt).getTime() >= now
     );
 }
 
@@ -95,7 +94,7 @@ export default function TodayScreen() {
 
   const schedule = useScheduleQuery();
   const todos = useTodosQuery({ status: "pending" });
-  const exams = useExamsQuery({ status: "active" });
+  const exams = useExamsQuery();
 
   if (!user) {
     return null;
@@ -105,9 +104,9 @@ export default function TodayScreen() {
   const classes = schedule.data ?? [];
   const next = upcomingClass(classes);
   const rows = taskRows(todos.data ?? []);
-  const nextExam = [...(exams.data ?? [])].sort(
-    (a, b) => toDate(a.date).getTime() - toDate(b.date).getTime()
-  )[0];
+  const nextExam = [...(exams.data ?? [])]
+    .filter(exam => exam.status !== "completed")
+    .sort((a, b) => toDate(a.date).getTime() - toDate(b.date).getTime())[0];
   const failed =
     (schedule.isError && schedule.error) ||
     (todos.isError && todos.error) ||
@@ -142,14 +141,19 @@ export default function TodayScreen() {
           <View style={styles.classBody}>
             <Text style={styles.classTitle}>{next.title}</Text>
             <Text style={styles.classMeta}>
-              {formatRange(next.startAt, next.endAt)}
+              {isSameDay(next.startAt)
+                ? formatRange(next.startAt, next.endAt)
+                : `${formatDay(next.startAt)} · ${formatRange(
+                    next.startAt,
+                    next.endAt
+                  )}`}
               {next.room ? ` · ${next.room}` : ""}
               {next.teacher ? ` · ${next.teacher}` : ""}
             </Text>
           </View>
         ) : (
           <EmptyState
-            title="Nothing scheduled for the rest of today."
+            title="No upcoming classes."
             body="Add a class in the timetable and it shows up here."
           />
         )}

@@ -9,6 +9,7 @@ import {
   createSchedule,
   deleteSchedule,
   getSchedule,
+  removeException,
   updateSchedule,
 } from "@robo/shared/schedule";
 import { asyncHandler } from "../../http/async-handler";
@@ -37,7 +38,9 @@ router.get(
   "/",
   authenticate,
   asyncHandler(async (req, res) => {
-    const schedule = await getSchedule(req.user!.id);
+    const schedule = await getSchedule(req.user!.id, {
+      includeSkipped: req.query.includeSkipped === "true",
+    });
     sendSuccess(res, { code: "SCHEDULE_FETCHED", data: { schedule } });
   })
 );
@@ -76,6 +79,18 @@ router.post(
       code: "EXCEPTION_ADDED",
       message: "Schedule exception added successfully",
       data: { exception },
+    });
+  })
+);
+
+router.delete(
+  "/:id/exceptions/:exceptionId",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    await removeException(req.user!.id, req.params.id, req.params.exceptionId);
+    sendSuccess(res, {
+      code: "EXCEPTION_REMOVED",
+      message: "Schedule exception removed successfully",
     });
   })
 );

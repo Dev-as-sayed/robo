@@ -1,3 +1,4 @@
+import { getLocales } from "expo-localization";
 import { I18nManager } from "react-native";
 import { useAppSelector } from "@/store";
 
@@ -29,8 +30,12 @@ const dictionaries: Record<SupportedLocale, Record<TranslationKey, string>> = {
   hi,
 };
 
+function deviceLocale(): string {
+  return getLocales()[0]?.languageCode ?? "en";
+}
+
 export function normalizeLocale(locale: string | null | undefined): SupportedLocale {
-  const primary = (locale ?? "en").toLowerCase().split(/[-_]/)[0];
+  const primary = (locale ?? deviceLocale()).toLowerCase().split(/[-_]/)[0];
   return primary === "hi" ? "hi" : "en";
 }
 

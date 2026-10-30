@@ -118,6 +118,10 @@ const DOMAIN_ERRORS: Record<string, { statusCode: number; message: string }> = {
   TODO_NOT_FOUND: { statusCode: 404, message: "Todo not found" },
   REMINDER_NOT_FOUND: { statusCode: 404, message: "Reminder not found" },
   SCHEDULE_NOT_FOUND: { statusCode: 404, message: "Schedule entry not found" },
+  SCHEDULE_EXCEPTION_NOT_FOUND: {
+    statusCode: 404,
+    message: "Schedule exception not found",
+  },
   EXAM_NOT_FOUND: { statusCode: 404, message: "Exam not found" },
   PLAN_NOT_FOUND: { statusCode: 404, message: "Study plan not found" },
   DOCUMENT_NOT_FOUND: { statusCode: 404, message: "Document not found" },

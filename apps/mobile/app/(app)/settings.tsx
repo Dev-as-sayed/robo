@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button } from "@/components/Button";
@@ -18,6 +18,7 @@ import {
   useExportDataMutation,
   useUpdateConsentMutation,
 } from "@/api/account-api";
+import { setUser } from "@/features/auth/auth-slice";
 import { signOut } from "@/features/auth/session";
 import { useAppDispatch, useAppSelector } from "@/store";
 import type {
@@ -626,9 +627,16 @@ function LinksSection() {
 }
 
 export default function SettingsScreen() {
+  const dispatch = useAppDispatch();
   const { data, isLoading, isError, error } = useMeQuery();
   const authUser = useAppSelector(state => state.auth.user);
   const user = data ?? authUser;
+
+  useEffect(() => {
+    if (data) {
+      dispatch(setUser(data));
+    }
+  }, [data, dispatch]);
 
   if (!user) {
     return (

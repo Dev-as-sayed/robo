@@ -123,6 +123,7 @@ export interface DisplayItem {
   subtitle?: string;
   meta?: string;
   status?: string;
+  page?: number;
 }
 
 export type DisplayBlock =
@@ -157,6 +158,16 @@ export interface Conversation {
   createdAt: string;
   updatedAt: string;
   messages: ChatMessage[];
+}
+
+export interface ConversationSummary {
+  id: string;
+  title: string | null;
+  channel: "app" | "device";
+  createdAt: string;
+  updatedAt: string;
+  lastMessage: ChatMessage | null;
+  messageCount: number;
 }
 
 export interface ChatTurnResult {
@@ -217,6 +228,12 @@ export interface Reminder {
   updatedAt: string;
 }
 
+export interface ScheduleException {
+  id: string;
+  date: string;
+  reason: string | null;
+}
+
 export interface ScheduleEntry {
   id: string;
   title: string;
@@ -228,6 +245,9 @@ export interface ScheduleEntry {
   room: string | null;
   teacher: string | null;
   createdAt: string;
+  exceptions?: ScheduleException[];
+  isSkipped?: boolean;
+  skippedExceptionId?: string | null;
 }
 
 export type ExamStatus = "draft" | "active" | "completed";
@@ -248,6 +268,7 @@ export interface DailyTask {
   day: number;
   title: string;
   completed: boolean;
+  todoId?: string | null;
 }
 
 export interface StudyPlan {
@@ -255,6 +276,8 @@ export interface StudyPlan {
   examId: string;
   totalDays: number;
   dailyTasks: DailyTask[];
+  approvedAt: string | null;
+  reminderId: string | null;
   createdAt: string;
   updatedAt: string;
 }

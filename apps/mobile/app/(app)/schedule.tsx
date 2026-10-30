@@ -12,12 +12,15 @@ import {
   useAddExceptionMutation,
   useCreateScheduleMutation,
   useDeleteScheduleMutation,
+  useRemoveExceptionMutation,
   useScheduleQuery,
+  useUpdateScheduleMutation,
 } from "@/api/schedule-api";
 import {
   formatDay,
   formatRange,
   isoDate,
+  isoTime,
   parseDateTime,
   startOfDay,
 } from "@/lib/time";
@@ -55,6 +58,7 @@ function groupByDay(entries: ScheduleEntry[]): Section[] {
 export default function ScheduleScreen() {
   const router = useRouter();
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [datePart, setDatePart] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -65,14 +69,19 @@ export default function ScheduleScreen() {
   const [allDay, setAllDay] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { data, isLoading, isError, error, refetch } = useScheduleQuery();
+  const { data, isLoading, isError, error, refetch } = useScheduleQuery({
+    includeSkipped: true,
+  });
   const [createSchedule, { isLoading: creating }] = useCreateScheduleMutation();
+  const [updateSchedule, { isLoading: updating }] = useUpdateScheduleMutation();
   const [deleteSchedule] = useDeleteScheduleMutation();
   const [addException] = useAddExceptionMutation();
+  const [removeException] = useRemoveExceptionMutation();
 
   const sections = groupByDay(data ?? []);
 
   const reset = () => {
+    setEditingId(null);
     setTitle("");
     setDatePart("");
     setStartTime("");
@@ -81,6 +90,19 @@ export default function ScheduleScreen() {
     setRoom("");
     setTeacher("");
     setAllDay(false);
+    setFormError(null);
+  };
+
+  const startEdit = (entry: ScheduleEntry) => {
+    setEditingId(entry.id);
+    setTitle(entry.title);
+    setDatePart(isoDate(entry.startAt));
+    setStartTime(entry.allDay ? "" : isoTime(entry.startAt));
+    setEndTime(entry.allDay || !entry.endAt ? "" : isoTime(entry.endAt));
+    setSubject(entry.subject ?? "");
+    setRoom(entry.room ?? "");
+    setTeacher(entry.teacher ?? "");
+    setAllDay(entry.allDay);
     setFormError(null);
   };
 
@@ -115,20 +137,42 @@ export default function ScheduleScreen() {
       endAt = parsedEnd;
     }
 
+    const input = {
+      title: title.trim(),
+      startAt,
+      allDay,
+      ...(endAt ? { endAt } : {}),
+      ...(subject.trim() ? { subject: subject.trim() } : {}),
+      ...(room.trim() ? { room: room.trim() } : {}),
+      ...(teacher.trim() ? { teacher: teacher.trim() } : {}),
+    };
+
     try {
-      await createSchedule({
-        title: title.trim(),
-        startAt,
-        allDay,
-        ...(endAt ? { endAt } : {}),
-        ...(subject.trim() ? { subject: subject.trim() } : {}),
-        ...(room.trim() ? { room: room.trim() } : {}),
-        ...(teacher.trim() ? { teacher: teacher.trim() } : {}),
-      }).unwrap();
+      if (editingId) {
+        await updateSchedule({ id: editingId, ...input }).unwrap();
+      } else {
+        await createSchedule(input).unwrap();
+      }
       reset();
     } catch {
       setFormError("Robo could not save that entry. Try again.");
     }
+  };
+
+  const skip = (entry: ScheduleEntry) => {
+    void addException({
+      id: entry.id,
+      date: isoDate(startOfDay(entry.startAt)),
+    });
+  };
+
+  const undoSkip = (entry: ScheduleEntry) => {
+    if (!entry.skippedExceptionId) return;
+
+    void removeException({
+      id: entry.id,
+      exceptionId: entry.skippedExceptionId,
+    });
   };
 
   const remove = (entry: ScheduleEntry) => {
@@ -169,7 +213,13 @@ export default function ScheduleScreen() {
             {section.entries.map(entry => (
               <View key={entry.id} style={styles.row}>
                 <View style={styles.rowCopy}>
-                  <Text style={styles.rowTitle} numberOfLines={2}>
+                  <Text
+                    style={[
+                      styles.rowTitle,
+                      entry.isSkipped ? styles.skippedText : null,
+                    ]}
+                    numberOfLines={2}
+                  >
                     {entry.title}
                   </Text>
                   <Text style={styles.rowMeta}>
@@ -185,17 +235,21 @@ export default function ScheduleScreen() {
                       {entry.teacher ? entry.teacher : ""}
                     </Text>
                   ) : null}
+                  {entry.isSkipped ? (
+                    <Text style={styles.skippedLabel}>Skipped</Text>
+                  ) : null}
                 </View>
 
                 <View style={styles.rowActions}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Skip ${entry.title} today`}
+                    accessibilityLabel={
+                      entry.isSkipped
+                        ? `Undo skip for ${entry.title}`
+                        : `Skip ${entry.title}`
+                    }
                     onPress={() =>
-                      void addException({
-                        id: entry.id,
-                        date: isoDate(new Date()),
-                      })
+                      entry.isSkipped ? undoSkip(entry) : skip(entry)
                     }
                     hitSlop={10}
                     style={({ pressed }) => [
@@ -203,7 +257,21 @@ export default function ScheduleScreen() {
                       pressed ? styles.pressed : null,
                     ]}
                   >
-                    <Text style={styles.actionLabel}>Skip today</Text>
+                    <Text style={styles.actionLabel}>
+                      {entry.isSkipped ? "Undo" : "Skip"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit ${entry.title}`}
+                    onPress={() => startEdit(entry)}
+                    hitSlop={10}
+                    style={({ pressed }) => [
+                      styles.action,
+                      pressed ? styles.pressed : null,
+                    ]}
+                  >
+                    <Text style={styles.actionLabel}>Edit</Text>
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
@@ -226,7 +294,7 @@ export default function ScheduleScreen() {
         ))
       )}
 
-      <Card title="NEW ENTRY">
+      <Card title={editingId ? "EDIT ENTRY" : "NEW ENTRY"}>
         <TextField
           label="Title"
           value={title}
@@ -302,10 +370,13 @@ export default function ScheduleScreen() {
         </Pressable>
         {formError ? <ErrorBanner message={formError} /> : null}
         <Button
-          label="Add entry"
+          label={editingId ? "Save changes" : "Add entry"}
           onPress={() => void submit()}
-          loading={creating}
+          loading={creating || updating}
         />
+        {editingId ? (
+          <Button label="Cancel edit" variant="ghost" onPress={reset} />
+        ) : null}
       </Card>
 
       <Pressable
@@ -359,6 +430,15 @@ const styles = StyleSheet.create({
   rowMeta: {
     color: colors.textMuted,
     fontSize: 12,
+  },
+  skippedText: {
+    color: colors.textMuted,
+    textDecorationLine: "line-through",
+  },
+  skippedLabel: {
+    color: colors.warning,
+    fontSize: 12,
+    fontWeight: "700",
   },
   rowActions: {
     gap: spacing.sm,

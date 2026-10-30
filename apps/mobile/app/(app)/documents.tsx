@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   getDocumentAsync,
   type DocumentPickerResult,
 } from "expo-document-picker";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { apiErrorMessage } from "@/api/errors";
 import { useUpdateConsentMutation } from "@/api/account-api";
 import {
@@ -82,8 +82,11 @@ export default function DocumentsScreen() {
 
   const [subject, setSubject] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const { data, isLoading, isError, error, refetch } = useDocumentsQuery();
+  const { data, isLoading, isFetching, isError, error, refetch } =
+    useDocumentsQuery();
   const [uploadDocument, { isLoading: uploading }] =
     useUploadDocumentMutation();
   const [deleteDocument] = useDeleteDocumentMutation();
@@ -91,6 +94,27 @@ export default function DocumentsScreen() {
   const [updateConsent] = useUpdateConsentMutation();
 
   const documents = data ?? [];
+  const processing = documents.some(
+    doc => doc.status !== "indexed" && doc.status !== "failed"
+  );
+
+  useEffect(() => {
+    if (!processing) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      void refetch();
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [processing, refetch]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch])
+  );
 
   const chooseFile = async () => {
     setUploadError(null);
@@ -138,9 +162,35 @@ export default function DocumentsScreen() {
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => void deleteDocument(doc.id),
+        onPress: () => {
+          setActionError(null);
+          setBusyId(doc.id);
+          void deleteDocument(doc.id)
+            .unwrap()
+            .catch(cause => {
+              setActionError(
+                apiErrorMessage(cause, `Robo could not delete ${doc.originalName}.`)
+              );
+            })
+            .finally(() => setBusyId(null));
+        },
       },
     ]);
+  };
+
+  const reindex = async (doc: StudyDocument) => {
+    setActionError(null);
+    setBusyId(doc.id);
+
+    try {
+      await reindexDocument(doc.id).unwrap();
+    } catch (cause) {
+      setActionError(
+        apiErrorMessage(cause, `Robo could not re-index ${doc.originalName}.`)
+      );
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
@@ -159,19 +209,22 @@ export default function DocumentsScreen() {
 
       {isError ? (
         <ErrorBanner
-          message={
-            typeof error === "string"
-              ? error
-              : "Your documents could not be loaded."
-          }
+          message={apiErrorMessage(error, "Your documents could not be loaded.")}
         />
       ) : null}
 
       {uploadError ? <ErrorBanner message={uploadError} /> : null}
+      {actionError ? <ErrorBanner message={actionError} /> : null}
 
       {isLoading ? (
         <Text style={styles.muted}>Loading documents…</Text>
-      ) : documents.length === 0 ? (
+      ) : processing ? (
+        <Text style={styles.muted}>
+          {isFetching ? "Checking progress…" : "Robo is indexing your documents."}
+        </Text>
+      ) : null}
+
+      {isLoading ? null : documents.length === 0 ? (
         <EmptyState
           title="No documents yet."
           body="Pick a PDF or text file below to add it to Robo's library."
@@ -203,11 +256,16 @@ export default function DocumentsScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Re-index ${doc.originalName}`}
-                    onPress={() => void reindexDocument(doc.id)}
+                    disabled={busyId !== null}
+                    onPress={() => void reindex(doc)}
                     hitSlop={10}
                   >
                     <Text style={styles.reindex}>
-                      {doc.status === "failed" ? "Retry" : "Re-index"}
+                      {busyId === doc.id
+                        ? "Working…"
+                        : doc.status === "failed"
+                          ? "Retry"
+                          : "Re-index"}
                     </Text>
                   </Pressable>
                 ) : null}
@@ -215,6 +273,7 @@ export default function DocumentsScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Delete ${doc.originalName}`}
+                  disabled={busyId !== null}
                   onPress={() => remove(doc)}
                   hitSlop={10}
                 >

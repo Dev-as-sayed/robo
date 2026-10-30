@@ -15,7 +15,7 @@
         "expo-image-picker",
         {
           "photosPermission": "Robo uses a photo you choose to explain formulas and study problems.",
-          "cameraPermission": false,
+          "cameraPermission": "Robo uses the camera to photograph formulas and study problems you want explained.",
           "microphonePermission": false
         }
       ],

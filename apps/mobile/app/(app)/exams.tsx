@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { apiErrorStatus } from "@/api/errors";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
@@ -17,6 +18,7 @@ import {
   useGeneratePlanMutation,
   useLazyReadinessQuery,
   useLazyRevisionSummaryQuery,
+  usePlanQuery,
   useRecalculatePlanMutation,
   useUpdateExamMutation,
 } from "@/api/exams-api";
@@ -27,7 +29,7 @@ import {
   parseDateTime,
   toDate,
 } from "@/lib/time";
-import type { Exam, ExamStatus, PlanGenerationResult } from "@/types";
+import type { Exam, ExamStatus } from "@/types";
 import { colors, radii, spacing } from "@/theme";
 
 const statusTones: Record<ExamStatus, PillTone> = {
@@ -46,8 +48,11 @@ function countdownText(date: string): string {
 
 export default function ExamsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ examId?: string }>();
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() =>
+    typeof params.examId === "string" ? params.examId : null
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
   const [dateText, setDateText] = useState("");
@@ -56,9 +61,6 @@ export default function ExamsScreen() {
   const [dailyLimitText, setDailyLimitText] = useState("2");
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  // No "get plan" endpoint exists, so the generated plan lives in local state.
-  const [generated, setGenerated] = useState<PlanGenerationResult | null>(null);
-  const [approved, setApproved] = useState(false);
   const [readinessExamId, setReadinessExamId] = useState<string | null>(null);
 
   const { data, isLoading, isError, error } = useExamsQuery();
@@ -74,6 +76,19 @@ export default function ExamsScreen() {
   const [fetchRevision, { data: revision, isFetching: loadingRevision }] =
     useLazyRevisionSummaryQuery();
   const [revisionExamId, setRevisionExamId] = useState<string | null>(null);
+  const {
+    data: planResult,
+    error: planError,
+    isFetching: loadingPlan,
+    refetch: refetchPlan,
+  } = usePlanQuery(selectedId ?? "", { skip: !selectedId });
+  const approved = Boolean(planResult?.plan.approvedAt);
+
+  useEffect(() => {
+    if (typeof params.examId === "string") {
+      setSelectedId(params.examId);
+    }
+  }, [params.examId]);
 
   const exams = [...(data ?? [])].sort(
     (a, b) => toDate(a.date).getTime() - toDate(b.date).getTime()
@@ -82,8 +97,6 @@ export default function ExamsScreen() {
 
   const select = (id: string) => {
     setSelectedId(current => (current === id ? null : id));
-    setGenerated(null);
-    setApproved(false);
     setActionError(null);
     setReadinessExamId(null);
   };
@@ -165,24 +178,22 @@ export default function ExamsScreen() {
     const limit = Number(dailyLimitText);
     const dailyLimit = Number.isInteger(limit) && limit > 0 ? limit : undefined;
     try {
-      const result = await generatePlan({
+      await generatePlan({
         examId: selected.id,
         ...(dailyLimit ? { dailyLimit } : {}),
       }).unwrap();
-      setGenerated(result);
-      setApproved(false);
+      await refetchPlan();
     } catch {
       setActionError("Robo could not build a study plan for this exam.");
     }
   };
 
-  // Approve takes the plan id from the generation result, not the exam id.
   const approve = async () => {
-    if (!generated) return;
+    if (!planResult) return;
     setActionError(null);
     try {
-      await approvePlan(generated.plan.id).unwrap();
-      setApproved(true);
+      await approvePlan(planResult.plan.id).unwrap();
+      await refetchPlan();
     } catch {
       setActionError("Robo could not approve this plan.");
     }
@@ -193,6 +204,7 @@ export default function ExamsScreen() {
     setActionError(null);
     try {
       const result = await recalculatePlan(selected.id).unwrap();
+      await refetchPlan();
       Alert.alert(
         "Plan updated",
         result.rescheduled === 0
@@ -236,8 +248,6 @@ export default function ExamsScreen() {
           void deleteExam(exam.id);
           if (exam.id === selectedId) {
             setSelectedId(null);
-            setGenerated(null);
-            setApproved(false);
           }
           if (exam.id === editingId) {
             resetForm();
@@ -326,30 +336,42 @@ export default function ExamsScreen() {
             />
           ) : null}
 
-          <TextField
-            label="Tasks per day"
-            value={dailyLimitText}
-            onChangeText={setDailyLimitText}
-            placeholder="2"
-            keyboardType="number-pad"
-          />
-          <Button
-            label="Generate study plan"
-            onPress={() => void generate()}
-            loading={generating}
-          />
+          {!planResult ? (
+            <>
+              <TextField
+                label="Tasks per day"
+                value={dailyLimitText}
+                onChangeText={setDailyLimitText}
+                placeholder="2"
+                keyboardType="number-pad"
+              />
+              <Button
+                label="Generate study plan"
+                onPress={() => void generate()}
+                loading={generating}
+              />
+            </>
+          ) : null}
 
-          {generated ? (
+          {loadingPlan && !planResult ? (
+            <Text style={styles.muted}>Loading plan…</Text>
+          ) : null}
+
+          {planError && apiErrorStatus(planError) !== 404 ? (
+            <ErrorBanner message="Robo could not load this study plan." />
+          ) : null}
+
+          {planResult ? (
             <View style={styles.plan}>
               <View style={styles.planHead}>
                 <Text style={styles.planTitle}>
-                  {`${generated.plan.totalDays}-day plan`}
+                  {`${planResult.plan.totalDays}-day plan`}
                 </Text>
                 {approved ? (
                   <StatusPill label="approved" tone="success" />
                 ) : null}
               </View>
-              {generated.dailyTasks.map(task => (
+              {planResult.dailyTasks.map(task => (
                 <View key={task.id} style={styles.taskRow}>
                   <Text style={styles.taskDay}>{`Day ${task.day}`}</Text>
                   <Text style={styles.taskTitle} numberOfLines={2}>

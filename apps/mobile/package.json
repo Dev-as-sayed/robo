@@ -10,7 +10,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "release:check": "node scripts/check-release-env.mjs",
+    "eas-build-pre-install": "node scripts/check-release-env.mjs"
   },
   "dependencies": {
     "@babel/runtime": "^7.29.10",

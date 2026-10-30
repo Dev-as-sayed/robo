@@ -13,6 +13,7 @@ import {
   generatePlan,
   getExam,
   getExams,
+  getPlan,
   getReadiness,
   updateExam,
 } from "@robo/shared/exams";
@@ -86,6 +87,15 @@ router.delete(
   asyncHandler(async (req, res) => {
     await deleteExam(req.user!.id, req.params.id);
     sendSuccess(res, { code: "EXAM_DELETED", message: "Exam deleted successfully" });
+  })
+);
+
+router.get(
+  "/:id/plan",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const plan = await getPlan(req.user!.id, req.params.id);
+    sendSuccess(res, { code: "PLAN_FETCHED", data: { plan } });
   })
 );
 

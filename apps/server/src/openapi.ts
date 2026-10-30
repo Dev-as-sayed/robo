@@ -413,6 +413,18 @@ export function getOpenApiDocument() {
         status: 201,
       }),
     },
+    "/api/v1/schedule/{id}": {
+      ...pathItem(
+        "patch",
+        operation({
+          summary: "Update a schedule entry",
+          tag: "Schedule",
+          body: "UpdateSchedule",
+        }),
+        [idParam()]
+      ),
+      delete: operation({ summary: "Delete a schedule entry", tag: "Schedule" }),
+    },
     "/api/v1/schedule/{id}/exceptions": pathItem(
       "post",
       operation({
@@ -422,6 +434,11 @@ export function getOpenApiDocument() {
         status: 201,
       }),
       [idParam()]
+    ),
+    "/api/v1/schedule/{id}/exceptions/{exceptionId}": pathItem(
+      "delete",
+      operation({ summary: "Undo a skipped occurrence", tag: "Schedule" }),
+      [idParam(), idParam("exceptionId")]
     ),
     "/api/v1/reminders": {
       ...pathItem("get", operation({ summary: "List reminders", tag: "Reminders" })),
@@ -461,16 +478,19 @@ export function getOpenApiDocument() {
       ),
       delete: operation({ summary: "Delete an exam", tag: "Exams" }),
     },
-    "/api/v1/exams/{id}/plan": pathItem(
-      "post",
-      operation({
+    "/api/v1/exams/{id}/plan": {
+      ...pathItem(
+        "get",
+        operation({ summary: "Get the persisted study plan", tag: "Exams" }),
+        [idParam()]
+      ),
+      post: operation({
         summary: "Generate a draft study plan",
         tag: "Exams",
         body: "GenerateStudyPlan",
         status: 201,
       }),
-      [idParam()]
-    ),
+    },
     "/api/v1/exams/{id}/plan/approve": pathItem(
       "post",
       operation({ summary: "Approve a plan and create todos", tag: "Exams" }),

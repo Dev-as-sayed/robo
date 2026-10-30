@@ -23,13 +23,22 @@ export interface AddExceptionInput {
   reason?: string;
 }
 
+export interface ScheduleQueryArgs {
+  includeSkipped?: boolean;
+}
+
 export const scheduleApi = createApi({
   reducerPath: "scheduleApi",
   baseQuery: baseQueryWithReauth,
   tagTypes: ["Schedule"],
   endpoints: builder => ({
-    schedule: builder.query<ScheduleEntry[], void>({
-      query: () => "/schedule",
+    schedule: builder.query<ScheduleEntry[], ScheduleQueryArgs | void>({
+      query: args => ({
+        url: "/schedule",
+        ...(args?.includeSkipped
+          ? { params: { includeSkipped: "true" } }
+          : {}),
+      }),
       transformResponse: (response: ApiEnvelope<{ schedule: ScheduleEntry[] }>) =>
         response.data.schedule,
       providesTags: ["Schedule"],
@@ -62,6 +71,13 @@ export const scheduleApi = createApi({
       }),
       invalidatesTags: ["Schedule"],
     }),
+    removeException: builder.mutation<void, { id: string; exceptionId: string }>({
+      query: ({ id, exceptionId }) => ({
+        url: `/schedule/${id}/exceptions/${exceptionId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Schedule"],
+    }),
   }),
 });
 
@@ -71,4 +87,5 @@ export const {
   useUpdateScheduleMutation,
   useDeleteScheduleMutation,
   useAddExceptionMutation,
+  useRemoveExceptionMutation,
 } = scheduleApi;

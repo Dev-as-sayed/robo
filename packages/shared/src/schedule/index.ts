@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma";
-import { computeAlertAt } from "./alerts";
+import { tzOffsetMinutes } from "../lib/time";
+import { computeAlertAt, isCancelledOnDay } from "./alerts";
 
 export * from "./alerts";
 
@@ -47,6 +48,17 @@ export interface ScheduleException {
   createdAt: Date;
 }
 
+export interface ScheduleEntryView extends ScheduleEntry {
+  exceptions: Pick<ScheduleException, "id" | "date" | "reason">[];
+  isSkipped: boolean;
+  skippedExceptionId: string | null;
+}
+
+export interface GetScheduleOptions {
+  includeSkipped?: boolean;
+  now?: Date;
+}
+
 export async function createSchedule(
   userId: string,
   data: {
@@ -82,25 +94,59 @@ export async function createSchedule(
   });
 }
 
-export async function getSchedule(userId: string) {
-  return await prisma.scheduleEntry.findMany({
-    where: { userId },
-    orderBy: { startAt: "asc" },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      startAt: true,
-      endAt: true,
-      allDay: true,
-      subject: true,
-      room: true,
-      teacher: true,
-      alertLeadMinutes: true,
-      alertAt: true,
-      createdAt: true,
-    },
+export async function getSchedule(
+  userId: string,
+  options: GetScheduleOptions = {}
+): Promise<ScheduleEntryView[]> {
+  const now = options.now ?? new Date();
+  const [entries, user] = await Promise.all([
+    prisma.scheduleEntry.findMany({
+      where: { userId },
+      orderBy: { startAt: "asc" },
+      select: {
+        id: true,
+        userId: true,
+        title: true,
+        description: true,
+        startAt: true,
+        endAt: true,
+        allDay: true,
+        subject: true,
+        room: true,
+        teacher: true,
+        alertLeadMinutes: true,
+        alertAt: true,
+        alertedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        exceptions: {
+          select: { id: true, date: true, reason: true },
+          orderBy: { date: "asc" },
+        },
+      },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { timezone: true },
+    }),
+  ]);
+
+  const offsetMinutes = tzOffsetMinutes(user?.timezone ?? null, now);
+  const entriesWithState = entries.map(entry => {
+    const skippedException = entry.exceptions.find(exception =>
+      isCancelledOnDay(entry.startAt, [exception.date], offsetMinutes)
+    );
+
+    return {
+      ...entry,
+      isSkipped: Boolean(skippedException),
+      skippedExceptionId: skippedException?.id ?? null,
+    };
   });
+
+  return options.includeSkipped
+    ? entriesWithState
+    : entriesWithState.filter(entry => !entry.isSkipped);
 }
 
 export interface UpdateScheduleInput {
@@ -157,10 +203,23 @@ export async function deleteSchedule(userId: string, scheduleId: string) {
   });
 }
 
-export async function addException(userId: string, scheduleId: string, data: {
-  date: Date;
-  reason?: string;
-}) {
+export async function addException(
+  userId: string,
+  scheduleId: string,
+  data: {
+    date: Date;
+    reason?: string;
+  }
+) {
+  const schedule = await prisma.scheduleEntry.findFirst({
+    where: { id: scheduleId, userId },
+    select: { id: true },
+  });
+
+  if (!schedule) {
+    throw new Error("SCHEDULE_NOT_FOUND");
+  }
+
   return await prisma.scheduleException.create({
     data: {
       scheduleId,
@@ -176,4 +235,20 @@ export async function addException(userId: string, scheduleId: string, data: {
       createdAt: true,
     },
   });
+}
+
+export async function removeException(
+  userId: string,
+  scheduleId: string,
+  exceptionId: string
+) {
+  const result = await prisma.scheduleException.deleteMany({
+    where: { id: exceptionId, scheduleId, userId },
+  });
+
+  if (result.count === 0) {
+    throw new Error("SCHEDULE_EXCEPTION_NOT_FOUND");
+  }
+
+  return result;
 }

@@ -5,6 +5,8 @@ import { refreshOnce } from "./base-query";
 import { type SseFrame, splitSseFrames } from "./sse";
 
 const STREAM_URL = `${API_URL}/chat/messages/stream`;
+const STREAM_IDLE_TIMEOUT_MS = 60_000;
+const STREAM_REQUEST_TIMEOUT_MS = 180_000;
 
 export interface ChatStreamInput {
   content: string;
@@ -39,7 +41,14 @@ export async function startChatStream(
   input: ChatStreamInput,
   handlers: ChatStreamHandlers
 ): Promise<ChatStreamHandle> {
-  const tokens = await getTokens();
+  let tokens: Awaited<ReturnType<typeof getTokens>>;
+
+  try {
+    tokens = await getTokens();
+  } catch {
+    handlers.onError("Robo could not read your session. Sign in again.");
+    return () => {};
+  }
 
   if (!tokens) {
     handlers.onError("You are signed out. Sign in to chat.");
@@ -52,8 +61,26 @@ export async function startChatStream(
   let buffer = "";
   let consumed = 0;
   let activeXhr: XMLHttpRequest | null = null;
+  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const clearIdle = (): void => {
+    if (idleTimer !== null) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+  };
+
+  const armIdle = (): void => {
+    clearIdle();
+    idleTimer = setTimeout(() => {
+      idleTimer = null;
+      fail("Robo took too long to answer. Try again.");
+      activeXhr?.abort();
+    }, STREAM_IDLE_TIMEOUT_MS);
+  };
 
   const fail = (message: string): void => {
+    clearIdle();
     if (cancelled || settled) {
       return;
     }
@@ -80,6 +107,7 @@ export async function startChatStream(
     }
 
     if (frame.event === "done") {
+      clearIdle();
       if (!cancelled && !settled) {
         settled = true;
         handlers.onDone(payload as ChatTurnResult);
@@ -103,12 +131,14 @@ export async function startChatStream(
   };
 
   const open = (accessToken: string): void => {
+    clearIdle();
     const xhr = new XMLHttpRequest();
     activeXhr = xhr;
     buffer = "";
     consumed = 0;
 
     xhr.open("POST", STREAM_URL);
+    xhr.timeout = STREAM_REQUEST_TIMEOUT_MS;
     xhr.setRequestHeader("content-type", "application/json");
     xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
 
@@ -116,6 +146,7 @@ export async function startChatStream(
       if (xhr.responseText.length === consumed) {
         return;
       }
+      armIdle();
       buffer += xhr.responseText.slice(consumed);
       consumed = xhr.responseText.length;
 
@@ -138,6 +169,7 @@ export async function startChatStream(
 
       if (xhr.status === 401 && !refreshTokenTried) {
         refreshTokenTried = true;
+        clearIdle();
 
         void (async () => {
           const refreshed = await refreshOnce();
@@ -177,12 +209,14 @@ export async function startChatStream(
           : {}),
       })
     );
+    armIdle();
   };
 
   open(tokens.accessToken);
 
   return () => {
     cancelled = true;
+    clearIdle();
     activeXhr?.abort();
   };
 }

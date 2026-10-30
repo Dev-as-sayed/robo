@@ -195,6 +195,8 @@ export async function generatePlan(userId: string, examId: string, data: {
           completed: true,
         },
       },
+      approvedAt: true,
+      reminderId: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -207,6 +209,47 @@ export async function generatePlan(userId: string, examId: string, data: {
       day: t.day,
       title: t.title,
       completed: t.completed,
+    })),
+  };
+}
+
+export async function getPlan(userId: string, examId: string) {
+  const plan = await prisma.studyPlan.findFirst({
+    where: { examId, userId },
+    select: {
+      id: true,
+      examId: true,
+      userId: true,
+      totalDays: true,
+      approvedAt: true,
+      reminderId: true,
+      dailyTasks: {
+        orderBy: { day: "asc" },
+        select: {
+          id: true,
+          planId: true,
+          day: true,
+          title: true,
+          completed: true,
+          todoId: true,
+        },
+      },
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  if (!plan) {
+    throw new Error("PLAN_NOT_FOUND");
+  }
+
+  return {
+    plan,
+    dailyTasks: plan.dailyTasks.map(task => ({
+      id: task.id,
+      day: task.day,
+      title: task.title,
+      completed: task.completed,
     })),
   };
 }

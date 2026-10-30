@@ -31,7 +31,7 @@ export interface GeneratePlanInput {
 export const examsApi = createApi({
   reducerPath: "examsApi",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Exams", "Readiness"],
+  tagTypes: ["Exams", "Readiness", "Plan"],
   endpoints: builder => ({
     exams: builder.query<Exam[], { status?: ExamStatus } | void>({
       query: filters => ({
@@ -47,6 +47,13 @@ export const examsApi = createApi({
       transformResponse: (response: ApiEnvelope<{ exam: Exam }>) =>
         response.data.exam,
       providesTags: (_result, _error, id) => [{ type: "Exams", id }],
+    }),
+    plan: builder.query<PlanGenerationResult, string>({
+      query: examId => `/exams/${examId}/plan`,
+      transformResponse: (
+        response: ApiEnvelope<{ plan: PlanGenerationResult }>
+      ) => response.data.plan,
+      providesTags: (_result, _error, examId) => [{ type: "Plan", id: examId }],
     }),
     createExam: builder.mutation<Exam, CreateExamInput>({
       query: body => ({ url: "/exams", method: "POST", body }),
@@ -72,12 +79,12 @@ export const examsApi = createApi({
       }),
       transformResponse: (response: ApiEnvelope<{ plan: PlanGenerationResult }>) =>
         response.data.plan,
-      invalidatesTags: ["Exams", "Readiness"],
+      invalidatesTags: ["Exams", "Readiness", "Plan"],
     }),
     // The server's approve route takes the plan id, not the exam id.
     approvePlan: builder.mutation<void, string>({
       query: planId => ({ url: `/exams/${planId}/plan/approve`, method: "POST" }),
-      invalidatesTags: ["Exams", "Readiness"],
+      invalidatesTags: ["Exams", "Readiness", "Plan"],
     }),
     recalculatePlan: builder.mutation<PlanRecalculation, string>({
       query: examId => ({
@@ -86,7 +93,7 @@ export const examsApi = createApi({
       }),
       transformResponse: (response: ApiEnvelope<{ result: PlanRecalculation }>) =>
         response.data.result,
-      invalidatesTags: ["Exams", "Readiness"],
+      invalidatesTags: ["Exams", "Readiness", "Plan"],
     }),
     revisionSummary: builder.query<RevisionSummary, string>({
       query: examId => `/exams/${examId}/revision`,
@@ -108,6 +115,7 @@ export const examsApi = createApi({
 export const {
   useExamsQuery,
   useExamQuery,
+  usePlanQuery,
   useCreateExamMutation,
   useUpdateExamMutation,
   useDeleteExamMutation,

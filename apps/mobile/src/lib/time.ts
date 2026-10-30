@@ -36,6 +36,15 @@ export function isoDateTime(value: string | Date): string {
   return `${isoDate(date)}T${hours}:${minutes}:00`;
 }
 
+/** Local 24-hour clock value for editable time fields, e.g. "09:30". */
+export function isoTime(value: string | Date): string {
+  const date = toDate(value);
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${hours}:${minutes}`;
+}
+
 /**
  * Turns "2026-10-30" plus optional "18:00" into an ISO string. Returns null when the
  * inputs cannot be parsed so screens can show a validation message instead of Invalid Date.

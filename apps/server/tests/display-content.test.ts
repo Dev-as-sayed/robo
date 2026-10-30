@@ -113,8 +113,35 @@ describe("rich chat cards", () => {
     expect(content.blocks[0]).toMatchObject({
       type: "card",
       section: "plans",
-      action: { label: "Open exams", route: "/exams" },
+      action: { label: "Open plan", route: "/exams?examId=exam-1" },
       items: [{ title: "Study plan · 5 days", subtitle: "Exam exam-1" }],
+    });
+  });
+
+  it("routes a confirmation card to its pending action", () => {
+    const content = buildDisplayContent("Ready to call.", [
+      {
+        toolName: "prepare_call",
+        output: {
+          pendingAction: {
+            id: "action-1",
+            kind: "CALL",
+            recipientName: "Asha",
+            recipientPhone: "+919876543210",
+            status: "PENDING",
+          },
+        },
+      },
+    ]);
+
+    expect(content.blocks[0]).toMatchObject({
+      type: "card",
+      section: "actions",
+      action: {
+        label: "Review",
+        route: "/approvals?actionId=action-1",
+      },
+      items: [{ id: "action-1", title: "Call Asha" }],
     });
   });
 
@@ -146,6 +173,7 @@ describe("rich chat cards", () => {
           title: "chapter-3.pdf",
           subtitle: "Photosynthesis converts light into chemical energy.",
           meta: "page 42 · score 0.91",
+          page: 42,
         },
       ],
     });

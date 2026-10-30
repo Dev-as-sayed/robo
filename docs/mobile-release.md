@@ -17,6 +17,24 @@ Store the Expo token in GitHub Actions only when automated builds are enabled.
 Signing keys and store listings are external-account items and are intentionally
 not committed.
 
+## Release environment
+
+Set `EXPO_PUBLIC_API_URL` in the EAS environment for development, preview and
+production. Production builds require an HTTPS URL and must not point at
+localhost or a private address. The `eas-build-pre-install` hook runs
+`scripts/check-release-env.mjs`, so a preview or production build fails before
+installation when the URL is missing or local.
+
+```bash
+cd apps/mobile
+eas env:create --name EXPO_PUBLIC_API_URL --value https://api.example.com/api/v1 --environment production --visibility plaintext
+pnpm release:check
+```
+
+`pnpm release:check` is a no-op unless `EAS_BUILD_PROFILE` is `preview` or
+`production`. Local development keeps using `EXPO_PUBLIC_API_URL` from `.env`
+or the shell override documented in the README.
+
 ## Sentry
 
 Set `EXPO_PUBLIC_SENTRY_DSN` in the EAS environment. The app initialises Sentry in
@@ -68,6 +86,8 @@ reconnect behavior before every store submission.
 
 - [x] Expo project ID linked (`@amsayed231/robo`).
 - [ ] EAS signing credentials configured.
+- [ ] `EXPO_PUBLIC_API_URL` set for development, preview and production.
+- [ ] Android FCM V1 push credentials configured.
 - [ ] Sentry DSN and source-map upload configured.
 - [x] Upgrade to Expo SDK 54 with compile/target SDK 36.
 - [ ] Rebuild and re-test permissions, notifications, edge-to-edge layout and links on Android 16.

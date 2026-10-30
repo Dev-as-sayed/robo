@@ -18,7 +18,8 @@ const db = vi.hoisted(() => ({
 
 vi.mock("@robo/shared/lib/prisma", () => ({ prisma: db }));
 
-const { approvePlan, getReadiness, recalculatePlan } = await import("@robo/shared/exams");
+const { approvePlan, getPlan, getReadiness, recalculatePlan } =
+  await import("@robo/shared/exams");
 
 const NOW = new Date("2026-10-23T10:00:00.000Z");
 
@@ -43,6 +44,57 @@ function plan(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+describe("getPlan", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns the persisted plan and its daily tasks", async () => {
+    const persisted = plan({
+      approvedAt: NOW,
+      reminderId: "reminder-1",
+      createdAt: NOW,
+      updatedAt: NOW,
+      dailyTasks: [
+        {
+          id: "task-1",
+          planId: "plan-1",
+          day: 1,
+          title: "Study topic - Day 1",
+          completed: false,
+          todoId: "todo-1",
+        },
+      ],
+    });
+    db.studyPlan.findFirst.mockResolvedValue(persisted);
+
+    const result = await getPlan("user-1", "exam-1");
+
+    expect(result.plan).toEqual(
+      expect.objectContaining({
+        id: "plan-1",
+        examId: "exam-1",
+        approvedAt: NOW,
+        reminderId: "reminder-1",
+      })
+    );
+    expect(result.dailyTasks).toEqual([
+      {
+        id: "task-1",
+        day: 1,
+        title: "Study topic - Day 1",
+        completed: false,
+      },
+    ]);
+  });
+
+  it("rejects an exam without a plan", async () => {
+    db.studyPlan.findFirst.mockResolvedValue(null);
+
+    await expect(getPlan("user-1", "exam-1")).rejects.toThrow("PLAN_NOT_FOUND");
+  });
+});
 
 describe("approvePlan", () => {
   beforeEach(() => {

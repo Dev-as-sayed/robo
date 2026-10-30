@@ -2,41 +2,44 @@
 
 - **Date:** 2026-10-30
 - **Scope:** `apps/mobile` against the mobile items in `todo.md`
-- **Verdict:** **Not complete.** The app typechecks and lints, and most screens/API calls exist, but several checked todo items are overstated and there are runtime/configuration blockers.
-- **Todo state:** reconciled in [`todo.md`](todo.md); follow-ups are under “Mobile Audit Follow-ups (2026-10-30)”.
+- **Verdict:** **Code complete for the audited implementation gaps; not release-complete.** The app typechecks and lints, but release configuration, device verification and the full Hindi string sweep remain.
+- **Todo state:** reconciled in [`todo.md`](todo.md); code follow-ups are under “Mobile Audit Follow-ups (2026-10-30)”.
 
 ## Method
 
 - Reviewed all mobile screens, API clients, auth/session code, notifications, realtime, i18n and build configuration.
 - Compared mobile endpoint paths and response shapes with the server routes and shared packages.
-- Ran `pnpm --filter robo-mobile typecheck` and `pnpm --filter robo-mobile lint`; both pass.
-- No EAS development build, physical device, emulator or Maestro run was available, so device-only behavior is marked **runtime-unverified**.
-- The audit itself changed no product files; follow-up fixes and their verification are tracked in `todo.md`.
+- Ran `pnpm --filter robo-mobile typecheck` and `pnpm --filter robo-mobile lint`; both pass after the follow-up pass.
+- Ran `pnpm --dir apps/server typecheck` and the server Vitest suite; 57 files / 325 tests pass.
+- Implemented the audited code follow-ups on 2026-10-30; device-only behavior remains **runtime-unverified** because no EAS development build or physical-device run has occurred.
 
 ## Executive summary
 
 The app is broad and mostly wired: auth, onboarding, Today, chat, tasks, reminders, schedule, exams, documents, quizzes, study, insights, activity, contacts, approvals, class notes, memories, vision, help and settings all have screens. All mobile-called server routes exist.
 
-However, the mobile scope cannot be called complete because:
+The audited product gaps were implemented in code on 2026-10-30: exception-aware schedule editing/undo, Home next-class/draft exams, persisted exam plans and deep links, chat history/timeouts/citation and confirmation actions, live document polling, camera capture, and settings auth refresh.
 
-1. Release builds default to `http://localhost:3000/api/v1` unless `EXPO_PUBLIC_API_URL` is configured externally.
-2. Several checked items are only partial: schedule editing/exceptions, Home next-class/exam visibility, exam-plan persistence, tappable citations, live document status, camera capture and i18n/RTL.
-3. APP-02 device provisioning and APP-20 EAS development build are still open.
+The mobile scope still cannot be called release-complete because:
+
+1. Release builds default to `http://localhost:3000/api/v1` unless `EXPO_PUBLIC_API_URL` is configured externally; the new release check blocks missing/localhost URLs but does not supply the production URL.
+2. EAS signing, FCM V1 credentials, a development build and physical-device verification are still missing. Push, camera, streaming, permissions, links and WebSocket reconnect are runtime-unverified.
+3. Hindi covers only the navigation foundation; the full static-string sweep, localized date/number formatting, server display labels and forced-RTL smoke test remain.
+4. Closed-alpha testers and triage remain open. APP-02 device provisioning and chat voice-note input are explicitly descoped for v1.
 
 ## Status by todo area
 
 | Area                     | Status | Summary                                                                                                                                                                           |
 | ------------------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1.6 Mobile foundation   | ◐      | Auth lifecycle now clears state on terminal refresh failures and restores a cached profile after transient failures; EAS build, device setup and streaming-on-device remain open. |
-| R2.5 Mobile productivity | ◐      | Screens exist; push is code-complete but unverified on a development build, and Home/Schedule have completion gaps.                                                               |
-| R3.5 Mobile study        | ◐      | Documents, quizzes and plans exist; plan approval is not reload-safe and citations are not individually tappable.                                                                 |
-| R4 Mobile communication  | ◐      | Contact picker and approvals are code-complete; runtime permission/EAS verification remains.                                                                                      |
+| R1.6 Mobile foundation   | ◐      | Auth lifecycle and chat hardening are code-complete; EAS build and streaming-on-device remain open. Device provisioning is descoped for v1.                                      |
+| R2.5 Mobile productivity | ◐      | Home and Schedule fixes are code-complete and covered by checks; push remains unverified on a development build.                                                                 |
+| R3.5 Mobile study        | ◐      | Persisted plans, plan deep links and tappable citation downloads are code-complete; device smoke remains.                                                                         |
+| R4 Mobile communication  | ◐      | Contact picker, approvals and chat confirmation deep links are code-complete; runtime permission/EAS verification remains.                                                        |
 | R5 Mobile proactive      | ◐      | Insights/trends/nudges and the app study timer exist; the device timer remains firmware-blocked.                                                                                  |
-| X.2/X.4 Verification     | ◐      | Typecheck/lint pass; Maestro, EAS build, Android 16 smoke and store verification remain.                                                                                          |
+| X.2/X.4 Verification     | ◐      | Typecheck/lint and server tests pass; Maestro, EAS build, Android 16 smoke and store verification remain.                                                                          |
 
 ## Critical findings
 
-### P0-1 — Production API URL is not set in EAS profiles
+### P0-1 — Production API URL is not set in EAS profiles — open
 
 **Evidence**
 
@@ -49,21 +52,25 @@ However, the mobile scope cannot be called complete because:
 
 **Acceptance:** A production bundle points at the deployed HTTPS API; the release checklist fails if the variable is absent.
 
-### P1-1 — Device provisioning is incomplete
+### P1-1 — Device provisioning and voice-note input are descoped for v1
+
+**Decision (2026-10-30)**
+
+- APP-02 QR/BLE/Wi-Fi provisioning, the `robo://pair` route and live provisioning status are not shipping in mobile v1. Pairing code, device list/status, rename, revoke and factory reset remain.
+- Chat voice-note input is not shipping in mobile v1. APP-04 closes as text chat only.
+- Both descopes are recorded in `todo.md` and the completion plan.
 
 **Evidence**
 
 - Pairing code, device list/status, rename, revoke and reset exist (`apps/mobile/app/(app)/devices.tsx`), but there is no QR scanner, BLE client or Wi-Fi provisioning flow.
 - The QR payload is `robo://pair?code=...` (`packages/shared/src/devices/index.ts:98`), but the app has no `app/pair.tsx` route.
-- Device status refreshes only on pull-to-refresh; factory reset has no confirmation or error handling.
+- The mobile chat has no recorder, and the server voice pipeline serves device WebSockets rather than a mobile upload endpoint.
 
-**Impact:** APP-02 and the hardware pairing flow cannot be completed from the app.
+**Impact:** Users cannot provision a device from the app or dictate a chat message. These are accepted v1 gaps; device voice interaction and device setup remain external/firmware flows.
 
-**Fix:** Add `expo-camera` QR scanning, `react-native-ble-plx` provisioning, the `robo://pair` route, reset confirmation and live device invalidation. If provisioning is intentionally firmware/CLI-only for v1, explicitly descope APP-02 and update the FRD/todo.
+**Acceptance:** The descopes are visible in the product backlog and release notes; no unverified QR/BLE/audio permission code is added to the app.
 
-**Acceptance:** Scan pairing QR → provision Wi-Fi over BLE → see the device come online without pull-to-refresh; reset requires confirmation.
-
-### P1-2 — Schedule editing and exceptions are incomplete
+### P1-2 — Schedule editing and exceptions are incomplete — fixed in code
 
 **Evidence**
 
@@ -75,9 +82,11 @@ However, the mobile scope cannot be called complete because:
 
 **Fix:** Add edit UI, filter exceptions in the schedule read path (or return an occurrence view), and provide undo.
 
+**Resolution:** `getSchedule` now loads the user timezone and exceptions, returns `isSkipped`/`skippedExceptionId`, filters skipped entries unless `includeSkipped=true`, and supports deleting an exception for Undo. Schedule has edit/save/cancel, class-date skip and Undo; Home excludes skipped days. Covered by `schedule-exceptions.test.ts`.
+
 **Acceptance:** Edit updates the entry; “Skip today” removes that day from Schedule/Home and does not suppress future occurrences.
 
-### P1-3 — Home next-class and exam countdown are partial
+### P1-3 — Home next-class and exam countdown are partial — fixed in code
 
 **Evidence**
 
@@ -88,9 +97,11 @@ However, the mobile scope cannot be called complete because:
 
 **Fix:** Search the next future occurrence across days and include draft exams (or clearly label a separate active-exam countdown).
 
+**Resolution:** Home now scans schedule entries across days for the next future class and includes draft + active exams, filtering completed exams from the countdown.
+
 **Acceptance:** Home shows tomorrow’s first class and a newly created exam without activating it.
 
-### P1-4 — Exam plan approval is not reload-safe
+### P1-4 — Exam plan approval is not reload-safe — fixed in code
 
 **Evidence**
 
@@ -101,9 +112,11 @@ However, the mobile scope cannot be called complete because:
 
 **Fix:** Add a persisted plan read endpoint and hydrate the screen from it; keep local state only for loading/optimistic UI.
 
+**Resolution:** Added shared `getPlan`, `GET /exams/:id/plan`, Plan cache invalidation, server-backed hydrate/approve/recalculate, `/exams?examId=...` selection and chat plan deep links. Covered by `study-plan-approval.test.ts`.
+
 **Acceptance:** Reload or reopen the exam and approve/recalculate the existing plan.
 
-### P1-5 — Chat citations are not tappable
+### P1-5 — Chat citations are not tappable — fixed in code
 
 **Evidence**
 
@@ -114,9 +127,11 @@ However, the mobile scope cannot be called complete because:
 
 **Fix:** Give citation rows their own action (document detail or signed download URL) and pass the document/page target.
 
+**Resolution:** Citation display items now carry `page`; each source row requests a signed download URL and opens it with `#page=N`. The study-plan and confirmation cards route to the selected exam and matching pending action. Confirmation routing is covered by `display-content.test.ts`.
+
 **Acceptance:** Tapping a citation opens the cited document at the relevant page or a document detail view.
 
-### P1-6 — Document processing status is not live
+### P1-6 — Document processing status is not live — fixed in code
 
 **Evidence**
 
@@ -126,9 +141,11 @@ However, the mobile scope cannot be called complete because:
 
 **Fix:** Poll while any document is non-terminal, or refetch on focus/app foreground.
 
+**Resolution:** Documents refetch on focus and poll every 4 seconds only while any document is non-terminal; polling stops on `indexed`/`failed`. Reindex/delete errors are surfaced.
+
 **Acceptance:** Status advances automatically through parsing → OCR → chunking → embedding → indexed/failed.
 
-### P2-1 — Vision is library-only
+### P2-1 — Vision is library-only — fixed in code
 
 **Evidence**
 
@@ -138,9 +155,11 @@ However, the mobile scope cannot be called complete because:
 
 **Fix:** Add camera capture and permission rationale, or update the FRD/todo to “photo library only”.
 
+**Resolution:** `app.json` enables the camera permission text. Vision offers back-camera capture and library selection, requests camera permission with an Open Settings path, and keeps the existing JPEG conversion/preview/upload flow.
+
 **Acceptance:** Camera capture works on Android/iOS or the scope is explicitly changed.
 
-### P2-2 — Settings save does not refresh the auth user
+### P2-2 — Settings save does not refresh the auth user — fixed in code
 
 **Evidence**
 
@@ -150,9 +169,11 @@ However, the mobile scope cannot be called complete because:
 
 **Fix:** Dispatch `setUser` with the mutation response (or refetch `/users/me`) after save.
 
+**Resolution:** Settings syncs the `/users/me` query result into Redux `auth.user`, so name/locale changes propagate after `updateMe` invalidates and refetches the profile.
+
 **Acceptance:** Changing language updates translated UI immediately; changing name updates Home without restart.
 
-### P2-3 — i18n/RTL is only a foundation
+### P2-3 — i18n/RTL is only a foundation — partial
 
 **Evidence**
 
@@ -166,14 +187,14 @@ However, the mobile scope cannot be called complete because:
 
 **Acceptance:** A supported RTL locale flips layout and captures all visible strings.
 
-### P2-4 — Verification is still device-dependent
+### P2-4 — Verification is still device-dependent — open
 
 **Evidence**
 
 - Mobile has no unit tests; Maestro flows exist in `.maestro/` but have not been run.
 - Typecheck/lint pass, but there is no EAS development build or Android 16 device smoke test; the linked EAS project has not been exercised on a physical device.
 
-**Impact:** Streaming, push, permissions, BLE, camera, edge-to-edge and reconnect behavior remain unverified.
+**Impact:** Streaming, push, permissions, camera, edge-to-edge and reconnect behavior remain unverified.
 
 **Fix:** Build an EAS development client, run the Maestro smoke/sign-in flows, and execute the Android 16 checklist.
 
@@ -186,6 +207,8 @@ The audit changed the following mobile-related checkboxes/notes in `todo.md`:
 | Item                     | Previous | Now                              | Reason                                                                               |
 | ------------------------ | -------- | -------------------------------- | ------------------------------------------------------------------------------------ |
 | P0.4 root pnpm workspace | Open     | Done                             | `pnpm-workspace.yaml` exists and CI uses it.                                         |
+| APP-02 Device setup      | Open     | Descoped for v1                  | QR/BLE/Wi-Fi provisioning is not shipping; pairing/status screens remain.             |
+| APP-04 Voice note        | Open     | Descoped for v1                  | Mobile chat closes as text-only; device voice stays on the firmware/WebSocket path.   |
 | APP-03 Home              | Done     | Open                             | Next class is today-only; draft exams are hidden.                                    |
 | APP-05 Tasks/reminders   | Done     | Done with caveat                 | Repeat reminder can anchor at midnight without a time.                               |
 | APP-06 Schedule          | Done     | Open                             | No edit UI; exceptions do not remove entries.                                        |

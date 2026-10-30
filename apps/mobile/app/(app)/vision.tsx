@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Linking, StyleSheet, Text, View } from "react-native";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -27,6 +27,61 @@ export default function VisionScreen() {
   const [formError, setFormError] = useState<string | null>(null);
   const [explainImage, { isLoading }] = useExplainImageMutation();
 
+  const showPermissionHelp = (message: string) => {
+    Alert.alert("Permission needed", message, [
+      { text: "Not now", style: "cancel" },
+      {
+        text: "Open settings",
+        onPress: () => void Linking.openSettings(),
+      },
+    ]);
+  };
+
+  const processAsset = async (asset: ImagePicker.ImagePickerAsset) => {
+    const converted = await ImageManipulator.manipulateAsync(asset.uri, [], {
+      compress: 0.7,
+      format: ImageManipulator.SaveFormat.JPEG,
+      base64: true,
+    });
+
+    if (!converted.base64) {
+      setFormError("That photo could not be read. Try another one.");
+      return;
+    }
+
+    setImage({ uri: converted.uri, base64: converted.base64 });
+  };
+
+  const takePhoto = async () => {
+    setFormError(null);
+    setAnswer(null);
+
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (!permission.granted) {
+        const message =
+          "Camera access is off. Enable it in Settings to photograph formulas.";
+        setFormError(message);
+        showPermissionHelp(message);
+        return;
+      }
+
+      const picked = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        cameraType: ImagePicker.CameraType.back,
+        quality: 1,
+      });
+      const asset = picked.canceled ? undefined : picked.assets[0];
+
+      if (asset) {
+        await processAsset(asset);
+      }
+    } catch {
+      setFormError("The camera could not open on this device.");
+    }
+  };
+
   const chooseImage = async () => {
     setFormError(null);
     setAnswer(null);
@@ -37,24 +92,10 @@ export default function VisionScreen() {
         quality: 1,
       });
       const asset = picked.canceled ? undefined : picked.assets[0];
-      if (!asset) return;
 
-      const converted = await ImageManipulator.manipulateAsync(
-        asset.uri,
-        [],
-        {
-          compress: 0.7,
-          format: ImageManipulator.SaveFormat.JPEG,
-          base64: true,
-        }
-      );
-
-      if (!converted.base64) {
-        setFormError("That photo could not be read. Try another one.");
-        return;
+      if (asset) {
+        await processAsset(asset);
       }
-
-      setImage({ uri: converted.uri, base64: converted.base64 });
     } catch {
       setFormError("The photo picker could not open on this device.");
     }
@@ -90,8 +131,9 @@ export default function VisionScreen() {
 
       <Card title="EXPLAIN A PHOTO">
         <Text style={styles.muted}>
-          Pick a photo of a formula, diagram or handwritten problem. Robo reads
-          the image and walks you through it. Only academic content is used.
+          Take a photo of a formula, diagram or handwritten problem, or choose
+          one from your library. Robo reads the image and walks you through it.
+          Only academic content is used.
         </Text>
 
         {image ? (
@@ -103,7 +145,15 @@ export default function VisionScreen() {
           />
         ) : null}
 
-        <Button label={image ? "Choose another photo" : "Choose a photo"} onPress={() => void chooseImage()} />
+        <Button
+          label={image ? "Take another photo" : "Take a photo"}
+          onPress={() => void takePhoto()}
+        />
+        <Button
+          label="Choose from library"
+          variant="ghost"
+          onPress={() => void chooseImage()}
+        />
         <TextField
           label="What should Robo explain?"
           value={question}

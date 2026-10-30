@@ -9,6 +9,11 @@ export interface UploadDocumentInput {
   subject?: string;
 }
 
+export interface DocumentDownloadUrl {
+  downloadUrl: string;
+  expiresAt: string;
+}
+
 export const documentsApi = createApi({
   reducerPath: "documentsApi",
   baseQuery: baseQueryWithReauth,
@@ -34,6 +39,12 @@ export const documentsApi = createApi({
         response.data.document,
       invalidatesTags: ["Documents"],
     }),
+    documentDownloadUrl: builder.mutation<DocumentDownloadUrl, string>({
+      query: id => ({ url: `/documents/${id}/download-url`, method: "GET" }),
+      transformResponse: (
+        response: ApiEnvelope<DocumentDownloadUrl>
+      ) => response.data,
+    }),
     reindexDocument: builder.mutation<StudyDocument | null, string>({
       query: id => ({ url: `/documents/${id}/reindex`, method: "POST" }),
       transformResponse: (
@@ -51,6 +62,7 @@ export const documentsApi = createApi({
 export const {
   useDocumentsQuery,
   useUploadDocumentMutation,
+  useDocumentDownloadUrlMutation,
   useReindexDocumentMutation,
   useDeleteDocumentMutation,
 } = documentsApi;

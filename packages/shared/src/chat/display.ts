@@ -17,6 +17,7 @@ export interface DisplayItem {
   subtitle?: string;
   meta?: string;
   status?: string;
+  page?: number;
 }
 
 export interface DisplayActionLink {
@@ -239,17 +240,28 @@ function blocksForAction(action: DisplayAction): DisplayBlock[] {
         EMAIL: "Email",
         WHATSAPP: "WhatsApp",
       };
-      const block = card("actions", "Needs confirmation", [
-        {
-          ...(text(row.id) ? { id: text(row.id) } : {}),
-          title: `${label[kind] ?? "Contact"} ${recipient}`,
-          ...(text(row.recipientPhone) ?? text(row.recipientEmail)
-            ? { subtitle: text(row.recipientPhone) ?? text(row.recipientEmail) }
-            : {}),
-          ...(text(row.body) ? { meta: text(row.body) } : {}),
-          ...(text(row.status) ? { status: text(row.status) } : {}),
-        },
-      ]);
+      const pendingActionId = text(row.id);
+      const block = card(
+        "actions",
+        "Needs confirmation",
+        [
+          {
+            ...(pendingActionId ? { id: pendingActionId } : {}),
+            title: `${label[kind] ?? "Contact"} ${recipient}`,
+            ...(text(row.recipientPhone) ?? text(row.recipientEmail)
+              ? { subtitle: text(row.recipientPhone) ?? text(row.recipientEmail) }
+              : {}),
+            ...(text(row.body) ? { meta: text(row.body) } : {}),
+            ...(text(row.status) ? { status: text(row.status) } : {}),
+          },
+        ],
+        pendingActionId
+          ? {
+              label: "Review",
+              route: `/approvals?actionId=${encodeURIComponent(pendingActionId)}`,
+            }
+          : undefined
+      );
       return block ? [block] : [];
     }
     case "plan_today": {
@@ -296,6 +308,7 @@ function blocksForAction(action: DisplayAction): DisplayBlock[] {
     case "create_study_plan":
     case "approve_study_plan": {
       const days = metric(data.totalDays);
+      const examId = text(data.examId);
       const title = days ? `Study plan · ${days} days` : "Study plan";
       const block = card(
         "plans",
@@ -304,13 +317,16 @@ function blocksForAction(action: DisplayAction): DisplayBlock[] {
           {
             ...(text(data.planId) ? { id: text(data.planId) } : {}),
             title,
-            ...(text(data.examId) ? { subtitle: `Exam ${text(data.examId)}` } : {}),
+            ...(examId ? { subtitle: `Exam ${examId}` } : {}),
             ...(metric(data.todosCreated)
               ? { meta: `${metric(data.todosCreated)} tasks created` }
               : {}),
           },
         ],
-        { label: "Open exams", route: "/exams" }
+        {
+          label: "Open plan",
+          route: examId ? `/exams?examId=${encodeURIComponent(examId)}` : "/exams",
+        }
       );
       return block ? [block] : [];
     }
@@ -321,7 +337,8 @@ function blocksForAction(action: DisplayAction): DisplayBlock[] {
           const row = record(chunk);
           if (!row) return null;
           const source = text(row.source) ?? text(row.documentId) ?? `Passage ${index + 1}`;
-          const page = typeof row.page === "number" ? `page ${row.page}` : undefined;
+          const page = typeof row.page === "number" ? row.page : undefined;
+          const pageLabel = page ? `page ${page}` : undefined;
           const score =
             typeof row.score === "number" ? `score ${row.score.toFixed(2)}` : undefined;
           const body = text(row.text);
@@ -329,9 +346,10 @@ function blocksForAction(action: DisplayAction): DisplayBlock[] {
             ...(text(row.documentId) ? { id: text(row.documentId) } : {}),
             title: source,
             ...(body ? { subtitle: body.length > 180 ? `${body.slice(0, 177)}…` : body } : {}),
-            ...(page || score
-              ? { meta: [page, score].filter(Boolean).join(" · ") }
+            ...(pageLabel || score
+              ? { meta: [pageLabel, score].filter(Boolean).join(" · ") }
               : {}),
+            ...(page ? { page } : {}),
           };
         })
         .filter((row): row is DisplayItem => row !== null);

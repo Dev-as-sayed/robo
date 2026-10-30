@@ -135,8 +135,8 @@
 - [x] 🔴 Redux Toolkit store + RTK Query API slice with token refresh [APP-21] — `src/store.ts`, `src/api/base-query.ts` (single-flight refresh on 401; terminal refresh failures clear user/API/chat state, transient failures preserve tokens and the cached profile, refresh is timeout-bounded, and a sign-out guard prevents an in-flight refresh from resurrecting the session); `auth-api`/`chat-api` slices
 - [x] 🔴 Secure token storage (`expo-secure-store`) [APP-22] — `src/auth/tokens.ts`, localStorage fallback on web
 - [x] 🔴 Auth and onboarding screens (language, time zone) [APP-01] — `app/sign-in.tsx`, `app/sign-up.tsx`, `app/onboarding.tsx`
-- [ ] 🔴 Device setup: QR scan, BLE scan, Wi-Fi provisioning, status [APP-02, FR-ACC-02/03] — pairing code, device list/status, rename, revoke and factory reset exist in `app/(app)/devices.tsx`; QR scan, BLE/Wi-Fi provisioning, the `robo://pair` route, live status refresh and reset confirmation are missing
-- [ ] 🔴 Chat screen with streaming text [APP-04] — SSE client and chat UI are built, but on-device incremental delivery is unverified; stop/error races, no request timeout, history lost after restart and missing FRD-level voice-note input remain
+- [x] ⏭ Device setup: QR scan, BLE scan, Wi-Fi provisioning, status [APP-02, FR-ACC-02/03] — **Descoped for v1 (2026-10-30):** pairing code, device list/status, rename, revoke and factory reset remain in `app/(app)/devices.tsx`; QR scan, BLE/Wi-Fi provisioning and the `robo://pair` route are not shipping in mobile v1
+- [ ] 🔴 Chat screen with streaming text [APP-04] — SSE client and chat UI are built, but on-device incremental delivery is unverified; stop/error races, no request timeout and history lost after restart remain. Voice-note input is descoped for v1
 - [x] 🟡 Tab navigation shell [APP-03] — `app/(app)/_layout.tsx` is a `Tabs` navigator (Today / Chat / Tasks / Insights / Settings) with the detail screens registered as `href: null` routes, guarded by the auth redirect
 - [x] 🟡 Permission request helper with explanations [APP-26] — 1 d — `src/permissions.ts` provides `ensurePermissionWithExplanation`, which checks current status, shows a rationale before the OS dialog, handles `canAskAgain=false` by offering Open Settings, and is now used for push/local notifications and opening the contact picker
 
@@ -350,7 +350,7 @@ Full report: [`report.md`](report.md). The app typechecks and lints, and all mob
 ### P0 — runtime and configuration blockers
 
 - [ ] 🔴 Set production `EXPO_PUBLIC_API_URL` for the EAS profiles; verify push registration, cold-start tap routing, nudge routing and sign-out token revocation on a development build
-- [ ] 🔴 Implement or explicitly descope APP-02 QR/BLE/Wi-Fi provisioning, the `robo://pair` route and live device status
+- [x] ⏭ APP-02 QR/BLE/Wi-Fi provisioning — **Descoped for v1 (2026-10-30):** app-side QR scan, BLE/Wi-Fi provisioning and the `robo://pair` route are not shipping; pairing/status screens remain
 
 ### P1 — checked items that still need completion
 
