@@ -2,13 +2,7 @@ import argon2 from "argon2";
 import { OAuth2Client } from "google-auth-library";
 import { prisma } from "../lib/prisma";
 import { toPublicUser, type PublicUser } from "../users/select";
-import {
-  createTokenPair,
-  hashToken,
-  jwtVerify,
-  type TokenPair,
-  type TokenPayload,
-} from "./jwt";
+import { createTokenPair, hashToken, jwtVerify, type TokenPair, type TokenPayload } from "./jwt";
 
 export interface AuthResult {
   user: PublicUser;
@@ -190,7 +184,7 @@ export async function refreshSession(refreshToken: string): Promise<AuthResult> 
 
   const tokens = createTokenPair(user.id);
 
-  const rotated = await prisma.$transaction(async (tx) => {
+  const rotated = await prisma.$transaction(async tx => {
     const claimed = await tx.refreshToken.updateMany({
       where: { id: stored.id, revokedAt: null },
       data: { revokedAt: now },
@@ -222,9 +216,25 @@ export async function refreshSession(refreshToken: string): Promise<AuthResult> 
   return { user: toPublicUser(user), tokens };
 }
 
+export async function logoutByRefreshToken(
+  refreshToken: string,
+  userId?: string,
+): Promise<{ revoked: number }> {
+  const result = await prisma.refreshToken.updateMany({
+    where: {
+      tokenHash: hashToken(refreshToken),
+      ...(userId ? { userId } : {}),
+      revokedAt: null,
+    },
+    data: { revokedAt: new Date() },
+  });
+
+  return { revoked: result.count };
+}
+
 export async function logout(
   userId: string,
-  options: { refreshToken?: string; allSessions?: boolean } = {}
+  options: { refreshToken?: string; allSessions?: boolean } = {},
 ): Promise<{ revoked: number }> {
   if (options.allSessions || !options.refreshToken) {
     const result = await prisma.refreshToken.updateMany({

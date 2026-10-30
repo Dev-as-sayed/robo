@@ -10,12 +10,14 @@ import {
   googleLogin,
   login,
   logout,
+  logoutByRefreshToken,
   refreshSession,
   register,
 } from "@robo/shared/auth";
+import { UnauthorizedError } from "../../errors/app-error";
 import { asyncHandler } from "../../http/async-handler";
 import { sendSuccess } from "../../http/response";
-import { authenticate } from "../../middleware/authenticate";
+import { authenticateOptional } from "../../middleware/authenticate";
 import { validate } from "../../middleware/validate";
 
 const router = Router();
@@ -31,7 +33,7 @@ router.post(
       message: "User registered successfully",
       data: result,
     });
-  })
+  }),
 );
 
 router.post(
@@ -44,7 +46,7 @@ router.post(
       message: "Logged in successfully",
       data: result,
     });
-  })
+  }),
 );
 
 router.post(
@@ -57,7 +59,7 @@ router.post(
       message: "Logged in with Google successfully",
       data: result,
     });
-  })
+  }),
 );
 
 router.post(
@@ -70,21 +72,42 @@ router.post(
       message: "Token refreshed successfully",
       data: result,
     });
-  })
+  }),
 );
 
 router.post(
   "/logout",
-  authenticate,
+  authenticateOptional,
   validate({ body: logoutSchema }),
   asyncHandler(async (req, res) => {
-    const result = await logout(req.user!.id, req.body);
+    const refreshToken = req.body.refreshToken as string | undefined;
+    let result: { revoked: number };
+
+    if (req.body.allSessions) {
+      if (!req.user) {
+        throw new UnauthorizedError(
+          "Authentication required to revoke all sessions",
+          "MISSING_AUTH_TOKEN",
+        );
+      }
+      result = await logout(req.user.id, { allSessions: true });
+    } else if (refreshToken) {
+      result = await logoutByRefreshToken(refreshToken, req.user?.id);
+    } else if (req.user) {
+      result = await logout(req.user.id);
+    } else {
+      throw new UnauthorizedError(
+        "A refresh token or access token is required",
+        "MISSING_AUTH_TOKEN",
+      );
+    }
+
     sendSuccess(res, {
       code: "LOGOUT_SUCCESS",
       message: "Logged out successfully",
       data: result,
     });
-  })
+  }),
 );
 
 export default router;

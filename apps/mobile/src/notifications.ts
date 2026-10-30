@@ -2,15 +2,76 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import {
-  ensurePermissionWithExplanation,
-  notificationPermission,
-} from "@/permissions";
+import { ensurePermissionWithExplanation, notificationPermission } from "@/permissions";
 
 let registered = false;
+let registeredTokenId: string | null = null;
+let registrationEpoch = 0;
+
+export type NotificationRoute =
+  | "/tasks"
+  | "/reminders"
+  | "/schedule"
+  | "/exams"
+  | "/study"
+  | "/insights"
+  | "/class-notes"
+  | "/approvals";
+
+export function notificationRoute(data: unknown): NotificationRoute | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const payload = data as Record<string, unknown>;
+  const kind = typeof payload.kind === "string" ? payload.kind : null;
+
+  if (kind === "class_note") {
+    return "/class-notes";
+  }
+  if (kind === "pending_action") {
+    return "/approvals";
+  }
+  if (kind === "nudge") {
+    switch (payload.nudgeType) {
+      case "TASK":
+        return "/tasks";
+      case "EXAM":
+        return "/exams";
+      case "STUDY":
+        return "/study";
+      case "REMINDER":
+        return "/reminders";
+      default:
+        return "/insights";
+    }
+  }
+
+  const reminderId = typeof payload.reminderId === "string" ? payload.reminderId : null;
+  if (reminderId?.startsWith("todo-deadline:")) {
+    return "/tasks";
+  }
+  if (reminderId?.startsWith("class:")) {
+    return "/schedule";
+  }
+  if (reminderId || kind === "local_reminder") {
+    return "/reminders";
+  }
+
+  return null;
+}
 
 export function hasPushRegistration(): boolean {
   return registered;
+}
+
+export async function clearPushRegistration(): Promise<string | null> {
+  registrationEpoch += 1;
+  const id = registeredTokenId;
+  registered = false;
+  registeredTokenId = null;
+  await Notifications.cancelAllScheduledNotificationsAsync().catch(() => undefined);
+  return id;
 }
 
 /** True when the platform cannot register for Expo push (web/simulator/no project id). */
@@ -30,7 +91,7 @@ export interface LocalReminder {
  * scheduled when push registration did not succeed, so users do not get duplicates.
  */
 export async function syncLocalReminderNotifications(
-  reminders: readonly LocalReminder[]
+  reminders: readonly LocalReminder[],
 ): Promise<number> {
   if (Platform.OS === "web" || registered) {
     return 0;
@@ -38,8 +99,7 @@ export async function syncLocalReminderNotifications(
 
   const allowed = await ensurePermissionWithExplanation({
     title: "Reminder notifications",
-    message:
-      "Robo can alert you when a reminder is due, even when the app is closed.",
+    message: "Robo can alert you when a reminder is due, even when the app is closed.",
     api: notificationPermission,
   });
   if (!allowed) {
@@ -59,6 +119,10 @@ export async function syncLocalReminderNotifications(
   let scheduled = 0;
 
   for (const reminder of reminders) {
+    if (registered) {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      return 0;
+    }
     if (reminder.status !== "active" || !reminder.nextAt) continue;
     const at = new Date(reminder.nextAt);
     if (Number.isNaN(at.getTime()) || at.getTime() <= now) continue;
@@ -76,6 +140,11 @@ export async function syncLocalReminderNotifications(
       },
     });
     scheduled += 1;
+  }
+
+  if (registered) {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    return 0;
   }
 
   return scheduled;
@@ -101,12 +170,13 @@ function projectId(): string | undefined {
  * simulators, or a build without an EAS project id instead of throwing.
  */
 export async function registerForPushNotifications(
-  register: (input: { token: string; platform: "ios" | "android" }) => Promise<unknown>
+  register: (input: { token: string; platform: "ios" | "android" }) => Promise<{ id: string }>,
 ): Promise<boolean> {
   if (registered || Platform.OS === "web" || !Device.isDevice) {
     return false;
   }
 
+  const epoch = registrationEpoch;
   const id = projectId();
   if (!id) {
     return false;
@@ -130,10 +200,15 @@ export async function registerForPushNotifications(
   }
 
   const token = (await Notifications.getExpoPushTokenAsync({ projectId: id })).data;
-  await register({
+  const pushToken = await register({
     token,
     platform: Platform.OS === "ios" ? "ios" : "android",
   });
+  if (epoch !== registrationEpoch) {
+    return false;
+  }
+  registeredTokenId = pushToken.id;
   registered = true;
+  await Notifications.cancelAllScheduledNotificationsAsync().catch(() => undefined);
   return true;
 }

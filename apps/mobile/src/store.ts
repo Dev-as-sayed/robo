@@ -1,11 +1,13 @@
 import {
   configureStore,
+  createListenerMiddleware,
   type ThunkAction,
   type UnknownAction,
 } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import {
   accountApi,
+  apis,
   activityApi,
   analyticsApi,
   authApi,
@@ -26,8 +28,31 @@ import {
   todosApi,
   visionApi,
 } from "@/api/registry";
-import { authReducer } from "@/features/auth/auth-slice";
-import { chatReducer } from "@/features/chat/chat-slice";
+import { clearCachedUser, setCachedUser } from "@/auth/profile";
+import { registerSessionExpiredHandler } from "@/auth/session-events";
+import { authReducer, clearUser, setUser } from "@/features/auth/auth-slice";
+import { chatReducer, startNewConversation } from "@/features/chat/chat-slice";
+
+const sessionListener = createListenerMiddleware();
+
+sessionListener.startListening({
+  actionCreator: setUser,
+  effect: async action => {
+    await setCachedUser(action.payload).catch(() => undefined);
+  },
+});
+
+sessionListener.startListening({
+  actionCreator: clearUser,
+  effect: (_action, listenerApi) => {
+    void clearCachedUser().catch(() => undefined);
+    listenerApi.dispatch(startNewConversation());
+
+    for (const api of apis) {
+      listenerApi.dispatch(api.util.resetApiState());
+    }
+  },
+});
 
 export const store = configureStore({
   reducer: {
@@ -56,6 +81,7 @@ export const store = configureStore({
   },
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware()
+      .prepend(sessionListener.middleware)
       .concat(authApi.middleware)
       .concat(chatApi.middleware)
       .concat(classNotesApi.middleware)
@@ -78,14 +104,13 @@ export const store = configureStore({
       .concat(visionApi.middleware),
 });
 
+registerSessionExpiredHandler(() => {
+  store.dispatch(clearUser());
+});
+
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
-export type AppThunk = ThunkAction<
-  Promise<void>,
-  RootState,
-  unknown,
-  UnknownAction
->;
+export type AppThunk = ThunkAction<Promise<void>, RootState, unknown, UnknownAction>;
 
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();

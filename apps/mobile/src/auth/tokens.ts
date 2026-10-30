@@ -4,6 +4,9 @@ import { Platform } from "react-native";
 const ACCESS_TOKEN_KEY = "robo.accessToken";
 const REFRESH_TOKEN_KEY = "robo.refreshToken";
 
+let authGeneration = 0;
+let signOutDepth = 0;
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
@@ -55,9 +58,38 @@ export async function setTokens(tokens: AuthTokens): Promise<void> {
   ]);
 }
 
+export function currentAuthGeneration(): number {
+  return authGeneration;
+}
+
+export function beginSignOut(): void {
+  signOutDepth += 1;
+}
+
+export function endSignOut(): void {
+  signOutDepth = Math.max(0, signOutDepth - 1);
+}
+
+export function isSigningOut(): boolean {
+  return signOutDepth > 0;
+}
+
+export async function setTokensIfCurrent(tokens: AuthTokens, generation: number): Promise<boolean> {
+  if (generation !== authGeneration) {
+    return false;
+  }
+
+  await setTokens(tokens);
+
+  if (generation !== authGeneration) {
+    await clearTokens();
+    return false;
+  }
+
+  return true;
+}
+
 export async function clearTokens(): Promise<void> {
-  await Promise.all([
-    deleteItem(ACCESS_TOKEN_KEY),
-    deleteItem(REFRESH_TOKEN_KEY),
-  ]);
+  authGeneration += 1;
+  await Promise.all([deleteItem(ACCESS_TOKEN_KEY), deleteItem(REFRESH_TOKEN_KEY)]);
 }

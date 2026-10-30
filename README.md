@@ -117,7 +117,7 @@ verification still needs an EAS development build and, for some screens, hardwar
 - Documents upload to MinIO/S3, parse (PDF/DOCX/PPTX/text/images), OCR, chunk, embed and index; the screen exposes retry and re-index actions.
 - Insights renders real task/session/quiz data and a 90-day streak window; subject trends are returned by the API but not charted.
 - `POST /exams/:id/plan` generates a plan, and approval creates tasks plus a daily reminder.
-- Expo push registration, tap routing and the sender are implemented; runtime delivery needs a configured EAS project ID.
+- Expo push registration, tap routing and the sender are implemented; the EAS project is linked, but runtime delivery still needs a development build and physical-device verification.
 - Voice replies, QR/BLE provisioning and phone-book import need a dev build; wake-word voice and the device timer need firmware.
 
 ## Checks

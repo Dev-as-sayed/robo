@@ -5,6 +5,7 @@ import { StyleSheet, Text } from "react-native";
 import { useRegisterPushTokenMutation } from "@/api/notifications-api";
 import { useRemindersQuery } from "@/api/reminders-api";
 import {
+  notificationRoute,
   registerForPushNotifications,
   syncLocalReminderNotifications,
 } from "@/notifications";
@@ -15,11 +16,7 @@ import { useAppDispatch, useAppSelector } from "@/store";
 import { colors } from "@/theme";
 
 function Letter({ letter, focused }: { letter: string; focused: boolean }) {
-  return (
-    <Text style={[styles.letter, focused ? styles.letterOn : null]}>
-      {letter}
-    </Text>
-  );
+  return <Text style={[styles.letter, focused ? styles.letterOn : null]}>{letter}</Text>;
 }
 
 export default function AppLayout() {
@@ -37,7 +34,7 @@ export default function AppLayout() {
     }
 
     void registerForPushNotifications(input => registerPushToken(input).unwrap()).catch(
-      () => false
+      () => false,
     );
   }, [user, registerPushToken]);
 
@@ -58,25 +55,37 @@ export default function AppLayout() {
   }, [dispatch, user]);
 
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification.request.content.data as {
-        reminderId?: unknown;
-        kind?: unknown;
-      };
-      if (data.kind === "class_note") {
-        router.push("/class-notes");
-        return;
-      }
-      if (data.kind === "pending_action") {
-        router.push("/approvals");
-        return;
-      }
-      const reminderId = typeof data.reminderId === "string" ? data.reminderId : "";
-      router.push(reminderId.startsWith("todo-deadline:") ? "/tasks" : "/reminders");
-    });
+    if (!user) return;
 
-    return () => subscription.remove();
-  }, []);
+    let active = true;
+    const handled = new Set<string>();
+    const handle = (response: Notifications.NotificationResponse) => {
+      if (!active) return;
+
+      const notificationId = response.notification.request.identifier;
+      if (handled.has(notificationId)) return;
+      handled.add(notificationId);
+
+      const route = notificationRoute(response.notification.request.content.data);
+      if (route) {
+        router.push(route);
+      }
+    };
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(handle);
+    void Notifications.getLastNotificationResponseAsync()
+      .then(response => {
+        if (!response || !active) return;
+        handle(response);
+        void Notifications.clearLastNotificationResponseAsync();
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [user]);
 
   if (!user) {
     return <Redirect href="/sign-in" />;

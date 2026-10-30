@@ -3,8 +3,8 @@
 ## EAS
 
 `apps/mobile/eas.json` defines development, preview and production profiles.
-Run `eas init` once to attach the Expo project ID; EAS writes it to `app.json`.
-Then:
+The Expo project is linked as `@amsayed231/robo`, and `app.json` contains its
+project ID. Then:
 
 ```bash
 cd apps/mobile
@@ -14,8 +14,8 @@ eas submit --profile production --platform all
 ```
 
 Store the Expo token in GitHub Actions only when automated builds are enabled.
-The EAS project ID, signing keys and store listings are external-account items
-and are intentionally not committed.
+Signing keys and store listings are external-account items and are intentionally
+not committed.
 
 ## Sentry
 
@@ -66,7 +66,8 @@ reconnect behavior before every store submission.
 
 ## Release checklist
 
-- [ ] Expo project ID and EAS credentials configured.
+- [x] Expo project ID linked (`@amsayed231/robo`).
+- [ ] EAS signing credentials configured.
 - [ ] Sentry DSN and source-map upload configured.
 - [x] Upgrade to Expo SDK 54 with compile/target SDK 36.
 - [ ] Rebuild and re-test permissions, notifications, edge-to-edge layout and links on Android 16.

@@ -12,6 +12,7 @@ import {
   pauseStudySession,
   resumeStudySession,
   startStudySession,
+  toStudySessionResult,
 } from "@robo/shared/sessions";
 import { asyncHandler } from "../../http/async-handler";
 import { sendSuccess } from "../../http/response";
@@ -25,8 +26,11 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const session = await getActiveStudySession(req.user!.id);
-    sendSuccess(res, { code: "STUDY_SESSION_FETCHED", data: { session } });
-  })
+    sendSuccess(res, {
+      code: "STUDY_SESSION_FETCHED",
+      data: { session: session ? toStudySessionResult(session) : null },
+    });
+  }),
 );
 
 router.get(
@@ -36,7 +40,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const sessions = await listStudySessions(req.user!.id, Number(req.query.limit));
     sendSuccess(res, { code: "STUDY_SESSIONS_FETCHED", data: { sessions } });
-  })
+  }),
 );
 
 router.post(
@@ -51,7 +55,7 @@ router.post(
       message: "Study session started",
       data: result,
     });
-  })
+  }),
 );
 
 router.post(
@@ -60,7 +64,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const result = await pauseStudySession(req.user!.id, req.params.id);
     sendSuccess(res, { code: "STUDY_SESSION_PAUSED", data: result });
-  })
+  }),
 );
 
 router.post(
@@ -69,7 +73,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const result = await resumeStudySession(req.user!.id, req.params.id);
     sendSuccess(res, { code: "STUDY_SESSION_RESUMED", data: result });
-  })
+  }),
 );
 
 router.post(
@@ -77,13 +81,9 @@ router.post(
   authenticate,
   validate({ body: extendStudySessionSchema }),
   asyncHandler(async (req, res) => {
-    const result = await extendStudySession(
-      req.user!.id,
-      req.params.id,
-      req.body.minutes
-    );
+    const result = await extendStudySession(req.user!.id, req.params.id, req.body.minutes);
     sendSuccess(res, { code: "STUDY_SESSION_EXTENDED", data: result });
-  })
+  }),
 );
 
 router.post(
@@ -96,7 +96,7 @@ router.post(
       message: "Study session ended",
       data: result,
     });
-  })
+  }),
 );
 
 export default router;

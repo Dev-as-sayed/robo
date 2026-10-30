@@ -37,31 +37,25 @@ export interface StudySessionResult {
 
 /** Active study time excludes completed and currently-open pauses. */
 export function sessionStudyMinutes(
-  session: Pick<
-    StudySession,
-    "startedAt" | "endedAt" | "pausedAt" | "totalPausedMs"
-  >,
-  now = new Date()
+  session: Pick<StudySession, "startedAt" | "endedAt" | "pausedAt" | "totalPausedMs">,
+  now = new Date(),
 ): number {
   const end = session.endedAt ?? now;
-  const openPause = session.pausedAt
-    ? Math.max(0, end.getTime() - session.pausedAt.getTime())
-    : 0;
+  const openPause = session.pausedAt ? Math.max(0, end.getTime() - session.pausedAt.getTime()) : 0;
   const activeMs = Math.max(
     0,
-    end.getTime() - session.startedAt.getTime() - session.totalPausedMs - openPause
+    end.getTime() - session.startedAt.getTime() - session.totalPausedMs - openPause,
   );
 
   return Math.round(activeMs / 60_000);
 }
 
-function withMinutes(session: StudySession, now = new Date()): StudySessionResult {
+/** Wraps a session with the live study-minute total used by session APIs. */
+export function toStudySessionResult(session: StudySession, now = new Date()): StudySessionResult {
   return { session, studyMinutes: sessionStudyMinutes(session, now) };
 }
 
-export async function getActiveStudySession(
-  userId: string
-): Promise<StudySession | null> {
+export async function getActiveStudySession(userId: string): Promise<StudySession | null> {
   return prisma.studySession.findFirst({
     where: { userId, status: { in: ["active", "paused"] } },
     orderBy: { startedAt: "desc" },
@@ -72,7 +66,7 @@ export async function getActiveStudySession(
 export async function startStudySession(
   userId: string,
   data: { subject?: string; plannedMinutes?: number } = {},
-  now = new Date()
+  now = new Date(),
 ): Promise<StudySessionResult> {
   const active = await getActiveStudySession(userId);
   if (active) {
@@ -90,13 +84,13 @@ export async function startStudySession(
     select: sessionSelect,
   });
 
-  return withMinutes(session, now);
+  return toStudySessionResult(session, now);
 }
 
 export async function pauseStudySession(
   userId: string,
   sessionId: string,
-  now = new Date()
+  now = new Date(),
 ): Promise<StudySessionResult> {
   const session = await prisma.studySession.findFirst({
     where: { id: sessionId, userId, status: "active" },
@@ -113,13 +107,13 @@ export async function pauseStudySession(
     select: sessionSelect,
   });
 
-  return withMinutes(updated, now);
+  return toStudySessionResult(updated, now);
 }
 
 export async function resumeStudySession(
   userId: string,
   sessionId: string,
-  now = new Date()
+  now = new Date(),
 ): Promise<StudySessionResult> {
   const session = await prisma.studySession.findFirst({
     where: { id: sessionId, userId, status: "paused" },
@@ -130,9 +124,7 @@ export async function resumeStudySession(
     throw new Error("SESSION_NOT_PAUSED");
   }
 
-  const pausedMs = session.pausedAt
-    ? Math.max(0, now.getTime() - session.pausedAt.getTime())
-    : 0;
+  const pausedMs = session.pausedAt ? Math.max(0, now.getTime() - session.pausedAt.getTime()) : 0;
   const updated = await prisma.studySession.update({
     where: { id: sessionId, userId },
     data: {
@@ -143,14 +135,14 @@ export async function resumeStudySession(
     select: sessionSelect,
   });
 
-  return withMinutes(updated, now);
+  return toStudySessionResult(updated, now);
 }
 
 export async function extendStudySession(
   userId: string,
   sessionId: string,
   minutes: number,
-  now = new Date()
+  now = new Date(),
 ): Promise<StudySessionResult> {
   const session = await prisma.studySession.findFirst({
     where: { id: sessionId, userId, status: { in: ["active", "paused"] } },
@@ -170,13 +162,13 @@ export async function extendStudySession(
     select: sessionSelect,
   });
 
-  return withMinutes(updated, now);
+  return toStudySessionResult(updated, now);
 }
 
 export async function endStudySession(
   userId: string,
   sessionId: string,
-  now = new Date()
+  now = new Date(),
 ): Promise<StudySessionResult> {
   const session = await prisma.studySession.findFirst({
     where: { id: sessionId, userId, status: { in: ["active", "paused"] } },
@@ -187,9 +179,7 @@ export async function endStudySession(
     throw new Error("SESSION_NOT_ACTIVE");
   }
 
-  const pausedMs = session.pausedAt
-    ? Math.max(0, now.getTime() - session.pausedAt.getTime())
-    : 0;
+  const pausedMs = session.pausedAt ? Math.max(0, now.getTime() - session.pausedAt.getTime()) : 0;
   const updated = await prisma.studySession.update({
     where: { id: sessionId, userId },
     data: {
@@ -201,13 +191,10 @@ export async function endStudySession(
     select: sessionSelect,
   });
 
-  return withMinutes(updated, now);
+  return toStudySessionResult(updated, now);
 }
 
-export async function listStudySessions(
-  userId: string,
-  limit = 20
-): Promise<StudySessionResult[]> {
+export async function listStudySessions(userId: string, limit = 20): Promise<StudySessionResult[]> {
   const now = new Date();
   const sessions = await prisma.studySession.findMany({
     where: { userId },
@@ -216,5 +203,5 @@ export async function listStudySessions(
     select: sessionSelect,
   });
 
-  return sessions.map((session) => withMinutes(session, now));
+  return sessions.map(session => toStudySessionResult(session, now));
 }

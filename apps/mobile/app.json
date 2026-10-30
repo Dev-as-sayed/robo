@@ -47,6 +47,13 @@
     "web": {
       "bundler": "metro",
       "output": "static"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2c632857-8789-4ed8-9486-078bdd7a45ca"
+      }
+    },
+    "owner": "amsayed231"
   }
 }

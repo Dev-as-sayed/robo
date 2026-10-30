@@ -6,7 +6,7 @@ import { ForbiddenError, UnauthorizedError } from "../errors/app-error";
 export async function authenticate(
   req: Request,
   _res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> {
   const authorization = req.header("authorization");
 
@@ -47,4 +47,43 @@ export async function authenticate(
   } catch (error) {
     next(error);
   }
+}
+
+export async function authenticateOptional(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const authorization = req.header("authorization");
+
+  if (!authorization?.startsWith("Bearer ")) {
+    next();
+    return;
+  }
+
+  const token = authorization.slice("Bearer ".length).trim();
+
+  if (!token) {
+    next();
+    return;
+  }
+
+  try {
+    const payload = verifyAccessToken(token);
+
+    if (!payload.sub) {
+      next();
+      return;
+    }
+
+    const account = await getAccountState(payload.sub);
+
+    if (account?.status === "ACTIVE") {
+      req.user = { id: account.id, role: account.role, status: account.status };
+    }
+  } catch {
+    // Logout also accepts a refresh token, so invalid access tokens are ignored.
+  }
+
+  next();
 }
