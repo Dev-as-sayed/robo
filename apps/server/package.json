@@ -20,7 +20,8 @@
     "ai:regression": "tsx src/scripts/run-ai-regression.ts",
     "retrieval:eval": "tsx src/scripts/run-retrieval-eval.ts",
     "embeddings:benchmark": "tsx src/scripts/benchmark-embeddings.ts",
-    "verify:data-lifecycle": "tsx src/scripts/verify-data-lifecycle.ts"
+    "verify:data-lifecycle": "tsx src/scripts/verify-data-lifecycle.ts",
+    "verify:reminder-latency": "tsx src/scripts/verify-reminder-latency.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1156.0",

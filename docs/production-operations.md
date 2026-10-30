@@ -56,6 +56,14 @@ Do not expose the API over plain HTTP; redirect is handled by Caddy.
 - This is destructive. Never point it at a real user. Keep a database backup
   until the check passes.
 
+## Reminder latency
+
+- Verify the ±30 s delivery target against a disposable database:
+  `DATABASE_URL=... pnpm --dir apps/server verify:reminder-latency --execute`.
+- The check creates a reminder that becomes due just after a scheduler tick, runs
+  the real claim query and fails if the measured gap exceeds 30 s. The default
+  scheduler interval is 15 s.
+
 ## Monitoring and alerts
 
 - Sentry: set `SENTRY_DSN`; alerts on new error groups and error-rate spikes.
