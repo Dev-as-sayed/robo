@@ -1,7 +1,7 @@
 # Google Play Policy Review
 
 Review date: 2026-10-28
-Scope: Android app `com.robo.app` (Expo SDK 51)
+Scope: Android app `com.robo.app` (Expo SDK 54 / React Native 0.81)
 Status: engineering readiness review, not legal advice
 
 This review checks the current mobile build, manifest, and store-facing behavior
@@ -44,15 +44,16 @@ runtime permission.
 
 ## Release blockers
 
-### 1. Target Android 16 (API 36)
+### 1. Target Android 16 (API 36) (implemented, needs device re-test)
 
-The current Expo 51 / React Native 0.74 build targets Android 14 (API 34).
-Since 2026-08-31, new apps and app updates submitted to Google Play must target
-Android 16 (API 36) or higher. The published extension deadline is 2026-11-01.
+The app now uses Expo SDK 54 / React Native 0.81. Its Android defaults compile
+and target API 36, satisfying the requirement that new apps and updates submitted
+since 2026-08-31 target Android 16 or higher. `expo-doctor` passes all 18 checks
+and the mobile typecheck/lint pass.
 
-Action: upgrade the Expo SDK to a release that targets API 36, rebuild, and test
-notifications, edge-to-edge layout, photo picking, contacts, and WebSocket
-reconnect behavior before submitting.
+Action before release: produce a fresh EAS build and test notifications,
+edge-to-edge layout, photo picking, contacts, and WebSocket reconnect behavior on
+an Android 16 device before submitting.
 
 ### 2. In-app reporting for AI-generated answers (implemented)
 
@@ -203,7 +204,8 @@ support.
 
 ## Action checklist
 
-- [ ] Upgrade Expo/target SDK to Android 16 (API 36) and re-test the release.
+- [x] Upgrade to Expo SDK 54 with compile/target SDK 36.
+- [ ] Rebuild and re-test the release on Android 16 (permissions, notifications, edge-to-edge, photo picker, contacts, WebSocket reconnect).
 - [x] Add in-app AI answer reporting and a moderation triage path.
 - [ ] Verify AI feedback reporting on a production build and assign triage.
 - [x] Implement the account-deletion web page and moderator processing path.

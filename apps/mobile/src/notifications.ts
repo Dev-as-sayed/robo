@@ -70,7 +70,10 @@ export async function syncLocalReminderNotifications(
         data: { reminderId: reminder.id, kind: "local_reminder" },
         sound: true,
       },
-      trigger: at,
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: at,
+      },
     });
     scheduled += 1;
   }
@@ -80,7 +83,8 @@ export async function syncLocalReminderNotifications(
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),

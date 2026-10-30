@@ -59,14 +59,17 @@ cd apps/mobile
 pnpm exec expo config --type introspect
 ```
 
-The production build must target Android 16 (API 36) or higher. The current
-Expo 51 build targets API 34, so the SDK upgrade is a release blocker.
+The mobile app runs on Expo SDK 54 / React Native 0.81, whose Android defaults
+compile and target Android 16 (API 36). Rebuild and re-test permissions,
+notifications, edge-to-edge layout, photo picking, contacts and WebSocket
+reconnect behavior before every store submission.
 
 ## Release checklist
 
 - [ ] Expo project ID and EAS credentials configured.
 - [ ] Sentry DSN and source-map upload configured.
-- [ ] Target Android 16 (API 36) and re-test permissions, notifications and links.
+- [x] Upgrade to Expo SDK 54 with compile/target SDK 36.
+- [ ] Rebuild and re-test permissions, notifications, edge-to-edge layout and links on Android 16.
 - [ ] In-app AI answer reporting is available.
 - [ ] Deploy the public account-deletion page and privacy-policy URL, then enter both in Play Console.
 - [ ] Data safety, content rating and adult audience answers completed.

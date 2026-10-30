@@ -24,7 +24,9 @@
         {
           "contactsPermission": "Robo reads contacts only when you ask it to import someone you can call or message."
         }
-      ]
+      ],
+      "@sentry/react-native",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true
