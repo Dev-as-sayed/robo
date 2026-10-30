@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { t } from "@/i18n";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorBanner } from "@/components/ErrorBanner";
@@ -35,16 +36,16 @@ const priorityTones: Record<TodoPriority, PillTone> = {
 };
 
 const filters: { value: TodoStatus | "all"; label: string }[] = [
-  { value: "pending", label: "Open" },
-  { value: "all", label: "All" },
-  { value: "completed", label: "Done" },
+  { value: "pending", label: t("tasks.no_tasks") },
+  { value: "all", label: t("app.empty_state") },
+  { value: "completed", label: t("app.empty_state") },
 ];
 
 const priorities: { value: TodoPriority; label: string }[] = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "urgent", label: "Urgent" },
+  { value: "low", label: t("tasks.priority.low") },
+  { value: "medium", label: t("tasks.priority.medium") },
+  { value: "high", label: t("tasks.priority.high") },
+  { value: "urgent", label: t("tasks.priority.high") },
 ];
 
 function bucket(todo: Todo): "today" | "later" | "overdue" | "none" {

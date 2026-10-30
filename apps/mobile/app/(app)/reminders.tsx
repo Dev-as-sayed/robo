@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { t } from "@/i18n";
 import { useRouter } from "expo-router";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -28,25 +29,25 @@ const statusTones: Record<ReminderStatus, PillTone> = {
 };
 
 const filters: { value: ReminderStatus | "all"; label: string }[] = [
-  { value: "active", label: "Active" },
-  { value: "snoozed", label: "Snoozed" },
-  { value: "completed", label: "Done" },
-  { value: "all", label: "All" },
+  { value: "active", label: t("reminders.title") },
+  { value: "snoozed", label: t("reminders.snooze") },
+  { value: "completed", label: t("app.empty_state") },
+  { value: "all", label: t("app.empty_state") },
 ];
 
 const channels: ReminderChannel[] = ["device", "phone", "push"];
 
 const channelLabels: Record<ReminderChannel, string> = {
-  device: "Device",
-  phone: "Phone",
-  push: "Push",
+  device: t("device"),
+  phone: t("phone"),
+  push: t("push"),
 };
 
 const linkedOptions: Option<"none" | "todo" | "exam" | "schedule">[] = [
-  { value: "none", label: "None" },
-  { value: "todo", label: "To-do" },
-  { value: "exam", label: "Exam" },
-  { value: "schedule", label: "Schedule" },
+  { value: "none", label: t("none") },
+  { value: "todo", label: t("todo") },
+  { value: "exam", label: t("exam") },
+  { value: "schedule", label: t("schedule") },
 ];
 
 /**

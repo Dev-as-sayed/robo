@@ -219,7 +219,7 @@ function QuietHoursSection({ user }: { user: User }) {
   };
 
   return (
-    <Card title="QUIET HOURS">
+    <Text style={styles.title}> {t("settings.title")} </Text>
       <ToggleRow
         label="Quiet hours"
         hint="Silence Robo on this device during the window."

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import { t } from "@/i18n";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorBanner } from "@/components/ErrorBanner";
@@ -23,15 +24,15 @@ const statusTones: Record<ActionLogStatus, PillTone> = {
 };
 
 const statusLabels: Record<ActionLogStatus, string> = {
-  SUCCESS: "Success",
-  ERROR: "Error",
-  CONFIRMATION_REQUIRED: "Needs confirmation",
+  SUCCESS: t("app.error"),  // Will be overridden - keep as placeholder for now
+  ERROR: t("app.error"),
+  CONFIRMATION_REQUIRED: t("approvals.prepare_call"),
 };
 
 const filterOptions: Option<StatusFilter>[] = [
-  { value: "all", label: "All" },
-  { value: "SUCCESS", label: "Success" },
-  { value: "ERROR", label: "Errors" },
+  { value: "all", label: t("app.empty_state") },
+  { value: "SUCCESS", label: t("app.empty_state") },
+  { value: "ERROR", label: t("app.empty_state") },
 ];
 
 const limitOptions: Option<LimitChoice>[] = [

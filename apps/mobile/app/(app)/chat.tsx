@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { t } from "@/i18n";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -547,7 +548,7 @@ export default function ChatScreen() {
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="Ask Robo..."
+            placeholder={t("chat.placeholder")}
             placeholderTextColor={colors.textMuted}
             multiline
             maxLength={4000}
@@ -567,7 +568,7 @@ export default function ChatScreen() {
               pressed ? styles.sendPressed : null,
             ]}
           >
-            <Text style={styles.sendLabel}>{isBusy ? "Stop" : "Send"}</Text>
+            <Text style={styles.sendLabel}>{isBusy ? t("app.stop") : t("app.send")}</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>

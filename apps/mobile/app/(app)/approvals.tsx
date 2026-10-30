@@ -150,7 +150,7 @@ export default function ApprovalsScreen() {
                 ]}
               >
                 <Text style={styles.confirmLabel}>
-                  {busyId === action.id ? "Working…" : "Confirm"}
+                  {busyId === action.id ? t("app.loading") : t("app.confirm")}
                 </Text>
               </Pressable>
               <Pressable

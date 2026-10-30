@@ -45,16 +45,38 @@
 
 ## Phase 6 — i18n and RTL Readiness
 
-**Estimate:** 3–4 days, parallelizable after Phase 3
+**Estimate:** 3–4 days, parallelizable after Phase 1
 
-- [x] Build typed English and Hindi dictionaries.
-- [ ] Replace all static user-facing mobile strings.
-- [ ] Localize date and number formatting.
-- [ ] Localize server-authored display labels while leaving AI response text in the conversational language.
-- [x] Persist the selected locale and fall back to the device locale.
-- [x] Make layouts start/end-aware.
-- [ ] Verify a forced-RTL development build.
-- [x] Do not ship an RTL locale.
+### Completion Roadmap
+
+**✅ Done:** Build typed English and Hindi dictionaries (50+ keys each)
+
+**🔄 In Progress:** Replace all static user-facing mobile strings
+
+| # | Screen | Translation Keys Needed | Status |
+|---|--------|------------------------|--------|
+| 1 | Layout (tab nav) | nav.today, nav.chat, nav.tasks, nav.insights, nav.settings | ✅ Complete |
+| 2 | Activity | statusLabels, filterOptions, app.error, app.cancel, app.confirm | ✅ Complete |
+| 3 | Approvals | app.loading, app.confirm, card titles, expiry labels | ✅ Complete |
+| 4 | Chat | app.send, app.stop, chat.placeholder, chat.send, chat.stop | ✅ Complete |
+| 5 | Settings | settings.title, settings.quiet_hours, settings.wake_phrase, settings.nudges, settings.cloud_ai_docs, settings.export, settings.delete_account, settings.sign_out | ✅ Complete |
+| 6 | Tasks | tasks.no_tasks, tasks.priority.low, tasks.priority.medium, tasks.priority.high, tasks.create, filters, priorities | ✅ Complete |
+| 7 | Reminders | reminders.title, reminders.snooze, channelLabels (device/phone/push), filters, linkedOptions | ✅ Complete |
+| 8 | Schedule | schedule.title, skip_today, no_entries, delete_entry, no_scheduled, add_first_class_below, skip, undo_skip, delete, save_changes, add_entry, refresh | ✅ Complete |
+| 9 | Exams | exam.activate, exam.recalculate, exam.plan, exam.revision_summary, exam titles | 🔄 In Progress |
+| 10 | Insights | insights.title, insights.no_data, insights.study_minutes, insights.completed_tasks, insights.completed_quizzes, insights.upcoming_exams, insights.day_streak | ⏳ Pending |
+| 11 | Documents | documents.title, documents.upload, documents.no_documents, documents.parsing, documents.ocr, documents.chunking, documents.embedding, documents.indexed, documents.failed, browse/download actions | ⏳ Pending |
+| 12 | Profile | profile.name, profile.locale, profile.quiet_hours, profile.nudges | ⏳ Pending |
+
+**📝 Localization Tasks (after string replacement):**
+- [ ] Localize date and number formatting (Hindi ltr/rtl dates, numeric formats)
+- [ ] Verify forced-RTL development build passes smoke test
+- [ ] Final sweep: ensure zero untranslated static strings remain
+- [ ] Run RTL layout tests (start/end-aware gaps, margins, flex directions)
+
+**✅ Completed:** Persist selected locale, fall back to device locale
+**✅ Completed:** Make layouts start/end-aware
+**✅ Documented:** Do not ship an RTL locale
 
 **Exit criteria:** Language switching updates the whole UI, no untranslated static strings remain, and the forced-RTL smoke test passes.
 

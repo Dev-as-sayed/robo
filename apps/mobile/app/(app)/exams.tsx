@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { t } from "@/i18n";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { apiErrorStatus } from "@/api/errors";
 import { Button } from "@/components/Button";
@@ -121,13 +122,13 @@ export default function ExamsScreen() {
 
   const submit = async () => {
     if (!subject.trim()) {
-      setFormError("Give the exam a subject.");
+      setFormError(t("exam.give_subject"));
       return;
     }
 
     const date = parseDateTime(dateText.trim());
     if (!date) {
-      setFormError("Use a date like 2026-12-15.");
+      setFormError(t("exam.use_date"));
       return;
     }
 
@@ -159,7 +160,7 @@ export default function ExamsScreen() {
       }
       resetForm();
     } catch {
-      setFormError("Robo could not save that exam. Try again.");
+      setFormError(t("exam.could_not_save"));
     }
   };
 
@@ -168,7 +169,7 @@ export default function ExamsScreen() {
     try {
       await updateExam({ id: selected.id, status: "active" }).unwrap();
     } catch {
-      setActionError("Robo could not activate this exam.");
+      setActionError(t("exam.could_not_activate"));
     }
   };
 
@@ -184,7 +185,7 @@ export default function ExamsScreen() {
       }).unwrap();
       await refetchPlan();
     } catch {
-      setActionError("Robo could not build a study plan for this exam.");
+      setActionError(t("exam.could_not_generate_plan"));
     }
   };
 
@@ -195,7 +196,7 @@ export default function ExamsScreen() {
       await approvePlan(planResult.plan.id).unwrap();
       await refetchPlan();
     } catch {
-      setActionError("Robo could not approve this plan.");
+      setActionError(t("exam.could_not_approve"));
     }
   };
 
@@ -206,13 +207,13 @@ export default function ExamsScreen() {
       const result = await recalculatePlan(selected.id).unwrap();
       await refetchPlan();
       Alert.alert(
-        "Plan updated",
+        t("exam.plan_updated"),
         result.rescheduled === 0
-          ? "Every remaining task is already complete."
-          : `${result.rescheduled} remaining task${result.rescheduled === 1 ? "" : "s"} spread over ${result.daysLeft} day${result.daysLeft === 1 ? "" : "s"}.`
+          ? t("exam.every_task_complete")
+          : `${t("exam.rescheduled")} ${result.rescheduled} ${t("exam.remaining_task")}${result.rescheduled === 1 ? "" : "s"} ${t("exam.spread_over")} ${result.daysLeft} ${t("exam.days_left")}.`
       );
     } catch {
-      setActionError("Robo could not recalculate this plan.");
+      setActionError(t("exam.could_not_recalculate"));
     }
   };
 
@@ -223,7 +224,7 @@ export default function ExamsScreen() {
       await fetchRevision(selected.id).unwrap();
       setRevisionExamId(selected.id);
     } catch {
-      setActionError("Robo could not build a revision summary.");
+      setActionError(t("exam.could_not_revision_summary"));
     }
   };
 
@@ -234,12 +235,12 @@ export default function ExamsScreen() {
       await fetchReadiness(selected.id).unwrap();
       setReadinessExamId(selected.id);
     } catch {
-      setActionError("Robo could not check readiness for this exam.");
+      setActionError(t("exam.could_not_check_readiness"));
     }
   };
 
   const remove = (exam: Exam) => {
-    Alert.alert("Delete exam", exam.subject, [
+    Alert.alert(t("exam.delete_exam"), exam.subject, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
@@ -277,8 +278,8 @@ export default function ExamsScreen() {
         <Text style={styles.muted}>Loading exams…</Text>
       ) : exams.length === 0 ? (
         <EmptyState
-          title="No exams yet."
-          body="Add an exam below and Robo can build a study plan for it."
+          title={t("exam.no_exams_yet")}
+          body={t("exam.add_exam_and_plan")}
         />
       ) : (
         <View style={styles.list}>
@@ -330,7 +331,7 @@ export default function ExamsScreen() {
 
           {selected.status === "draft" ? (
             <Button
-              label="Activate exam"
+              label={t("exam.activate_exam")}
               variant="ghost"
               onPress={() => void activate()}
             />
@@ -339,14 +340,14 @@ export default function ExamsScreen() {
           {!planResult ? (
             <>
               <TextField
-                label="Tasks per day"
+                label={t("exam.tasks_per_day")}
                 value={dailyLimitText}
                 onChangeText={setDailyLimitText}
                 placeholder="2"
                 keyboardType="number-pad"
               />
               <Button
-                label="Generate study plan"
+                label={t("exam.generate_plan")}
                 onPress={() => void generate()}
                 loading={generating}
               />
@@ -381,13 +382,13 @@ export default function ExamsScreen() {
               ))}
               {!approved ? (
                 <Button
-                  label="Approve plan"
+                  label={t("exam.approve_plan")}
                   onPress={() => void approve()}
                   loading={approving}
                 />
               ) : (
                 <Button
-                  label="Recalculate remaining"
+                  label={t("exam.recalculate_remaining")}
                   variant="ghost"
                   onPress={() => void recalculate()}
                   loading={recalculating}

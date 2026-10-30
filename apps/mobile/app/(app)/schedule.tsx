@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { t } from "@/i18n";
 import { useRouter } from "expo-router";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -176,7 +177,7 @@ export default function ScheduleScreen() {
   };
 
   const remove = (entry: ScheduleEntry) => {
-    Alert.alert("Delete entry", entry.title, [
+    Alert.alert(t("schedule.delete_entry"), entry.title, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
@@ -202,8 +203,8 @@ export default function ScheduleScreen() {
         <Text style={styles.muted}>Loading schedule…</Text>
       ) : sections.length === 0 ? (
         <EmptyState
-          title="Nothing scheduled."
-          body="Add your first class or event below."
+          title={t("schedule.no_scheduled")}
+          body={t("schedule.add_first_class_below")}
         />
       ) : (
         sections.map(section => (
@@ -258,7 +259,7 @@ export default function ScheduleScreen() {
                     ]}
                   >
                     <Text style={styles.actionLabel}>
-                      {entry.isSkipped ? "Undo" : "Skip"}
+                      {entry.isSkipped ? t("schedule.undo_skip") : t("schedule.skip")}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -284,7 +285,7 @@ export default function ScheduleScreen() {
                     ]}
                   >
                     <Text style={[styles.actionLabel, styles.danger]}>
-                      Delete
+                      {t("schedule.delete")}
                     </Text>
                   </Pressable>
                 </View>
@@ -370,7 +371,7 @@ export default function ScheduleScreen() {
         </Pressable>
         {formError ? <ErrorBanner message={formError} /> : null}
         <Button
-          label={editingId ? "Save changes" : "Add entry"}
+          label={editingId ? t("schedule.save_changes") : t("schedule.add_entry")}
           onPress={() => void submit()}
           loading={creating || updating}
         />
@@ -387,7 +388,7 @@ export default function ScheduleScreen() {
           pressed ? styles.pressed : null,
         ]}
       >
-        <Text style={styles.refreshLabel}>Refresh</Text>
+        <Text style={styles.refreshLabel}>{t("schedule.refresh")}</Text>
       </Pressable>
     </Screen>
   );
