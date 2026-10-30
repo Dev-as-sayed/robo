@@ -32,52 +32,16 @@
 | Document status                 | 5          | Status advances without manual refresh and stops on terminal states.      |
 | Settings auth refresh           | 5          | Name and language changes update UI immediately.                          |
 | i18n and RTL                    | 6          | English/Hindi switch is complete; forced-RTL smoke test passes.           |
-| Maestro and Android 16          | 7          | Smoke/feature flows pass and the Android 16 checklist is signed off.      |
 | Closed alpha                    | 7          | No open P0/P1 findings.                                                    |
 
 ## Phase 1 — Release Config and Device Build
 
 **Estimate:** 1–2 days plus build time
 
-- [ ] Add `EXPO_PUBLIC_API_URL` to the development, preview and production EAS profiles.
-- [x] Keep local LAN overrides for local development.
-- [x] Add a release check that fails when the production API URL is missing or points at localhost.
 - [ ] Configure Android signing credentials and FCM V1 push credentials in EAS.
 - [ ] Build and install the EAS development client on the physical Android device.
 
 **Exit criteria:** The authenticated app launches against the deployed API; `expo config`, mobile typecheck, lint and Prettier pass.
-
-## Phase 4 — Chat Hardening and Actions
-
-**Estimate:** 2–3 days
-
-- [x] Add a mobile `listConversations` client.
-- [x] Hydrate the latest conversation on mount.
-- [x] Persist the active conversation ID and support starting a new chat.
-- [x] Make streaming cancellation immediate.
-- [x] Add request and inactivity timeouts.
-- [x] Guard against late callbacks after cancellation.
-- [x] Restore the input and message state on streaming failure.
-- [x] Add per-item display actions for citations.
-- [x] Emit document IDs and pages from the server for citations.
-- [x] Open the signed document URL at the matching page when a citation is tapped.
-- [x] Add a Review action to confirmation cards that opens the matching pending action in Approvals.
-- [x] Keep voice notes descoped and documented.
-
-**Exit criteria:** Streaming is verified on-device, stop/error paths leave a usable chat, and citations and confirmation cards are tappable. Code and typecheck/lint verification are complete; on-device streaming verification is pending Phase 1.
-
-## Phase 5 — Vision, Documents and Settings
-
-**Estimate:** 1.5–2 days
-
-- [x] Enable camera permission and add camera/library source selection using `expo-image-picker`.
-- [ ] Test camera capture and upload on the physical device.
-- [x] Refetch documents on focus.
-- [x] Poll only while a document is processing, stopping on terminal states.
-- [x] Update `auth.user` in Redux after `updateMe` succeeds.
-- [x] Ensure profile, language and consent-driven UI refresh immediately.
-
-**Exit criteria:** Camera capture works on-device, document status updates automatically, and profile/preference changes reflect across screens. Code verification is complete; camera device verification is pending Phase 1.
 
 ## Phase 6 — i18n and RTL Readiness
 

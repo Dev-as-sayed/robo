@@ -349,7 +349,7 @@ Full report: [`report.md`](report.md). The app typechecks and lints, and all mob
 
 ### P0 — runtime and configuration blockers
 
-- [ ] 🔴 Set production `EXPO_PUBLIC_API_URL` for the EAS profiles; verify push registration, cold-start tap routing, nudge routing and sign-out token revocation on a development build
+- [x] 🔴 Set production `EXPO_PUBLIC_API_URL` for the EAS profiles; verify push registration, cold-start tap routing, nudge routing and sign-out token revocation on a development build
 - [x] ⏭ APP-02 QR/BLE/Wi-Fi provisioning — **Descoped for v1 (2026-10-30):** app-side QR scan, BLE/Wi-Fi provisioning and the `robo://pair` route are not shipping; pairing/status screens remain
 
 ### P1 — checked items that still need completion
@@ -357,7 +357,7 @@ Full report: [`report.md`](report.md). The app typechecks and lints, and all mob
 - [ ] 🔴 Schedule: add edit UI and make exceptions suppress entries in Schedule and Home
 - [ ] 🔴 Home: show the next class across days and include draft exams in the countdown
 - [ ] 🔴 Exams: add a persisted plan read endpoint and restore approve/recalculate after reload and for chat-created plans
-- [ ] 🟡 Chat: make citation rows individually tappable, persist/restore history, and harden stop/error/timeout handling
+- [x] 🟡 Chat: make citation rows individually tappable, persist/restore history, and harden stop/error/timeout handling
 - [ ] 🟡 Vision: add camera capture and permission handling, or update the FRD/todo to library-only
 - [ ] 🟡 Documents: poll processing status or refresh on focus so parsing/OCR/embedding progress is visible
 - [ ] 🟡 Settings: refresh `auth.user` after preference saves

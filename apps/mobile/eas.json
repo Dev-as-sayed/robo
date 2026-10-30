@@ -9,6 +9,7 @@
       "distribution": "internal",
       "channel": "development",
       "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.robo.ai.dev/api/v1",
         "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "development"
       }
     },
@@ -16,6 +17,7 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.robo.ai.dev/api/v1",
         "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "preview"
       }
     },
@@ -23,6 +25,7 @@
       "autoIncrement": true,
       "channel": "production",
       "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.robo.ai/api/v1",
         "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "production"
       }
     }
