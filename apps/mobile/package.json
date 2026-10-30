@@ -15,7 +15,7 @@
     "eas-build-pre-install": "node scripts/check-release-env.mjs"
   },
   "dependencies": {
-    "@babel/runtime": "^7.29.10",
+    "@babel/runtime": "^8.0.8",
     "@hookform/resolvers": "^3.9.0",
     "@reduxjs/toolkit": "^2.2.7",
     "@sentry/react-native": "~7.2.0",
